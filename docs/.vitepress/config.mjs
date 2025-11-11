@@ -72,7 +72,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/sylphxltd/firestore_odm' }
+      { icon: 'github', link: 'https://github.com/SylphxAI/firestore_odm' }
     ]
   }
 })

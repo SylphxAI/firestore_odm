@@ -203,7 +203,7 @@ dart run build_runner build --delete-conflicting-outputs
 ## 💬 Community & Support
 
 - **GitHub Issues**: Report bugs or request features
-- **Documentation**: Full guides at [sylphxltd.github.io/firestore_odm](https://sylphxltd.github.io/firestore_odm/)
+- **Documentation**: Full guides at [SylphxAI.github.io/firestore_odm](https://SylphxAI.github.io/firestore_odm/)
 - **Discussions**: Join our community discussions
 
 ---

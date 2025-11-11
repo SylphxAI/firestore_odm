@@ -5,7 +5,7 @@
 Transform your Firestore development experience with type-safe, intuitive database operations that feel natural and productive.
 
 [![pub package](https://img.shields.io/pub/v/firestore_odm.svg)](https://pub.dev/packages/firestore_odm)
-[![GitHub](https://img.shields.io/github/license/sylphxltd/firestore_odm)](https://github.com/sylphxltd/firestore_odm/blob/main/LICENSE)
+[![GitHub](https://img.shields.io/github/license/SylphxAI/firestore_odm)](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
 
 ## 🎉 New in Version 3.0!
 
@@ -35,7 +35,7 @@ Transform your Firestore development experience with type-safe, intuitive databa
 
 ##  Complete Documentation
 
-**[📚 Read the Full Documentation](https://sylphxltd.github.io/firestore_odm/)** - Comprehensive guides, examples, and API reference
+**[📚 Read the Full Documentation](https://SylphxAI.github.io/firestore_odm/)** - Comprehensive guides, examples, and API reference
 
 ## 📋 Table of Contents
 
@@ -426,7 +426,7 @@ await db.users.insert(User(
 ));
 ```
 
-**⚠️ Server Timestamp Warning:** `FirestoreODM.serverTimestamp` must be used exactly as-is. Any arithmetic operations (`+`, `.add()`, etc.) will create a regular `DateTime` instead of a server timestamp. See the [Server Timestamps Guide](https://sylphxltd.github.io/firestore_odm/guide/server-timestamps.html) for alternatives.
+**⚠️ Server Timestamp Warning:** `FirestoreODM.serverTimestamp` must be used exactly as-is. Any arithmetic operations (`+`, `.add()`, etc.) will create a regular `DateTime` instead of a server timestamp. See the [Server Timestamps Guide](https://SylphxAI.github.io/firestore_odm/guide/server-timestamps.html) for alternatives.
 
 ## 📊 Performance & Technical Excellence (3.0 Enhanced)
 
@@ -497,6 +497,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **Ready to transform your Firestore experience?** 
 
-🔗 **[Get Started Now](https://sylphxltd.github.io/firestore_odm/guide/getting-started.html)** | 📚 **[Full Documentation](https://sylphxltd.github.io/firestore_odm/)** | 🐛 **[Report Issues](https://github.com/sylphxltd/firestore_odm/issues)**
+🔗 **[Get Started Now](https://SylphxAI.github.io/firestore_odm/guide/getting-started.html)** | 📚 **[Full Documentation](https://SylphxAI.github.io/firestore_odm/)** | 🐛 **[Report Issues](https://github.com/SylphxAI/firestore_odm/issues)**
 
 Build type-safe, maintainable Flutter apps with the power of Firestore ODM! 🚀

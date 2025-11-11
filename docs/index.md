@@ -11,7 +11,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/sylphxltd/firestore_odm
+      link: https://github.com/SylphxAI/firestore_odm
 
 features:
   - title: "⚡ Lightning Fast Code Generation (3.0 Enhanced)"

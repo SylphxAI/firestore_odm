@@ -14,7 +14,7 @@ Welcome! We're excited that you're interested in contributing to Firestore ODM. 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/sylphxltd/firestore_odm.git
+   git clone https://github.com/SylphxAI/firestore_odm.git
    cd firestore_odm
    ```
 
@@ -219,8 +219,8 @@ Please be respectful and constructive in all interactions. We want to maintain a
 
 If you have questions:
 
-1. Check existing [issues](https://github.com/sylphxltd/firestore_odm/issues)
-2. Search [discussions](https://github.com/sylphxltd/firestore_odm/discussions)
+1. Check existing [issues](https://github.com/SylphxAI/firestore_odm/issues)
+2. Search [discussions](https://github.com/SylphxAI/firestore_odm/discussions)
 3. Create a new discussion or issue
 
 ## 🙏 Thank You

@@ -1,10 +1,10 @@
 name: firestore_odm_builder
 description: Code generator for Firestore ODM annotations. Generates type-safe Firestore operations from annotated classes.
 version: 4.0.0-dev.1
-homepage: https://github.com/sylphxltd/firestore_odm
-repository: https://github.com/sylphxltd/firestore_odm
-issue_tracker: https://github.com/sylphxltd/firestore_odm/issues
-documentation: https://sylphxltd.github.io/firestore_odm/
+homepage: https://github.com/SylphxAI/firestore_odm
+repository: https://github.com/SylphxAI/firestore_odm
+issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
+documentation: https://SylphxAI.github.io/firestore_odm/
 resolution: workspace
 
 topics:

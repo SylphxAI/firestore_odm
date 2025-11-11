@@ -215,7 +215,7 @@ jobs:
           fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Repository**: https://github.com/sylphxltd/firestore_odm" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Fail if any job failed
         if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' }}

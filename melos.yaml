@@ -1,5 +1,5 @@
 name: firestore_odm_workspace
-repository: https://github.com/sylphxltd/firestore_odm
+repository: https://github.com/SylphxAI/firestore_odm
 
 packages:
   - apps/**

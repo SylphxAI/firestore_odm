@@ -130,7 +130,7 @@ npm run build
 
 ### Deployment
 The documentation is automatically deployed to GitHub Pages at:
-**https://sylphxltd.github.io/firestore_odm/**
+**https://SylphxAI.github.io/firestore_odm/**
 
 ## 📊 Documentation Coverage
 
@@ -155,4 +155,4 @@ This comprehensive documentation covers:
 
 **Transform your Firestore development experience with type-safe, intuitive database operations that feel natural and productive.**
 
-🔗 **[Get Started Now](https://sylphxltd.github.io/firestore_odm/guide/getting-started.html)**
+🔗 **[Get Started Now](https://SylphxAI.github.io/firestore_odm/guide/getting-started.html)**

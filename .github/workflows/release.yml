@@ -82,9 +82,9 @@ jobs:
             - [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)
             
             ## 🔗 Links
-            - **Repository**: https://github.com/sylphxltd/firestore_odm
+            - **Repository**: https://github.com/SylphxAI/firestore_odm
             - **Documentation**: https://pub.dev/documentation/firestore_odm/latest/
-            - **Issues**: https://github.com/sylphxltd/firestore_odm/issues
+            - **Issues**: https://github.com/SylphxAI/firestore_odm/issues
             
             ## 📝 Changes
             See individual package changelogs for detailed changes.
@@ -106,7 +106,7 @@ jobs:
             echo "Ready for publishing! Run again with 'Actually publish' checked." >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Repository**: https://github.com/sylphxltd/firestore_odm" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
   # Verify publication success
   verify-publish:
