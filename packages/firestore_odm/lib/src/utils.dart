@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:firestore_odm/firestore_odm.dart';
 import 'package:firestore_odm/src/model_converter.dart';
 import 'package:firestore_odm/src/types.dart';
 
@@ -94,9 +95,33 @@ Map<String, dynamic> toFirestoreData<T>(
   final mapData = toJson(data);
   final documentId = extractDocumentId(mapData, documentIdField);
   final processedData = removeDocumentIdField(mapData, documentIdField);
+  final timestampedData = replaceServerTimestamps(processedData);
 
   // Serialize the data for Firestore storage
-  return (processedData, documentId);
+  return (timestampedData, documentId);
+}
+
+/// Recursively replace special timestamps with FieldValue.serverTimestamp()
+Map<K, dynamic> replaceServerTimestamps<K>(Map<K, dynamic> data) {
+  return data.map(
+    (key, value) => MapEntry(key, switch (value) {
+      String() when value == kServerTimestamp.toIso8601String() =>
+        firestore.FieldValue.serverTimestamp(),
+      Map<String, dynamic> map => replaceServerTimestamps(map),
+      Map<FieldPath, dynamic> map => replaceServerTimestamps(map),
+      List list => list.map((item) {
+        return switch (item) {
+          String()
+              when item == kServerTimestamp.toIso8601String() =>
+            firestore.FieldValue.serverTimestamp(),
+          Map<String, dynamic> map => replaceServerTimestamps(map),
+          Map<FieldPath, dynamic> map => replaceServerTimestamps(map),
+          _ => item,
+        };
+      }).toList(),
+      _ => value,
+    }),
+  );
 }
 
 String extractDocumentId(Map<String, dynamic> json, String? documentIdField) {
@@ -132,40 +157,6 @@ Map<String, dynamic> removeDocumentIdField(
   }
   return result;
 }
-
-// Map<String, dynamic> serializeForFirestore(Map<String, dynamic> json) {
-//   return _serializeValue(json) as Map<String, dynamic>;
-// }
-
-// dynamic _serializeValue(dynamic value) {
-//   if (value == null) {
-//     return null;
-//   }
-
-//   if (value is Map<String, dynamic>) {
-//     final result = <String, dynamic>{};
-//     for (final entry in value.entries) {
-//       result[entry.key] = _serializeValue(entry.value);
-//     }
-//     return result;
-//   } else if (value is List) {
-//     return value.map((item) => _serializeValue(item)).toList();
-//   }
-
-//   // Handle Freezed objects - check if they have toJson() method
-//   try {
-//     // Try to call toJson method
-//     final json = (value as dynamic).toJson();
-//     if (json is Map<String, dynamic>) {
-//       return _serializeValue(json);
-//     }
-//   } catch (e) {
-//     // Not a Freezed object or doesn't have toJson, continue
-//   }
-
-//   // For primitive types and objects without toJson
-//   return value;
-// }
 
 List<T> processQuerySnapshot<T>(
   firestore.QuerySnapshot<Map<String, dynamic>> snapshot,

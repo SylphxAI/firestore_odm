@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_odm/src/services/update_helpers.dart';
 import 'package:firestore_odm/src/types.dart';
+import 'package:firestore_odm/src/utils.dart';
 
 /// Represents a single update operation
 sealed class UpdateOperation {
