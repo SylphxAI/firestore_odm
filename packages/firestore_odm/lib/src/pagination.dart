@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firestore_odm/src/orderby.dart';
-import 'package:firestore_odm/src/recordHelper.dart';
+import 'package:firestore_odm/src/record_helper.dart';
 
 abstract class QueryPaginationHandler {
   static List<dynamic> build<R extends Record>(R cursorValues) {

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firestore_odm/src/aggregate.dart';
-import 'package:firestore_odm/src/field_selecter.dart';
+import 'package:firestore_odm/src/field_selector.dart';
 import 'package:firestore_odm/src/filter_builder.dart';
 import 'package:firestore_odm/src/interfaces/aggregatable.dart';
 import 'package:firestore_odm/src/interfaces/deletable.dart';

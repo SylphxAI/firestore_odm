@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart'
     hide FieldPath, FieldValue, Timestamp;
-import 'package:firestore_odm/src/field_selecter.dart';
+import 'package:firestore_odm/src/field_selector.dart';
 import 'package:firestore_odm/src/model_converter.dart';
 import 'package:firestore_odm/src/services/patch_operations.dart';
 import 'package:firestore_odm/src/types.dart';

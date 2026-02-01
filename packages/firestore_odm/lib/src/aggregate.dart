@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/src/field_selecter.dart';
+import 'package:firestore_odm/src/field_selector.dart';
 import 'package:firestore_odm/src/interfaces/gettable.dart';
 import 'package:firestore_odm/src/interfaces/streamable.dart';
 import 'package:firestore_odm/src/types.dart';
