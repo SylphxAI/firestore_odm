@@ -18,8 +18,9 @@ dev_dependencies:
   very_good_analysis: ^9.0.0
 
   
+# NOTE: The library packages (firestore_odm, firestore_odm_annotation, firestore_odm_builder)
+# are NOT included in the Dart workspace because they need explicit version constraints
+# for pub.dev publishing. Melos handles local development path resolution instead.
+# Only include app packages that don't need to be published.
 workspace:
-  - packages/firestore_odm
-  - packages/firestore_odm_annotation
-  - packages/firestore_odm_builder
   - apps/flutter_example

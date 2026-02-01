@@ -3,7 +3,6 @@ description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-resolution: workspace
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -38,6 +37,7 @@ dependencies:
   json_annotation: ^4.9.0
   fast_immutable_collections: ^11.0.4
   firestore_odm:
+    path: ../../packages/firestore_odm
   equatable: ^2.0.7
 
 dev_dependencies:
@@ -52,6 +52,7 @@ dev_dependencies:
   fake_cloud_firestore: ^3.1.0
   test: ^1.25.15
   firestore_odm_builder:
+    path: ../../packages/firestore_odm_builder
   
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
