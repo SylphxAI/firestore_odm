@@ -518,21 +518,6 @@ abstract class QueryHandler {
     );
   }
 
-  // static Future<void> update(
-  //   Query query,
-  //   Map<String, dynamic> updateData,
-  // ) async {
-  //   final snapshot = await query.get();
-  //   final batch = query.firestore.batch();
-  //   final processedUpdateData = processUpdateData(updateData);
-
-  //   for (final docSnapshot in snapshot.docs) {
-  //     batch.update(docSnapshot.reference, processedUpdateData);
-  //   }
-
-  //   await batch.commit();
-  // }
-
   /// Modify multiple documents using diff-based updates.
   ///
   /// This method performs a read operation followed by batch update operations.

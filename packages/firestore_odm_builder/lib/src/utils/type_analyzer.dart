@@ -81,13 +81,6 @@ class TypeAnalyzer {
     // Check for iterables of primitives (supports any iterable type)
     if (isIterableType(nonNullableType)) {
       return true;
-      // final elementType = getIterableElementType(nonNullableType);
-      // if (elementType != null) {
-      //   return _stringChecker.isExactlyType(elementType) ||
-      //       _intChecker.isExactlyType(elementType) ||
-      //       _doubleChecker.isExactlyType(elementType) ||
-      //       _boolChecker.isExactlyType(elementType);
-      // }
     }
 
     // Check for Map types - Maps are primitive types in Firestore (map type)
