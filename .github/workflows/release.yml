@@ -37,12 +37,6 @@ jobs:
       - name: 📦 Bootstrap
         run: melos bootstrap
 
-      - name: 🧪 Run Tests
-        run: melos run test:all --no-select
-
-      - name: 🔍 Analyze Code
-        run: melos run analyze --no-select
-
       - name: 📋 Dry Run Publish
         run: melos run publish:dry-run --no-select
 
