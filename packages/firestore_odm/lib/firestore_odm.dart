@@ -16,6 +16,7 @@ export 'src/batch.dart';
 export 'src/aggregate.dart';
 export 'src/orderby.dart';
 export 'src/types.dart';
+export 'src/exceptions.dart';
 
 export 'src/services/update_operations_service.dart';
 

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:firestore_odm/src/exceptions.dart';
 import 'package:firestore_odm/src/model_converter.dart';
 import 'package:firestore_odm/src/services/update_helpers.dart';
 import 'package:firestore_odm/src/types.dart';
@@ -105,8 +106,10 @@ void validateDocumentId(
 
   // Validate that the document ID is not null or empty
   if (fieldName != null && (documentId == null || documentId.isEmpty)) {
-    throw ArgumentError(
-      'Document ID field \'$fieldName\' must not be null or empty for upsert operation',
+    throw FirestoreODMValidationException(
+      'Document ID must not be null or empty for upsert operation',
+      code: 'invalid_document_id',
+      field: fieldName,
     );
   }
 }
@@ -139,7 +142,11 @@ T processDocumentSnapshot<T>(
   String documentIdField,
 ) {
   if (!snapshot.exists) {
-    throw StateError('Document does not exist: ${snapshot.id}');
+    throw FirestoreODMDocumentException(
+      'Document does not exist',
+      code: 'not_found',
+      documentPath: snapshot.reference.path,
+    );
   }
   return fromFirestoreData<T>(
     fromMap,
@@ -168,8 +175,11 @@ T resolveJsonWithParts<T>(
 
       for (final part in components) {
         if (current == null) {
-          throw ArgumentError(
-            'Cannot resolve path ${path} - null encountered at "$part"',
+          throw FirestoreODMPathException(
+            'Cannot resolve path - null encountered',
+            code: 'null_in_path',
+            path: components.join('.'),
+            failedComponent: part,
           );
         }
 
@@ -180,13 +190,19 @@ T resolveJsonWithParts<T>(
             if (index >= 0 && index < current.length) {
               current = current[index];
             } else {
-              throw RangeError(
-                'Index $index out of bounds for array of length ${current.length} at path ${path}',
+              throw FirestoreODMPathException(
+                'Index $index out of bounds for array of length ${current.length}',
+                code: 'index_out_of_bounds',
+                path: components.join('.'),
+                failedComponent: part,
               );
             }
           } else {
-            throw ArgumentError(
-              'Expected List but found ${current.runtimeType} when accessing index "$part" in path ${path}',
+            throw FirestoreODMTypeException(
+              'Expected List but found ${current.runtimeType} when accessing index',
+              code: 'type_mismatch',
+              expectedType: List,
+              actualType: current.runtimeType,
             );
           }
         } else {
@@ -195,13 +211,19 @@ T resolveJsonWithParts<T>(
             if (current.containsKey(part)) {
               current = current[part];
             } else {
-              throw ArgumentError(
-                'Key "$part" not found in object at path ${components.join(".")}',
+              throw FirestoreODMPathException(
+                'Key "$part" not found in object',
+                code: 'key_not_found',
+                path: components.join('.'),
+                failedComponent: part,
               );
             }
           } else {
-            throw ArgumentError(
-              'Expected Map but found ${current.runtimeType} when accessing key "$part" in path ${path}',
+            throw FirestoreODMTypeException(
+              'Expected Map but found ${current.runtimeType} when accessing key',
+              code: 'type_mismatch',
+              expectedType: Map,
+              actualType: current.runtimeType,
             );
           }
         }
@@ -211,8 +233,11 @@ T resolveJsonWithParts<T>(
       if (current is T) {
         return current;
       } else {
-        throw ArgumentError(
-          'Expected type $T but found ${current.runtimeType} at path ${path}. Value: $current',
+        throw FirestoreODMTypeException(
+          'Unexpected type at path ${components.join(".")}',
+          code: 'type_mismatch',
+          expectedType: T,
+          actualType: current.runtimeType,
         );
       }
   }
