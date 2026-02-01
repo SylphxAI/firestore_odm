@@ -37,15 +37,14 @@ jobs:
       - name: 📦 Bootstrap
         run: melos bootstrap
 
-      - name: 📋 Dry Run Publish
+      - name: 📋 Dry Run Publish (annotation only)
         run: |
           # Remove pubspec_overrides.yaml files created by melos bootstrap
           find packages -name "pubspec_overrides.yaml" -delete
 
-          # Dry run publish for each package in dependency order
+          # Only dry-run annotation package (no local dependencies)
+          # Other packages depend on annotation which isn't published yet
           cd packages/firestore_odm_annotation && dart pub publish --dry-run
-          cd ../firestore_odm && dart pub publish --dry-run
-          cd ../firestore_odm_builder && dart pub publish --dry-run
 
       - name: 🔐 Setup Pub Credentials
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
@@ -53,16 +52,28 @@ jobs:
           mkdir -p ~/.pub-cache
           echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.pub-cache/credentials.json
 
-      - name: 🚀 Publish to pub.dev
+      - name: 🚀 Publish firestore_odm_annotation
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          # Remove pubspec_overrides.yaml files created by melos bootstrap
-          find packages -name "pubspec_overrides.yaml" -delete
-
-          # Publish packages in dependency order
           cd packages/firestore_odm_annotation && dart pub publish --force
-          cd ../firestore_odm && dart pub publish --force
-          cd ../firestore_odm_builder && dart pub publish --force
+          echo "Waiting for package to be indexed on pub.dev..."
+          sleep 60
+
+      - name: 🚀 Publish firestore_odm
+        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          # Remove pubspec_overrides.yaml and get fresh dependencies
+          rm -f packages/firestore_odm/pubspec_overrides.yaml
+          cd packages/firestore_odm && dart pub get && dart pub publish --force
+          echo "Waiting for package to be indexed on pub.dev..."
+          sleep 60
+
+      - name: 🚀 Publish firestore_odm_builder
+        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          # Remove pubspec_overrides.yaml and get fresh dependencies
+          rm -f packages/firestore_odm_builder/pubspec_overrides.yaml
+          cd packages/firestore_odm_builder && dart pub get && dart pub publish --force
 
       - name: 📊 Create Release
         if: ${{ (inputs.run_publish || startsWith(github.ref, 'refs/tags/')) && success() }}
