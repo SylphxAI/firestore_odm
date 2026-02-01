@@ -36,45 +36,30 @@ Map<String, dynamic> processFirestoreData(
   return _processValue(result) as Map<String, dynamic>;
 }
 
+/// Recursively processes Firestore data, converting Timestamps to ISO8601 strings.
 dynamic _processValue(dynamic value) {
   if (value == null) {
     return null;
   }
 
-  // Try to convert any potential Timestamp first
-  try {
-    // Try calling toDate() on any object - if it works, it's a Timestamp
-    final dateTime = (value as dynamic).toDate() as DateTime;
-    return dateTime.toIso8601String();
-  } catch (e) {
-    // Not a Timestamp, continue with other processing
+  // Handle Firestore Timestamp type directly
+  if (value is firestore.Timestamp) {
+    return value.toDate().toIso8601String();
   }
 
-  // Try string detection as fallback
-  try {
-    final runtimeType = value.runtimeType.toString();
-    final stringValue = value.toString();
-    if (runtimeType.contains('Timestamp') ||
-        stringValue.contains('Timestamp')) {
-      final timestamp = value as dynamic;
-      final dateTime = timestamp.toDate() as DateTime;
-      return dateTime.toIso8601String();
-    }
-  } catch (e) {
-    // Continue with normal processing
-  }
-
+  // Handle nested structures
   if (value is Map<String, dynamic>) {
-    final result = <String, dynamic>{};
-    for (final entry in value.entries) {
-      result[entry.key] = _processValue(entry.value);
-    }
-    return result;
-  } else if (value is List) {
-    return value.map((item) => _processValue(item)).toList();
-  } else {
-    return value;
+    return <String, dynamic>{
+      for (final entry in value.entries)
+        entry.key: _processValue(entry.value),
+    };
   }
+
+  if (value is List) {
+    return value.map(_processValue).toList();
+  }
+
+  return value;
 }
 
 Map<String, dynamic> toFirestoreData<T>(
@@ -233,33 +218,42 @@ T resolveJsonWithParts<T>(
   }
 }
 
+/// Returns a sensible default value for the given type [T].
+///
+/// Supported types:
+/// - Nullable types: null
+/// - int, double, num: 0
+/// - bool: false
+/// - String: ''
+/// - List, Set, Map: empty collection
+/// - DateTime: epoch (1970-01-01)
+/// - Duration: zero
+///
+/// Throws [UnsupportedError] for unsupported types.
 T defaultValue<T>() {
-  // Handle nullable types
+  // Handle nullable types - null is a valid value for T?
   if (null is T) return null as T;
 
-  // Numeric types
+  // Primitive types - direct type comparison works here
   if (T == int) return 0 as T;
   if (T == double) return 0.0 as T;
   if (T == num) return 0 as T;
-
-  // Boolean type
   if (T == bool) return false as T;
-
-  // String type
   if (T == String) return '' as T;
-
-  // Collection types - use reflection check
-  final typeString = T.toString();
-  if (typeString.startsWith('List<')) return <dynamic>[] as T;
-  if (typeString.startsWith('Set<')) return <dynamic>{} as T;
-  if (typeString.startsWith('Map<')) return <String, dynamic>{} as T;
-
-  // DateTime
   if (T == DateTime) return DateTime.fromMillisecondsSinceEpoch(0) as T;
-
-  // Duration
   if (T == Duration) return Duration.zero as T;
 
-  // Unsupported types
-  throw UnsupportedError('Cannot create default value for type $T');
+  // Generic collection types require string-based type inspection since
+  // Dart doesn't support pattern matching on generic types at runtime.
+  // e.g., List<int> cannot be matched with `T == List<int>` when T is generic.
+  final typeName = T.toString();
+  if (typeName.startsWith('List<')) return <dynamic>[] as T;
+  if (typeName.startsWith('Set<')) return <dynamic>{} as T;
+  if (typeName.startsWith('Map<')) return <String, dynamic>{} as T;
+
+  throw UnsupportedError(
+    'Cannot create default value for type $T. '
+    'Supported types: nullable, int, double, num, bool, String, '
+    'DateTime, Duration, List, Set, Map.',
+  );
 }
