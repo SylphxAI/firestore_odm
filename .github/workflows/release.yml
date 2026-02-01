@@ -1,22 +1,19 @@
 name: Release & Publish
 
-# Workflow disabled - uncomment triggers below to re-enable
 on:
-  workflow_dispatch: # Manual trigger only - automatic triggers disabled
-  # Original triggers commented out:
-  # workflow_dispatch:
-  #   inputs:
-  #     run_publish:
-  #       description: 'Actually publish to pub.dev (uncheck for dry-run only)'
-  #       type: boolean
-  #       default: false
-  #     run_versioning:
-  #       description: 'Run automatic versioning based on conventional commits'
-  #       type: boolean
-  #       default: true
-  # push:
-  #   tags:
-  #     - 'v*'  # Auto-publish when tags are pushed
+  workflow_dispatch:
+    inputs:
+      run_publish:
+        description: 'Actually publish to pub.dev (uncheck for dry-run only)'
+        type: boolean
+        default: false
+      run_versioning:
+        description: 'Run automatic versioning based on conventional commits'
+        type: boolean
+        default: true
+  push:
+    tags:
+      - 'v*'  # Auto-publish when tags are pushed
 
 jobs:
   release:

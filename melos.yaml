@@ -102,3 +102,23 @@ scripts:
       copy README.md packages\firestore_odm_builder\README.md
     description: Sync README.md to all packages.
 
+  # Publishing scripts
+  publish:dry-run:
+    run: dart pub publish --dry-run
+    description: Verify packages are ready to publish.
+    packageFilters:
+      scope:
+        - firestore_odm_annotation
+        - firestore_odm
+        - firestore_odm_builder
+
+  publish:packages:
+    run: dart pub publish --force
+    description: Publish packages to pub.dev.
+    packageFilters:
+      scope:
+        - firestore_odm_annotation
+        - firestore_odm
+        - firestore_odm_builder
+    exec:
+      orderDependents: true

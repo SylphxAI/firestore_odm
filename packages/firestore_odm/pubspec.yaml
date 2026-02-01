@@ -1,6 +1,6 @@
 name: firestore_odm
 description: Type-safe Firestore ODM with code generation support. Generate type-safe Firestore operations with annotations.
-version: 4.0.0-dev.1
+version: 4.0.0-dev.2
 homepage: https://github.com/SylphxAI/firestore_odm
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
@@ -24,7 +24,7 @@ dependencies:
   cloud_firestore: ^5.0.0
   cloud_firestore_platform_interface: ^6.5.0
   meta: ^1.9.1
-  firestore_odm_annotation: ^4.0.0-dev.1
+  firestore_odm_annotation: ^4.0.0-dev.2
 
 dev_dependencies:
   flutter_test:

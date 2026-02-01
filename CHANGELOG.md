@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2025-02-01
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`firestore_odm` - `v4.0.0-dev.2`](#firestore_odm---v400-dev2)
+ - [`firestore_odm_builder` - `v4.0.0-dev.2`](#firestore_odm_builder---v400-dev2)
+ - [`firestore_odm_annotation` - `v4.0.0-dev.2`](#firestore_odm_annotation---v400-dev2)
+
+---
+
+#### `firestore_odm` - `v4.0.0-dev.2`
+
+ - **FIX**: Support nullable Map types in DartMapFieldUpdate and MapFilterField.
+ - **FIX**: Replace server timestamps on insert operations (not just updates).
+
+#### `firestore_odm_builder` - `v4.0.0-dev.2`
+
+ - **FIX**: Resolve code generation errors for nullable types (closes #3).
+ - **FIX**: Enum map lookup now correctly handles non-nullable enum fields.
+ - **FIX**: fromJson type casting now uses actual constructor parameter type.
+
+#### `firestore_odm_annotation` - `v4.0.0-dev.2`
+
+ - Bump version to match other packages.
+
+
 ## 2025-08-09
 
 ### Changes
