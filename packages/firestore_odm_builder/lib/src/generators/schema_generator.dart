@@ -553,11 +553,6 @@ class SchemaGenerator {
     final methods = <Method>[];
 
     for (final collection in rootCollections) {
-      final collectionClassName = generateClassName(
-        schemaClassName: schemaClassName,
-        collectionPath: collection.path,
-        type: ClassType.transactionCollection,
-      );
       final collectionType = TypeReference(
         (b) => b
           ..symbol = 'TransactionCollection'
