@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/element/element2.dart';
-import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
@@ -138,7 +137,7 @@ class TypeAnalyzer {
         !_mapChecker.isAssignableFromType(nonNullableType) &&
         // exclude enums from being treated as custom classes
         !(nonNullableType is InterfaceType &&
-          (nonNullableType as InterfaceType).element is EnumElement) &&
+          nonNullableType.element3 is EnumElement2) &&
         !nonNullableType.isDartCoreType;
   }
 
@@ -270,7 +269,7 @@ class TypeAnalyzer {
   /// Get the element type name of any iterable (backward compatibility)
   static String getIterableElementTypeName(DartType iterableType) {
     final elementType = getIterableElementType(iterableType);
-    return elementType.getDisplayString() ?? 'dynamic';
+    return elementType.getDisplayString();
   }
 
   /// Check if a type is nullable
