@@ -5,7 +5,6 @@ homepage: https://github.com/SylphxAI/firestore_odm
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
 documentation: https://SylphxAI.github.io/firestore_odm/
-resolution: workspace
 
 topics:
   - firestore
