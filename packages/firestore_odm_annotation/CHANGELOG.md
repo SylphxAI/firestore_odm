@@ -1,3 +1,10 @@
+## 4.0.0-dev.2
+
+- Fix nullable type handling in code generation
+- Fix enum null assertion for non-nullable enums
+- Fix fromJson type casting for custom types
+- Fix workspace configuration for publishing
+
 ## 4.0.0-dev.1
 
  - Bump "firestore_odm_annotation" to `4.0.0-dev.1`.

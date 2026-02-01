@@ -1,3 +1,8 @@
+## 4.0.0-dev.2
+
+- Fix enum null assertion for non-nullable enum types
+- Fix fromJson type casting to use actual constructor parameter type
+
 ## 4.0.0-dev.1
 
  - **REFACTOR**: tests and update model serialization. ([75adad50](https://github.com/SylphxAI/firestore_odm/commit/75adad50194afbd8c5c9471d03c9e030685296f8))

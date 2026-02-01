@@ -1,3 +1,9 @@
+## 4.0.0-dev.2
+
+- Fix nullable Map type constraint in DartMapFieldUpdate
+- Fix MapFilterField.toJson return type to be nullable
+- Add server timestamp replacement on insert
+
 ## 4.0.0-dev.1
 
  - **REFACTOR**: tests and update model serialization. ([75adad50](https://github.com/SylphxAI/firestore_odm/commit/75adad50194afbd8c5c9471d03c9e030685296f8))
