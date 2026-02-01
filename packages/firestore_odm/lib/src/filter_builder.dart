@@ -30,6 +30,14 @@ extension FilterOperationExtension on FilterOperation {
   }
 }
 
+/// Helper to get filter at index or null if out of bounds.
+Filter? _filterAt(List<FilterOperation> filters, int index) =>
+    index < filters.length ? filters[index].toFilter() : null;
+
+/// Combines multiple filters with AND logic.
+///
+/// Note: The Firestore SDK's Filter.and() takes up to 30 positional parameters
+/// (not a List), which is why we need explicit parameter expansion here.
 class AndOperation implements FilterOperation {
   final List<FilterOperation> filters;
 
@@ -39,37 +47,41 @@ class AndOperation implements FilterOperation {
   Filter toFilter() => Filter.and(
     filters[0].toFilter(),
     filters[1].toFilter(),
-    filters.length > 2 ? filters[2].toFilter() : null,
-    filters.length > 3 ? filters[3].toFilter() : null,
-    filters.length > 4 ? filters[4].toFilter() : null,
-    filters.length > 5 ? filters[5].toFilter() : null,
-    filters.length > 6 ? filters[6].toFilter() : null,
-    filters.length > 7 ? filters[7].toFilter() : null,
-    filters.length > 8 ? filters[8].toFilter() : null,
-    filters.length > 9 ? filters[9].toFilter() : null,
-    filters.length > 10 ? filters[10].toFilter() : null,
-    filters.length > 11 ? filters[11].toFilter() : null,
-    filters.length > 12 ? filters[12].toFilter() : null,
-    filters.length > 13 ? filters[13].toFilter() : null,
-    filters.length > 14 ? filters[14].toFilter() : null,
-    filters.length > 15 ? filters[15].toFilter() : null,
-    filters.length > 16 ? filters[16].toFilter() : null,
-    filters.length > 17 ? filters[17].toFilter() : null,
-    filters.length > 18 ? filters[18].toFilter() : null,
-    filters.length > 19 ? filters[19].toFilter() : null,
-    filters.length > 20 ? filters[20].toFilter() : null,
-    filters.length > 21 ? filters[21].toFilter() : null,
-    filters.length > 22 ? filters[22].toFilter() : null,
-    filters.length > 23 ? filters[23].toFilter() : null,
-    filters.length > 24 ? filters[24].toFilter() : null,
-    filters.length > 25 ? filters[25].toFilter() : null,
-    filters.length > 26 ? filters[26].toFilter() : null,
-    filters.length > 27 ? filters[27].toFilter() : null,
-    filters.length > 28 ? filters[28].toFilter() : null,
-    filters.length > 29 ? filters[29].toFilter() : null,
+    _filterAt(filters, 2),
+    _filterAt(filters, 3),
+    _filterAt(filters, 4),
+    _filterAt(filters, 5),
+    _filterAt(filters, 6),
+    _filterAt(filters, 7),
+    _filterAt(filters, 8),
+    _filterAt(filters, 9),
+    _filterAt(filters, 10),
+    _filterAt(filters, 11),
+    _filterAt(filters, 12),
+    _filterAt(filters, 13),
+    _filterAt(filters, 14),
+    _filterAt(filters, 15),
+    _filterAt(filters, 16),
+    _filterAt(filters, 17),
+    _filterAt(filters, 18),
+    _filterAt(filters, 19),
+    _filterAt(filters, 20),
+    _filterAt(filters, 21),
+    _filterAt(filters, 22),
+    _filterAt(filters, 23),
+    _filterAt(filters, 24),
+    _filterAt(filters, 25),
+    _filterAt(filters, 26),
+    _filterAt(filters, 27),
+    _filterAt(filters, 28),
+    _filterAt(filters, 29),
   );
 }
 
+/// Combines multiple filters with OR logic.
+///
+/// Note: The Firestore SDK's Filter.or() takes up to 30 positional parameters
+/// (not a List), which is why we need explicit parameter expansion here.
 class OrOperation implements FilterOperation {
   final List<FilterOperation> filters;
 
@@ -79,34 +91,34 @@ class OrOperation implements FilterOperation {
   Filter toFilter() => Filter.or(
     filters[0].toFilter(),
     filters[1].toFilter(),
-    filters.length > 2 ? filters[2].toFilter() : null,
-    filters.length > 3 ? filters[3].toFilter() : null,
-    filters.length > 4 ? filters[4].toFilter() : null,
-    filters.length > 5 ? filters[5].toFilter() : null,
-    filters.length > 6 ? filters[6].toFilter() : null,
-    filters.length > 7 ? filters[7].toFilter() : null,
-    filters.length > 8 ? filters[8].toFilter() : null,
-    filters.length > 9 ? filters[9].toFilter() : null,
-    filters.length > 10 ? filters[10].toFilter() : null,
-    filters.length > 11 ? filters[11].toFilter() : null,
-    filters.length > 12 ? filters[12].toFilter() : null,
-    filters.length > 13 ? filters[13].toFilter() : null,
-    filters.length > 14 ? filters[14].toFilter() : null,
-    filters.length > 15 ? filters[15].toFilter() : null,
-    filters.length > 16 ? filters[16].toFilter() : null,
-    filters.length > 17 ? filters[17].toFilter() : null,
-    filters.length > 18 ? filters[18].toFilter() : null,
-    filters.length > 19 ? filters[19].toFilter() : null,
-    filters.length > 20 ? filters[20].toFilter() : null,
-    filters.length > 21 ? filters[21].toFilter() : null,
-    filters.length > 22 ? filters[22].toFilter() : null,
-    filters.length > 23 ? filters[23].toFilter() : null,
-    filters.length > 24 ? filters[24].toFilter() : null,
-    filters.length > 25 ? filters[25].toFilter() : null,
-    filters.length > 26 ? filters[26].toFilter() : null,
-    filters.length > 27 ? filters[27].toFilter() : null,
-    filters.length > 28 ? filters[28].toFilter() : null,
-    filters.length > 29 ? filters[29].toFilter() : null,
+    _filterAt(filters, 2),
+    _filterAt(filters, 3),
+    _filterAt(filters, 4),
+    _filterAt(filters, 5),
+    _filterAt(filters, 6),
+    _filterAt(filters, 7),
+    _filterAt(filters, 8),
+    _filterAt(filters, 9),
+    _filterAt(filters, 10),
+    _filterAt(filters, 11),
+    _filterAt(filters, 12),
+    _filterAt(filters, 13),
+    _filterAt(filters, 14),
+    _filterAt(filters, 15),
+    _filterAt(filters, 16),
+    _filterAt(filters, 17),
+    _filterAt(filters, 18),
+    _filterAt(filters, 19),
+    _filterAt(filters, 20),
+    _filterAt(filters, 21),
+    _filterAt(filters, 22),
+    _filterAt(filters, 23),
+    _filterAt(filters, 24),
+    _filterAt(filters, 25),
+    _filterAt(filters, 26),
+    _filterAt(filters, 27),
+    _filterAt(filters, 28),
+    _filterAt(filters, 29),
   );
 }
 
