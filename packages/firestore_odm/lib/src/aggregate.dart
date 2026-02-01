@@ -148,9 +148,6 @@ abstract class QueryAggregatableHandler {
             CountOperation() => firestore.count(),
             SumOperation(:final field) => firestore.sum(field.path),
             AverageOperation(:final field) => firestore.average(field.path),
-            _ => throw ArgumentError(
-              'Unsupported aggregate operation: ${op.runtimeType}',
-            ),
           },
         )
         .toList();

@@ -78,8 +78,6 @@ class BatchDocument<S extends FirestoreSchema, T, Path extends Record, P extends
     implements Deletable, Patchable<T> {
   final BatchContext<S> _context;
   final firestore.DocumentReference<Map<String, dynamic>?> _ref;
-  final Map<String, dynamic> Function(T) _toJson;
-  final T Function(Map<String, dynamic>) _fromJson;
   final P _patchBuilder;
 
   const BatchDocument({
@@ -90,8 +88,6 @@ class BatchDocument<S extends FirestoreSchema, T, Path extends Record, P extends
     required P patchBuilder,
   }) : _context = context,
        _ref = ref,
-       _toJson = toJson,
-       _fromJson = fromJson,
        _patchBuilder = patchBuilder;
 
   @override
