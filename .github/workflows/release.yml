@@ -49,8 +49,15 @@ jobs:
       - name: 🔐 Setup Pub Credentials
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          mkdir -p ~/.pub-cache
-          echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.pub-cache/credentials.json
+          # Setup credentials in both possible locations
+          mkdir -p $PUB_CACHE
+          mkdir -p ~/.config/dart
+          echo '${{ secrets.PUB_CREDENTIALS }}' > $PUB_CACHE/credentials.json
+          echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
+          # Verify credentials were written
+          echo "Credentials written to:"
+          ls -la $PUB_CACHE/credentials.json || true
+          ls -la ~/.config/dart/pub-credentials.json || true
 
       - name: 🚀 Publish firestore_odm_annotation
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
