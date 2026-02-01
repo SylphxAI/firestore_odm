@@ -38,7 +38,11 @@ jobs:
         run: melos bootstrap
 
       - name: 📋 Dry Run Publish
-        run: melos run publish:dry-run --no-select
+        run: |
+          # Dry run publish for each package in dependency order
+          cd packages/firestore_odm_annotation && dart pub publish --dry-run
+          cd ../firestore_odm && dart pub publish --dry-run
+          cd ../firestore_odm_builder && dart pub publish --dry-run
 
       - name: 🔐 Setup Pub Credentials
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
@@ -46,16 +50,13 @@ jobs:
           mkdir -p ~/.pub-cache
           echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.pub-cache/credentials.json
 
-      - name: 📈 Version Packages
-        if: ${{ inputs.run_versioning || startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          melos version --yes
-
       - name: 🚀 Publish to pub.dev
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
-        run: melos run publish:packages --no-select
+        run: |
+          # Publish packages in dependency order
+          cd packages/firestore_odm_annotation && dart pub publish --force
+          cd ../firestore_odm && dart pub publish --force
+          cd ../firestore_odm_builder && dart pub publish --force
 
       - name: 📊 Create Release
         if: ${{ (inputs.run_publish || startsWith(github.ref, 'refs/tags/')) && success() }}
