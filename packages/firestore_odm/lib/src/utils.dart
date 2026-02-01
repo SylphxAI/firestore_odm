@@ -137,40 +137,6 @@ Map<String, dynamic> removeDocumentIdField(
   return result;
 }
 
-// Map<String, dynamic> serializeForFirestore(Map<String, dynamic> json) {
-//   return _serializeValue(json) as Map<String, dynamic>;
-// }
-
-// dynamic _serializeValue(dynamic value) {
-//   if (value == null) {
-//     return null;
-//   }
-
-//   if (value is Map<String, dynamic>) {
-//     final result = <String, dynamic>{};
-//     for (final entry in value.entries) {
-//       result[entry.key] = _serializeValue(entry.value);
-//     }
-//     return result;
-//   } else if (value is List) {
-//     return value.map((item) => _serializeValue(item)).toList();
-//   }
-
-//   // Handle Freezed objects - check if they have toJson() method
-//   try {
-//     // Try to call toJson method
-//     final json = (value as dynamic).toJson();
-//     if (json is Map<String, dynamic>) {
-//       return _serializeValue(json);
-//     }
-//   } catch (e) {
-//     // Not a Freezed object or doesn't have toJson, continue
-//   }
-
-//   // For primitive types and objects without toJson
-//   return value;
-// }
-
 List<T> processQuerySnapshot<T>(
   firestore.QuerySnapshot<Map<String, dynamic>> snapshot,
   JsonDeserializer<T> fromMap,

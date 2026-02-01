@@ -20,9 +20,10 @@ class PathFieldPath implements FieldPath {
 
   final List<String> components;
 
-  // it seems that fake firestore does not support firestore.FieldPath in orderby
-  // firestore.FieldPath toFirestore() => firestore.FieldPath(components);
-
+  /// Returns the field path as a dot-separated string.
+  /// Note: Uses string path instead of firestore.FieldPath for compatibility
+  /// with fake_cloud_firestore in tests.
+  @override
   String toFirestore() => path;
 
   PathFieldPath append(String component) {

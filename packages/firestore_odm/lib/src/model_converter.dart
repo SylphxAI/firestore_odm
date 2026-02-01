@@ -4,8 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 typedef JsonDeserializer<T> = T Function(Map<String, dynamic>);
 typedef JsonSerializer<T> = Map<String, dynamic> Function(T);
 
-// Removed ModelConverter class - now using FirestoreConverter system exclusively
-
 /// Base interface for Firestore field converters
 /// T: Dart type, F: Firestore type
 abstract interface class FirestoreConverter<T, F> {
@@ -112,22 +110,7 @@ class SetConverter<T> extends IterableConverter<T> {
   Set<T> fromJson(List<dynamic> data) => super.fromJson(data).toSet();
 }
 
-/// Converter for DateTime <-> Timestamp
-// class DateTimeConverter implements FirestoreConverter<DateTime?, Timestamp?> {
-//   const DateTimeConverter();
-
-//   @override
-//   DateTime? fromJson(Timestamp? data) {
-//     return data?.toDate();
-//   }
-
-//   @override
-//   Timestamp? toJson(DateTime? data) {
-//     return data != null ? Timestamp.fromDate(data) : null;
-//   }
-// }
-
-
+/// Converter for DateTime using ISO8601 string representation
 class DateTimeConverter implements FirestoreConverter<DateTime, String> {
   const DateTimeConverter();
 
