@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firestore_odm/src/model_converter.dart';
+import 'package:firestore_odm/src/services/update_helpers.dart';
 import 'package:firestore_odm/src/types.dart';
 
 T fromFirestoreData<T>(
@@ -95,8 +96,11 @@ Map<String, dynamic> toFirestoreData<T>(
   final documentId = extractDocumentId(mapData, documentIdField);
   final processedData = removeDocumentIdField(mapData, documentIdField);
 
-  // Serialize the data for Firestore storage
-  return (processedData, documentId);
+  // Replace FirestoreODM.serverTimestamp with FieldValue.serverTimestamp()
+  // This ensures server timestamps work correctly on insert (not just update)
+  final timestampedData = replaceServerTimestamps(processedData);
+
+  return (timestampedData, documentId);
 }
 
 String extractDocumentId(Map<String, dynamic> json, String? documentIdField) {
