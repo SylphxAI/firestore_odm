@@ -62,7 +62,17 @@ jobs:
       - name: 🚀 Publish firestore_odm_annotation
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          cd packages/firestore_odm_annotation && dart pub publish --force
+          cd packages/firestore_odm_annotation
+          # Publish, but don't fail if version already exists
+          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
+            echo "✅ Published firestore_odm_annotation successfully"
+          elif grep -q "already exists" /tmp/pub_output.txt; then
+            echo "⏭️ firestore_odm_annotation version already published, skipping"
+          else
+            echo "❌ Failed to publish firestore_odm_annotation"
+            cat /tmp/pub_output.txt
+            exit 1
+          fi
           echo "Waiting for package to be indexed on pub.dev..."
           sleep 60
 
@@ -71,7 +81,17 @@ jobs:
         run: |
           # Remove pubspec_overrides.yaml and get fresh dependencies
           rm -f packages/firestore_odm/pubspec_overrides.yaml
-          cd packages/firestore_odm && dart pub get && dart pub publish --force
+          cd packages/firestore_odm && dart pub get
+          # Publish, but don't fail if version already exists
+          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
+            echo "✅ Published firestore_odm successfully"
+          elif grep -q "already exists" /tmp/pub_output.txt; then
+            echo "⏭️ firestore_odm version already published, skipping"
+          else
+            echo "❌ Failed to publish firestore_odm"
+            cat /tmp/pub_output.txt
+            exit 1
+          fi
           echo "Waiting for package to be indexed on pub.dev..."
           sleep 60
 
@@ -80,7 +100,17 @@ jobs:
         run: |
           # Remove pubspec_overrides.yaml and get fresh dependencies
           rm -f packages/firestore_odm_builder/pubspec_overrides.yaml
-          cd packages/firestore_odm_builder && dart pub get && dart pub publish --force
+          cd packages/firestore_odm_builder && dart pub get
+          # Publish, but don't fail if version already exists
+          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
+            echo "✅ Published firestore_odm_builder successfully"
+          elif grep -q "already exists" /tmp/pub_output.txt; then
+            echo "⏭️ firestore_odm_builder version already published, skipping"
+          else
+            echo "❌ Failed to publish firestore_odm_builder"
+            cat /tmp/pub_output.txt
+            exit 1
+          fi
 
       - name: 📊 Create Release
         if: ${{ (inputs.run_publish || startsWith(github.ref, 'refs/tags/')) && success() }}
