@@ -7,6 +7,7 @@ import 'package:flutter_example/models/list_length_model.dart';
 import 'package:flutter_example/models/manual_user.dart';
 import 'package:flutter_example/models/manual_user2.dart';
 import 'package:flutter_example/models/manual_user3.dart';
+import 'package:flutter_example/models/nullable_types_test.dart';
 import 'package:flutter_example/models/post.dart';
 import 'package:flutter_example/models/shared_post.dart';
 import 'package:flutter_example/models/simple_generic.dart';
@@ -60,4 +61,6 @@ part 'test_schema.g.dart';
 @Collection<EnumUser>('enumUsers') // Enum + JsonValue test
 @Collection<EnumTask>('enumTasks') // Enum with numeric @JsonValue test
 @Collection<SimpleEnumTask>('simpleEnumTasks') // Simplified enum for automatic orderBy support
+@Collection<NullableTypesTestModel>('nullableTypesTests') // Issue #3: nullable types test
+@Collection<NestedData>('nestedData') // Nested data for issue #3 testing
 const TestSchema testSchema = _$TestSchema;

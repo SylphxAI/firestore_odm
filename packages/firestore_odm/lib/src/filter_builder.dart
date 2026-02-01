@@ -666,24 +666,25 @@ class MapFilterFieldImpl<T, K, V, JV> extends MapFilterField<T, K, V, JV> {
 }
 
 /// Map field callable filter with key access support
+/// Supports both nullable and non-nullable Map types.
 abstract class MapFilterField<T, K, V, JV> extends FilterBuilderNode {
   factory MapFilterField({
     FieldPath field,
-    required Map<String, JV> Function(T) toJson,
+    required Map<String, JV>? Function(T) toJson,
     required String Function(K) keyToJson,
     required JV Function(V) valueToJson,
   }) = MapFilterFieldImpl<T, K, V, JV>;
 
   const MapFilterField._({
     super.field,
-    required Map<String, JV> Function(T) toJson,
+    required Map<String, JV>? Function(T) toJson,
     required String Function(K) keyToJson,
     required JV Function(V) valueToJson,
   }) : _toJson = toJson,
        _keyToJson = keyToJson,
        _valueToJson = valueToJson;
 
-  final Map<String, JV> Function(T) _toJson;
+  final Map<String, JV>? Function(T) _toJson;
   final String Function(K) _keyToJson;
   final JV Function(V) _valueToJson;
 
@@ -860,11 +861,15 @@ class MapFieldUpdate<T, K, V, R> extends PatchBuilder<T, Map<String, R>> {
 }
 
 /// Map field callable updater with clean, consistent Dart Map-like operations
-class DartMapFieldUpdate<T extends Map<K, V>, K, V, R>
+/// Supports both nullable and non-nullable Map types.
+class DartMapFieldUpdate<T extends Map<K, V>?, K, V, R>
     extends MapFieldUpdate<T, K, V, R> {
   DartMapFieldUpdate({
     required super.field,
     required super.keyToJson,
     required super.valueToJson,
-  }) : super(toJson: (value) => mapToJson(value, keyToJson, valueToJson));
+  }) : super(
+          toJson: (value) =>
+              value == null ? {} : mapToJson(value, keyToJson, valueToJson),
+        );
 }

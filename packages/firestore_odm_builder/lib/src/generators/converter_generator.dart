@@ -241,7 +241,10 @@ class ConverterGenerator {
       return _handleNullalbe(
         type,
         value,
-        (v) => maps.fromMap.index(v),
+        // Map lookup returns nullable, so add null assertion for non-nullable enums
+        (v) => type.isNullable
+            ? maps.fromMap.index(v)
+            : maps.fromMap.index(v).nullChecked,
       );
     }
 
@@ -315,8 +318,12 @@ class ConverterGenerator {
             getFromJsonEnsured(type: type, typeConverters: typeConverters),
         ];
         final actualType = fromJson.returnType.reference;
+        // Get the actual parameter type from the fromJson constructor
+        // to ensure we cast to the correct type (e.g., Map<String, Object?> vs Map<String, dynamic>)
+        final firstParam = fromJson.formalParameters.firstOrNull;
+        final paramType = firstParam?.type.reference ?? getJsonType(type: type);
         final invokeExp = type.reference.property('fromJson').call([
-          value.asA(getJsonType(type: type)),
+          value.asA(paramType.withNullability(type.isNullable)),
           ...args,
         ]);
         // If the type has a toJson method, use it directly
