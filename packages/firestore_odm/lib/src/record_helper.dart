@@ -1,7 +1,15 @@
-/// Extension for converting Records to List with support up to 30 positional fields
+/// Extension for converting Dart Records to List.
+///
+/// This is used internally by Firestore ODM for cursor-based pagination,
+/// where orderBy field values need to be extracted from Records as a List.
+///
+/// Limitation: Supports up to 30 positional fields, matching Firestore's
+/// maximum of 30 orderBy clauses.
 extension RecordToListExtension on Record {
-  /// Convert record to list using pattern matching
-  /// Supports up to 30 positional fields
+  /// Converts this Record to a List of its positional field values.
+  ///
+  /// Uses exhaustive pattern matching to handle Records with 1-30 fields.
+  /// Throws [StateError] if the Record has more than 30 fields.
   List<dynamic> toList() {
     return switch (this) {
       // 1 field

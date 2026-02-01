@@ -40,23 +40,34 @@ class FieldInfo {
   });
 }
 
+/// Checks if a type is handled natively by Firestore ODM.
+///
+/// Handled types include:
+/// - Primitives (bool, int, double, String, null, dynamic)
+/// - Collections (Iterable, List, Set, Map, IMap)
+/// - DateTime and Duration
+/// - Enums (serialized via name or @JsonValue)
 bool isHandledType(DartType type) {
-  // Check if the type is a known Firestore ODM type
   return isPrimitive(type) ||
       TypeChecker.fromRuntime(Iterable).isAssignableFromType(type) ||
       TypeChecker.fromRuntime(Map).isAssignableFromType(type) ||
       TypeChecker.fromRuntime(IMap).isAssignableFromType(type) ||
       TypeChecker.fromRuntime(DateTime).isExactlyType(type) ||
       TypeChecker.fromRuntime(Duration).isExactlyType(type) ||
-      // Treat enums as handled (serialized via name or @JsonValue)
       (type is InterfaceType && type.element is EnumElement);
 }
 
+/// Checks if a type is a user-defined model type requiring custom serialization.
+///
+/// Returns `true` for types not natively handled by Firestore ODM,
+/// indicating they need generated fromJson/toJson converters.
 bool isUserType(DartType type) {
-  // Check if the type is a user-defined model type
   return !isHandledType(type);
 }
 
+/// Checks if a type is a Dart primitive type.
+///
+/// Primitive types: bool, int, double, String, null, dynamic.
 bool isPrimitive(DartType type) {
   return type.isDartCoreBool ||
       type.isDartCoreInt ||
