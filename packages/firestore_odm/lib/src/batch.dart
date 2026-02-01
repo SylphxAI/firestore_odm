@@ -11,7 +11,6 @@ import 'package:firestore_odm/src/services/patch_operations.dart';
 import 'package:firestore_odm/src/services/update_helpers.dart';
 import 'package:firestore_odm/src/utils.dart';
 
-
 /// Base class for batch operations
 abstract class BatchOperation {
   final dynamic fieldPath;
@@ -37,7 +36,6 @@ class BatchUpdateOperation extends BatchOperation {
 class BatchDeleteOperation extends BatchOperation {
   const BatchDeleteOperation({required super.fieldPath});
 }
-
 
 /// Context for managing batch operations
 class BatchContext<S extends FirestoreSchema> {

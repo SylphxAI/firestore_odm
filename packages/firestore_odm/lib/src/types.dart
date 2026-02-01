@@ -28,10 +28,9 @@ class PathFieldPath implements FieldPath {
 
   PathFieldPath append(String component) {
     return PathFieldPath([...components, component]);
-  } 
+  }
 
   String get path => components.join('.');
-
 
   @override
   String toString() {

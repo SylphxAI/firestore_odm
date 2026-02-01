@@ -119,7 +119,6 @@ class DateTimeConverter implements FirestoreConverter<DateTime, String> {
     return DateTime.parse(data);
   }
 
-
   @override
   String toJson(DateTime data) {
     return data.toIso8601String();
