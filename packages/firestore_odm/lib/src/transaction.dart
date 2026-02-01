@@ -1,8 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:firestore_odm/src/interfaces/deletable.dart';
 import 'package:firestore_odm/src/interfaces/existable.dart';
 import 'package:firestore_odm/src/interfaces/gettable.dart';
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 import 'package:firestore_odm/src/interfaces/modifiable.dart';
 import 'package:firestore_odm/src/interfaces/patchable.dart';
 import 'package:firestore_odm/src/services/patch_operations.dart';

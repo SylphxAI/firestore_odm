@@ -62,7 +62,6 @@ class AggregateGenerator {
     );
   }
 
-
   static List<Spec> generateClasses(InterfaceType type) {
     final specs = <Spec>[];
 
