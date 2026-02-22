@@ -10,7 +10,7 @@ on:
 jobs:
   # Code quality checks
   quality:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
 
   # Code coverage
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: [quality, test]
     steps:
       - name: 📚 Git Checkout
@@ -103,7 +103,7 @@ jobs:
 
   # Performance testing
   performance:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     if: github.event_name == 'pull_request'
     needs: [quality]
     steps:
@@ -129,7 +129,7 @@ jobs:
 
   # Security scanning
   security:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -157,7 +157,7 @@ jobs:
 
   # Documentation generation test
   docs:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -180,7 +180,7 @@ jobs:
 
   # CI results summary
   ci-success:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: [quality, test, coverage, security, docs]
     if: always()
     steps:
