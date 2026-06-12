@@ -6,6 +6,8 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   # Code quality checks
