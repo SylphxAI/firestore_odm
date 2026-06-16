@@ -13,44 +13,8 @@ import 'package:source_gen/source_gen.dart';
 
 import '../utils/model_analyzer.dart';
 
-/// Information about a collection annotation extracted from a schema variable
-class SchemaCollectionInfo {
-  final String path;
-  final String modelTypeName;
-  final bool isSubcollection;
-  final String schemaTypeName;
-  final InterfaceType modelType;
-
-  const SchemaCollectionInfo({
-    required this.path,
-    required this.modelTypeName,
-    required this.isSubcollection,
-    required this.schemaTypeName,
-    required this.modelType,
-  });
-}
-
-final preferInlineAnnotation = refer(
-  'pragma',
-).call([literalString('vm:prefer-inline')]);
-final overrideAnnotation = refer('override');
-
-enum ClassType {
-  root('Root'),
-  collection('Collection'),
-  document('Document'),
-  transactionContext('TransactionContext'),
-  transactionCollection('TransactionCollection'),
-  transactionDocument('TransactionDocument'),
-  batchContext('BatchContext'),
-  batchCollection('BatchCollection'),
-  batchDocument('BatchDocument'),
-  patchBuilder('PatchBuilder');
-
-  const ClassType(this.suffix);
-
-  final String suffix;
-}
+part 'schema_generator.collection_info.dart';
+part 'schema_generator.class_type.dart';
 
 /// Generator for schema-based ODM code using code_builder
 class SchemaGenerator {
