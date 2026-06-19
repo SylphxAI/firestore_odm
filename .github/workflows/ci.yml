@@ -100,19 +100,22 @@ jobs:
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
 
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
       - name: 📊 Generate Coverage
-        run: |
-          melos run test:unit --no-select
-          # Merge coverage from all packages
-          dart pub global activate coverage
-          format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.packages --report-on=lib
+        # All tests live in flutter_example; `flutter test --coverage` writes
+        # apps/flutter_example/coverage/lcov.info. (The old format_coverage step
+        # relied on the removed `.packages` file and had no coverage input.)
+        run: melos exec --scope="flutter_example" -- flutter test --coverage
 
       - name: 📤 Upload Coverage
         uses: codecov/codecov-action@v3
         with:
-          file: coverage/lcov.info
+          file: apps/flutter_example/coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
 
   # Performance testing
   performance:
@@ -138,10 +141,11 @@ jobs:
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
 
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
       - name: ⚡ Performance Benchmarks
-        run: |
-          cd flutter_example
-          flutter test test/ --dart-define=PERFORMANCE_TEST=true
+        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true
 
   # Security scanning
   security:
