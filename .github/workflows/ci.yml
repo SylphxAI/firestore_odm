@@ -28,20 +28,32 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter (git)
+      - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          # These self-hosted runners intermittently produce an incomplete
+          # Flutter checkout (empty bin/internal/engine.version), which yields a
+          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
+          # until the engine version is present, precache serially before melos'
+          # concurrent pub gets, and retry to absorb transient failures.
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: 🔧 Setup Melos
-        run: |
-          flutter --version
-          flutter precache
-          dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 🎨 Check Code Formatting
         run: melos run format:check --no-select
@@ -96,20 +108,32 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter (git)
+      - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          # These self-hosted runners intermittently produce an incomplete
+          # Flutter checkout (empty bin/internal/engine.version), which yields a
+          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
+          # until the engine version is present, precache serially before melos'
+          # concurrent pub gets, and retry to absorb transient failures.
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: 🔧 Setup Melos
-        run: |
-          flutter --version
-          flutter precache
-          dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -137,20 +161,32 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter (git)
+      - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          # These self-hosted runners intermittently produce an incomplete
+          # Flutter checkout (empty bin/internal/engine.version), which yields a
+          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
+          # until the engine version is present, precache serially before melos'
+          # concurrent pub gets, and retry to absorb transient failures.
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: 🔧 Setup Melos
-        run: |
-          flutter --version
-          flutter precache
-          dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -165,20 +201,32 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter (git)
+      - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          # These self-hosted runners intermittently produce an incomplete
+          # Flutter checkout (empty bin/internal/engine.version), which yields a
+          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
+          # until the engine version is present, precache serially before melos'
+          # concurrent pub gets, and retry to absorb transient failures.
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: 🔧 Setup Melos
-        run: |
-          flutter --version
-          flutter precache
-          dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 🔒 Security Audit
         run: |
@@ -196,20 +244,32 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter (git)
+      - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          # These self-hosted runners intermittently produce an incomplete
+          # Flutter checkout (empty bin/internal/engine.version), which yields a
+          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
+          # until the engine version is present, precache serially before melos'
+          # concurrent pub gets, and retry to absorb transient failures.
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-
-      - name: 🔧 Setup Melos
-        run: |
-          flutter --version
-          flutter precache
-          dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 📖 Generate Documentation
         run: |
