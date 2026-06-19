@@ -9,6 +9,17 @@ on:
   merge_group:
     types: [checks_requested]
 
+# Flutter is pinned to 3.32.8 (Dart 3.8.1): newer stable (Dart >=3.12) pulls
+# test/analyzer >=8 and breaks `melos bootstrap` against this repo's
+# `analyzer ^7.4.5`. Revisit when the analyzer 8.x upgrade lands.
+#
+# Self-hosted jobs install Flutter via a shallow git clone instead of
+# subosito/flutter-action: the archive install intermittently produced a Flutter
+# SDK with an empty engine version on these runners, yielding a broken
+# `flutter//flutter_gpu.zip` URL and a failed bootstrap. A git checkout always
+# resolves the engine version correctly. The GitHub-hosted test matrix keeps the
+# action (it never showed the issue and its cache speeds up the 3-OS matrix).
+
 jobs:
   # Code quality checks
   quality:
@@ -17,35 +28,20 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
-          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
-          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
-          flutter-version: 3.32.8
-          # cache disabled on self-hosted runners: a restored partial Flutter
-          # cache leaves the engine version empty, so `flutter precache` builds a
-          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
-          # intermittently. A clean install resolves the version correctly.
-          cache: false
+      - name: 🐦 Setup Flutter (git)
+        run: |
+          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔧 Setup Melos
-        run: dart pub global activate melos
+        run: |
+          flutter --version
+          flutter precache
+          dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 🎨 Check Code Formatting
         run: melos run format:check --no-select
@@ -81,18 +77,7 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -111,35 +96,20 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
-          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
-          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
-          flutter-version: 3.32.8
-          # cache disabled on self-hosted runners: a restored partial Flutter
-          # cache leaves the engine version empty, so `flutter precache` builds a
-          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
-          # intermittently. A clean install resolves the version correctly.
-          cache: false
+      - name: 🐦 Setup Flutter (git)
+        run: |
+          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔧 Setup Melos
-        run: dart pub global activate melos
+        run: |
+          flutter --version
+          flutter precache
+          dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -167,35 +137,20 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
-          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
-          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
-          flutter-version: 3.32.8
-          # cache disabled on self-hosted runners: a restored partial Flutter
-          # cache leaves the engine version empty, so `flutter precache` builds a
-          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
-          # intermittently. A clean install resolves the version correctly.
-          cache: false
+      - name: 🐦 Setup Flutter (git)
+        run: |
+          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔧 Setup Melos
-        run: dart pub global activate melos
+        run: |
+          flutter --version
+          flutter precache
+          dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -210,41 +165,26 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
-          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
-          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
-          flutter-version: 3.32.8
-          # cache disabled on self-hosted runners: a restored partial Flutter
-          # cache leaves the engine version empty, so `flutter precache` builds a
-          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
-          # intermittently. A clean install resolves the version correctly.
-          cache: false
+      - name: 🐦 Setup Flutter (git)
+        run: |
+          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔧 Setup Melos
-        run: dart pub global activate melos
+        run: |
+          flutter --version
+          flutter precache
+          dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 🔒 Security Audit
         run: |
           # Check outdated dependencies
           melos run deps:outdated --no-select || true
-          
+
           # Check for known security vulnerabilities
           dart pub global activate pana
           melos exec -- "dart pub global run pana --no-warning ."
@@ -256,35 +196,20 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
-          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
-          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
-          flutter-version: 3.32.8
-          # cache disabled on self-hosted runners: a restored partial Flutter
-          # cache leaves the engine version empty, so `flutter precache` builds a
-          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
-          # intermittently. A clean install resolves the version correctly.
-          cache: false
+      - name: 🐦 Setup Flutter (git)
+        run: |
+          git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔧 Setup Melos
-        run: dart pub global activate melos
+        run: |
+          flutter --version
+          flutter precache
+          dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: |
-          # Run `flutter precache` once, serially, before melos kicks off
-          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
-          # to precache artifacts and intermittently resolve an empty engine
-          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
-          # failed bootstrap. Retry to absorb transient download failures too.
-          for attempt in 1 2 3; do
-            flutter precache && melos bootstrap && exit 0
-            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
-            sleep 10
-          done
-          exit 1
+        run: melos bootstrap
 
       - name: 📖 Generate Documentation
         run: |
@@ -300,37 +225,37 @@ jobs:
         run: |
           echo "## 🎯 CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [[ "${{ needs.quality.result }}" == "success" ]]; then
             echo "✅ **Code Quality**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Code Quality**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [[ "${{ needs.test.result }}" == "success" ]]; then
             echo "✅ **Tests**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Tests**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [[ "${{ needs.coverage.result }}" == "success" ]]; then
             echo "✅ **Coverage**: Generated" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Coverage**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [[ "${{ needs.security.result }}" == "success" ]]; then
             echo "✅ **Security**: Passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Security**: Issues Found" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [[ "${{ needs.docs.result }}" == "success" ]]; then
             echo "✅ **Documentation**: Generated" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Documentation**: Failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
