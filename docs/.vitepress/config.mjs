@@ -67,6 +67,13 @@ export default defineConfig({
             { text: 'Aggregations', link: '/guide/aggregations' },
             { text: 'Subcollections', link: '/guide/subcollections' },
           ]
+        },
+        {
+          text: 'Release Notes',
+          items: [
+            { text: 'Version 4.0', link: '/guide/version-4.0-release-notes' },
+            { text: 'Version 3.0', link: '/guide/version-3.0-release-notes' },
+          ]
         }
       ]
     },
