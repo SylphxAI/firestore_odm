@@ -546,8 +546,14 @@ void main() {
         // Should have the impossible timestamp value
         expect(timestamp1.millisecondsSinceEpoch, equals(-8640000000000000));
 
-        // Should be recognizable as the special value
-        expect(timestamp1.toString(), contains('-271821-04-20 01:00:00.000'));
+        // Should be recognizable as the special value. Use UTC so the
+        // assertion is timezone-independent — the local-time rendering of the
+        // sentinel shifts by the runner's offset (e.g. 00:00 on UTC CI vs
+        // 01:00 elsewhere).
+        expect(
+          timestamp1.toUtc().toString(),
+          contains('-271821-04-20 00:00:00.000'),
+        );
 
         print('✅ Server timestamp constant behaves correctly');
         print('   Consistent reference: ${identical(timestamp1, timestamp2)}');
