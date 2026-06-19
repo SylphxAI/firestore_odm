@@ -24,7 +24,11 @@ jobs:
           # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
           # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
           flutter-version: 3.32.8
-          cache: true
+          # cache disabled on self-hosted runners: a restored partial Flutter
+          # cache leaves the engine version empty, so `flutter precache` builds a
+          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
+          # intermittently. A clean install resolves the version correctly.
+          cache: false
 
       - name: 🔧 Setup Melos
         run: dart pub global activate melos
@@ -92,7 +96,11 @@ jobs:
           # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
           # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
           flutter-version: 3.32.8
-          cache: true
+          # cache disabled on self-hosted runners: a restored partial Flutter
+          # cache leaves the engine version empty, so `flutter precache` builds a
+          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
+          # intermittently. A clean install resolves the version correctly.
+          cache: false
 
       - name: 🔧 Setup Melos
         run: dart pub global activate melos
@@ -133,7 +141,11 @@ jobs:
           # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
           # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
           flutter-version: 3.32.8
-          cache: true
+          # cache disabled on self-hosted runners: a restored partial Flutter
+          # cache leaves the engine version empty, so `flutter precache` builds a
+          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
+          # intermittently. A clean install resolves the version correctly.
+          cache: false
 
       - name: 🔧 Setup Melos
         run: dart pub global activate melos
@@ -161,7 +173,11 @@ jobs:
           # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
           # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
           flutter-version: 3.32.8
-          cache: true
+          # cache disabled on self-hosted runners: a restored partial Flutter
+          # cache leaves the engine version empty, so `flutter precache` builds a
+          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
+          # intermittently. A clean install resolves the version correctly.
+          cache: false
 
       - name: 🔧 Setup Melos
         run: dart pub global activate melos
@@ -192,7 +208,11 @@ jobs:
           # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
           # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
           flutter-version: 3.32.8
-          cache: true
+          # cache disabled on self-hosted runners: a restored partial Flutter
+          # cache leaves the engine version empty, so `flutter precache` builds a
+          # malformed `flutter//flutter_gpu.zip` URL and `melos bootstrap` fails
+          # intermittently. A clean install resolves the version correctly.
+          cache: false
 
       - name: 🔧 Setup Melos
         run: dart pub global activate melos
