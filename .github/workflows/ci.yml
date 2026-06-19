@@ -34,7 +34,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 🎨 Check Code Formatting
         run: melos run format:check --no-select
@@ -70,7 +81,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -106,7 +128,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -151,7 +184,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -183,7 +227,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 🔒 Security Audit
         run: |
@@ -218,7 +273,18 @@ jobs:
         run: dart pub global activate melos
 
       - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
+        run: |
+          # Run `flutter precache` once, serially, before melos kicks off
+          # concurrent `flutter pub get`s. Those concurrent runs otherwise race
+          # to precache artifacts and intermittently resolve an empty engine
+          # version — producing the broken `flutter//flutter_gpu.zip` URL and a
+          # failed bootstrap. Retry to absorb transient download failures too.
+          for attempt in 1 2 3; do
+            flutter precache && melos bootstrap && exit 0
+            echo "::warning::bootstrap attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1
 
       - name: 📖 Generate Documentation
         run: |
