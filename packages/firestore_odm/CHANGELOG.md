@@ -1,3 +1,7 @@
+## 4.0.0-dev.3
+
+- Bump to match firestore_odm_builder 4.0.0-dev.3 (nested `fromJson` nullable-cast fix, #5). No runtime API changes in this package.
+
 ## 4.0.0-dev.2
 
 - Fix nullable Map type constraint in DartMapFieldUpdate

@@ -1,3 +1,7 @@
+## 4.0.0-dev.3
+
+- Fix nested `fromJson` factories that accept a nullable map generating a non-nullable cast, which crashed (`type 'Null' is not a subtype of type 'Map<String, Object?>'`) when the field was absent from a document (closes #5)
+
 ## 4.0.0-dev.2
 
 - Fix enum null assertion for non-nullable enum types
