@@ -48,6 +48,9 @@ scripts:
     run: dart test
     description: Run unit tests.
     packageFilters:
+      # Only packages that actually have a test/ dir; otherwise `dart test`
+      # errors with "Could not find package test" in test-less packages.
+      dirExists: test
       ignore:
         - flutter_example
 
