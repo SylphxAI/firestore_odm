@@ -20,7 +20,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -44,7 +47,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        flutter-channel: [stable, beta]
+        # Pinned to a project-compatible version (Dart 3.8.x). The stable/beta
+        # channel matrix broke once stable moved to Dart >=3.12 (analyzer 8.x).
+        flutter-version: ['3.32.8']
       fail-fast: false
 
     steps:
@@ -54,7 +59,7 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🔧 Setup Melos
@@ -80,7 +85,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -115,7 +123,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -139,7 +150,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -167,7 +181,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
