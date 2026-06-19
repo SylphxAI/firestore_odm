@@ -1,6 +1,7 @@
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:flutter_example/models/comment.dart';
 import 'package:flutter_example/models/dart_immutable_user.dart';
+import 'package:flutter_example/models/defaulted_nested_test.dart';
 import 'package:flutter_example/models/immutable_user.dart';
 import 'package:flutter_example/models/json_key_user.dart';
 import 'package:flutter_example/models/list_length_model.dart';
@@ -73,4 +74,7 @@ part 'test_schema.g.dart';
   'nullableTypesTests',
 ) // Issue #3: nullable types test
 @Collection<NestedData>('nestedData') // Nested data for issue #3 testing
+@Collection<OrderWithDefault>(
+  'orderWithDefaults',
+) // Issue #5: nullable-input fromJson on non-nullable field
 const TestSchema testSchema = _$TestSchema;

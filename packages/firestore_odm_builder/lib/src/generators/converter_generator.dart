@@ -319,8 +319,15 @@ class ConverterGenerator {
         // to ensure we cast to the correct type (e.g., Map<String, Object?> vs Map<String, dynamic>)
         final firstParam = fromJson.formalParameters.firstOrNull;
         final paramType = firstParam?.type.reference ?? getJsonType(type: type);
+        // The cast must be nullable when EITHER the field is nullable OR the
+        // fromJson factory itself accepts a nullable parameter. A factory that
+        // declares a nullable parameter (e.g. `Address.fromJson(Map? json)`) is
+        // designed to handle a missing/null value, so forcing a non-nullable
+        // cast would crash at runtime when the field is absent in Firestore.
+        final castIsNullable =
+            type.isNullable || (paramType.isNullable ?? false);
         final invokeExp = type.reference.property('fromJson').call([
-          value.asA(paramType.withNullability(type.isNullable)),
+          value.asA(paramType.withNullability(castIsNullable)),
           ...args,
         ]);
         // If the type has a toJson method, use it directly
