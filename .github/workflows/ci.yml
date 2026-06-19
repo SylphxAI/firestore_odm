@@ -68,6 +68,9 @@ jobs:
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
 
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
       - name: 🧪 Run Unit Tests
         run: melos run test:unit --no-select
 
