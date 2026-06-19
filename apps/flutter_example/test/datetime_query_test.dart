@@ -31,7 +31,9 @@ void main() {
               socialLinks: {},
               interests: [],
             ),
-            createdAt: baseDate.subtract(const Duration(days: 30)), // Before range
+            createdAt: baseDate.subtract(
+              const Duration(days: 30),
+            ), // Before range
           ),
           User(
             id: 'user_new',
@@ -78,7 +80,11 @@ void main() {
         // Query users created between baseDate and baseDate + 30 days using ODM
         final midRangeUsers = await odm.users
             .where(($) => $.createdAt(isGreaterThan: baseDate))
-            .where(($) => $.createdAt(isLessThan: baseDate.add(const Duration(days: 30))))
+            .where(
+              ($) => $.createdAt(
+                isLessThan: baseDate.add(const Duration(days: 30)),
+              ),
+            )
             .get();
 
         expect(midRangeUsers.length, equals(1));
@@ -127,7 +133,11 @@ void main() {
 
         // Query posts published in the last 12 hours
         final recentPosts = await odm.posts
-            .where(($) => $.publishedAt(isGreaterThan: now.subtract(const Duration(hours: 12))))
+            .where(
+              ($) => $.publishedAt(
+                isGreaterThan: now.subtract(const Duration(hours: 12)),
+              ),
+            )
             .get();
 
         expect(recentPosts.length, equals(1));
@@ -140,7 +150,10 @@ void main() {
 
         expect(allPublished.length, equals(2));
         final publishedIds = allPublished.map((post) => post.id).toList();
-        expect(publishedIds, containsAll(['published_today', 'published_yesterday']));
+        expect(
+          publishedIds,
+          containsAll(['published_today', 'published_yesterday']),
+        );
       });
     });
 
@@ -325,7 +338,7 @@ void main() {
       test('should query posts by author and date range', () async {
         final startDate = DateTime(2024);
         final endDate = DateTime(2024, 2);
-        
+
         final posts = [
           Post(
             id: 'author1_in_range',
@@ -375,19 +388,22 @@ void main() {
     group('📈 DateTime Pagination', () {
       test('should paginate users by creation date', () async {
         final baseDate = DateTime(2024);
-        final users = List.generate(5, (index) => User(
-          id: 'user_$index',
-          name: 'User $index',
-          email: 'user$index@example.com',
-          age: 20 + index,
-          profile: Profile(
-            bio: 'Bio $index',
-            avatar: 'avatar$index.jpg',
-            socialLinks: {},
-            interests: [],
+        final users = List.generate(
+          5,
+          (index) => User(
+            id: 'user_$index',
+            name: 'User $index',
+            email: 'user$index@example.com',
+            age: 20 + index,
+            profile: Profile(
+              bio: 'Bio $index',
+              avatar: 'avatar$index.jpg',
+              socialLinks: {},
+              interests: [],
+            ),
+            createdAt: baseDate.add(Duration(days: index)),
           ),
-          createdAt: baseDate.add(Duration(days: index)),
-        ));
+        );
 
         for (final user in users) {
           await odm.users(user.id).update(user);
@@ -399,7 +415,6 @@ void main() {
             .limit(2)
             .get();
 
-        
         print('First page users: ${firstPage.map((u) => u.id).join(', ')}');
         expect(firstPage.length, equals(2));
         expect(firstPage[0].id, equals('user_0'));
@@ -420,57 +435,60 @@ void main() {
     });
 
     group('🕐 DateTime Null Handling', () {
-      test('should handle null vs non-null DateTime fields in queries', () async {
-        final users = [
-          User(
-            id: 'user_with_login',
-            name: 'User With Login',
-            email: 'with.login@example.com',
-            age: 25,
-            profile: const Profile(
-              bio: 'Has login',
-              avatar: 'with.jpg',
-              socialLinks: {},
-              interests: [],
+      test(
+        'should handle null vs non-null DateTime fields in queries',
+        () async {
+          final users = [
+            User(
+              id: 'user_with_login',
+              name: 'User With Login',
+              email: 'with.login@example.com',
+              age: 25,
+              profile: const Profile(
+                bio: 'Has login',
+                avatar: 'with.jpg',
+                socialLinks: {},
+                interests: [],
+              ),
+              lastLogin: DateTime.now(),
+              createdAt: DateTime.now(),
             ),
-            lastLogin: DateTime.now(),
-            createdAt: DateTime.now(),
-          ),
-          User(
-            id: 'user_never_logged',
-            name: 'User Never Logged',
-            email: 'never.logged@example.com',
-            age: 30,
-            profile: const Profile(
-              bio: 'Never logged in',
-              avatar: 'never.jpg',
-              socialLinks: {},
-              interests: [],
+            User(
+              id: 'user_never_logged',
+              name: 'User Never Logged',
+              email: 'never.logged@example.com',
+              age: 30,
+              profile: const Profile(
+                bio: 'Never logged in',
+                avatar: 'never.jpg',
+                socialLinks: {},
+                interests: [],
+              ),
+              createdAt: DateTime.now(),
             ),
-            createdAt: DateTime.now(),
-          ),
-        ];
+          ];
 
-        for (final user in users) {
-          await odm.users(user.id).update(user);
-        }
+          for (final user in users) {
+            await odm.users(user.id).update(user);
+          }
 
-        // Query users who have logged in
-        final loggedInUsers = await odm.users
-            .where(($) => $.lastLogin(isNotEqualTo: null))
-            .get();
+          // Query users who have logged in
+          final loggedInUsers = await odm.users
+              .where(($) => $.lastLogin(isNotEqualTo: null))
+              .get();
 
-        expect(loggedInUsers.length, equals(1));
-        expect(loggedInUsers.first.id, equals('user_with_login'));
+          expect(loggedInUsers.length, equals(1));
+          expect(loggedInUsers.first.id, equals('user_with_login'));
 
-        // Query users who have never logged in
-        final neverLoggedUsers = await odm.users
-            .where(($) => $.lastLogin(isEqualTo: null))
-            .get();
+          // Query users who have never logged in
+          final neverLoggedUsers = await odm.users
+              .where(($) => $.lastLogin(isEqualTo: null))
+              .get();
 
-        expect(neverLoggedUsers.length, equals(1));
-        expect(neverLoggedUsers.first.id, equals('user_never_logged'));
-      });
+          expect(neverLoggedUsers.length, equals(1));
+          expect(neverLoggedUsers.first.id, equals('user_never_logged'));
+        },
+      );
     });
   });
 }

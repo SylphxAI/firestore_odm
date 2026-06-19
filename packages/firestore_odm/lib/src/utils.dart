@@ -51,8 +51,7 @@ dynamic _processValue(dynamic value) {
   // Handle nested structures
   if (value is Map<String, dynamic>) {
     return <String, dynamic>{
-      for (final entry in value.entries)
-        entry.key: _processValue(entry.value),
+      for (final entry in value.entries) entry.key: _processValue(entry.value),
     };
   }
 

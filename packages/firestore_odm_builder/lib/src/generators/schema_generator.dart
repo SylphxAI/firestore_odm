@@ -1011,7 +1011,7 @@ class SchemaGenerator {
     }
     return specs;
   }
-   
+
   static Iterable<DartType> scan(
     DartType type, [
     Element? annotatedElement,

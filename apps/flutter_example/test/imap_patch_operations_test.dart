@@ -15,55 +15,65 @@ void main() {
       odm = FirestoreODM(testSchema, firestore: fakeFirestore);
     });
 
-    test('IMap fields should support map operations in patch operations', () async {
-      // Create user with IMap settings
-      final user = ImmutableUser(
-        id: 'imap_patch_test',
-        name: 'IMap Patch Test User',
-        email: 'imap@patch.test',
-        age: 30,
-        tags: ['test'].toIList(),
-        scores: [100].toIList(),
-        settings: {
-          'theme': 'light',
-          'language': 'en',
-          'notifications': 'enabled',
-        }.toIMap(),
-        categories: {'developer'}.toISet(),
-        rating: 4.5,
-        isActive: true,
-        createdAt: DateTime.now(),
-      );
+    test(
+      'IMap fields should support map operations in patch operations',
+      () async {
+        // Create user with IMap settings
+        final user = ImmutableUser(
+          id: 'imap_patch_test',
+          name: 'IMap Patch Test User',
+          email: 'imap@patch.test',
+          age: 30,
+          tags: ['test'].toIList(),
+          scores: [100].toIList(),
+          settings: {
+            'theme': 'light',
+            'language': 'en',
+            'notifications': 'enabled',
+          }.toIMap(),
+          categories: {'developer'}.toISet(),
+          rating: 4.5,
+          isActive: true,
+          createdAt: DateTime.now(),
+        );
 
-      // Save initial user
-      await odm.immutableUsers(user.id).update(user);
+        // Save initial user
+        await odm.immutableUsers(user.id).update(user);
 
-      // Test patch operations with IMap - this should work with map operations
-      await odm.immutableUsers(user.id).patch((update) => [
-        // Test setting a specific key in the IMap
-        update.settings.set('theme', 'dark'),
-        // Test setting another key
-        update.settings.set('newFeature', 'enabled'),
-        // Test removing a key
-        update.settings.remove('notifications'),
-      ]);
+        // Test patch operations with IMap - this should work with map operations
+        await odm
+            .immutableUsers(user.id)
+            .patch(
+              (update) => [
+                // Test setting a specific key in the IMap
+                update.settings.set('theme', 'dark'),
+                // Test setting another key
+                update.settings.set('newFeature', 'enabled'),
+                // Test removing a key
+                update.settings.remove('notifications'),
+              ],
+            );
 
-      // Verify the patch operations worked
-      final updatedUser = await odm.immutableUsers(user.id).get();
-      expect(updatedUser, isNotNull);
-      
-      // Check that map operations were applied correctly
-      expect(updatedUser!.settings['theme'], equals('dark')); // Updated
-      expect(updatedUser.settings['language'], equals('en')); // Unchanged
-      expect(updatedUser.settings['newFeature'], equals('enabled')); // Added
-      expect(updatedUser.settings.containsKey('notifications'), isFalse); // Removed
+        // Verify the patch operations worked
+        final updatedUser = await odm.immutableUsers(user.id).get();
+        expect(updatedUser, isNotNull);
 
-      print('✅ IMap patch operations work correctly:');
-      print('   - setKey() operations applied');
-      print('   - removeKey() operations applied');
-      print('   - Unchanged keys preserved');
-      print('   - Final settings: ${updatedUser.settings}');
-    });
+        // Check that map operations were applied correctly
+        expect(updatedUser!.settings['theme'], equals('dark')); // Updated
+        expect(updatedUser.settings['language'], equals('en')); // Unchanged
+        expect(updatedUser.settings['newFeature'], equals('enabled')); // Added
+        expect(
+          updatedUser.settings.containsKey('notifications'),
+          isFalse,
+        ); // Removed
+
+        print('✅ IMap patch operations work correctly:');
+        print('   - setKey() operations applied');
+        print('   - removeKey() operations applied');
+        print('   - Unchanged keys preserved');
+        print('   - Final settings: ${updatedUser.settings}');
+      },
+    );
 
     test('IMap fields should NOT be treated as list/array fields', () async {
       // Create user with IMap settings
@@ -85,11 +95,15 @@ void main() {
 
       // This test verifies that IMap fields are treated as maps, not arrays
       // Before the fix, this would fail because IMap was incorrectly treated as iterable
-      await odm.immutableUsers(user.id).patch((update) => [
-        // These map operations should be available for IMap fields
-        update.settings.set('theme', 'dark'),
-        update.settings.set('language', 'zh'),
-      ]);
+      await odm
+          .immutableUsers(user.id)
+          .patch(
+            (update) => [
+              // These map operations should be available for IMap fields
+              update.settings.set('theme', 'dark'),
+              update.settings.set('language', 'zh'),
+            ],
+          );
 
       final result = await odm.immutableUsers(user.id).get();
       expect(result, isNotNull);
@@ -121,11 +135,15 @@ void main() {
       await odm.immutableUsers(user.id).update(user);
 
       // Test that IList fields support array operations
-      await odm.immutableUsers(user.id).patch((update) => [
-        // These array operations should work for IList fields
-        update.tags.add('new-tag'),
-        update.scores.add(95),
-      ]);
+      await odm
+          .immutableUsers(user.id)
+          .patch(
+            (update) => [
+              // These array operations should work for IList fields
+              update.tags.add('new-tag'),
+              update.scores.add(95),
+            ],
+          );
 
       final result = await odm.immutableUsers(user.id).get();
       expect(result, isNotNull);
@@ -156,23 +174,27 @@ void main() {
       await odm.immutableUsers(user.id).update(user);
 
       // Mix map and array operations in single patch
-      await odm.immutableUsers(user.id).patch((update) => [
-        // Map operations on IMap field
-        update.settings.set('language', 'dart'),
-        update.settings.set('version', '3.0'),
-        // Array operations on IList field
-        update.tags.add('dart'),
-        update.scores.add(92),
-      ]);
+      await odm
+          .immutableUsers(user.id)
+          .patch(
+            (update) => [
+              // Map operations on IMap field
+              update.settings.set('language', 'dart'),
+              update.settings.set('version', '3.0'),
+              // Array operations on IList field
+              update.tags.add('dart'),
+              update.scores.add(92),
+            ],
+          );
 
       final result = await odm.immutableUsers(user.id).get();
       expect(result, isNotNull);
-      
+
       // Verify map operations
       expect(result!.settings['language'], equals('dart'));
       expect(result.settings['version'], equals('3.0'));
       expect(result.settings['theme'], equals('light')); // Preserved
-      
+
       // Verify array operations
       expect(result.tags.contains('dart'), isTrue);
       expect(result.scores.contains(92), isTrue);

@@ -46,25 +46,22 @@ class ListSumConverter implements JsonConverter<IList<int>, int> {
 @freezed
 @firestoreOdm
 abstract class ListLengthModel with _$ListLengthModel {
-
   const factory ListLengthModel({
     @DocumentIdField() required String id,
     required String name,
     required String description,
-    
+
     @Default(IListConst([])) IList<Profile> nestedProfiles,
-    
+
     // IList<String> that gets converted to/from int (length)
-    @ListLengthConverter()
-    @Default(IListConst([])) IList<String> items,
-    
+    @ListLengthConverter() @Default(IListConst([])) IList<String> items,
+
     // IList<int> that gets converted to/from int (sum)
-    @ListSumConverter()
-    @Default(IListConst([])) IList<int> numbers,
-    
+    @ListSumConverter() @Default(IListConst([])) IList<int> numbers,
+
     // Regular IList without converter for comparison
     @Default(IListConst([])) IList<String> tags,
-    
+
     @Default(0) int priority,
     @Default(false) bool isActive,
     DateTime? createdAt,
@@ -78,16 +75,16 @@ abstract class ListLengthModel with _$ListLengthModel {
   // Helper methods to demonstrate the conversion functionality
   int get itemsLength => items.length;
   int get numbersSum => numbers.fold(0, (sum, value) => sum + value);
-  
+
   // Method to add items and see how conversion works
   ListLengthModel addItem(String item) {
     return copyWith(items: items.add(item));
   }
-  
+
   ListLengthModel addNumber(int number) {
     return copyWith(numbers: numbers.add(number));
   }
-  
+
   ListLengthModel addTag(String tag) {
     return copyWith(tags: tags.add(tag));
   }

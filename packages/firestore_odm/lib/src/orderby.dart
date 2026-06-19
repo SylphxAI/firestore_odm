@@ -31,9 +31,9 @@ class OrderByFieldNode extends Node {
 
 class OrderByField<T> extends OrderByFieldNode {
   final T? _defaultValue;
-  
+
   OrderByField({super.field, required super.context, T? defaultValue})
-      : _defaultValue = defaultValue;
+    : _defaultValue = defaultValue;
 
   T call({bool descending = false}) {
     $context.resolver(field, descending);

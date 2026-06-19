@@ -15,47 +15,53 @@ void main() {
       odm = FirestoreODM(testSchema, firestore: fakeFirestore);
     });
 
-    test('should convert IList to int and back with JsonConverter in ODM', () async {
-      // Create model with IList data
-      final model = ListLengthModel(
-        id: 'converter_test',
-        name: 'JsonConverter Test',
-        description: 'Testing IList to int conversion in ODM',
-        items: ['flutter', 'dart', 'firestore'].toIList(), // Length = 3
-        numbers: [10, 20, 30].toIList(), // Sum = 60
-        tags: ['test', 'converter'].toIList(), // No converter
-        priority: 1,
-        isActive: true,
-      );
+    test(
+      'should convert IList to int and back with JsonConverter in ODM',
+      () async {
+        // Create model with IList data
+        final model = ListLengthModel(
+          id: 'converter_test',
+          name: 'JsonConverter Test',
+          description: 'Testing IList to int conversion in ODM',
+          items: ['flutter', 'dart', 'firestore'].toIList(), // Length = 3
+          numbers: [10, 20, 30].toIList(), // Sum = 60
+          tags: ['test', 'converter'].toIList(), // No converter
+          priority: 1,
+          isActive: true,
+        );
 
-      // Save to Firestore using ODM
-      await odm.listLengthModels(model.id).update(model);
+        // Save to Firestore using ODM
+        await odm.listLengthModels(model.id).update(model);
 
-      // Check raw Firestore data to verify conversion
-      final rawDoc = await fakeFirestore
-          .collection('listLengthModels')
-          .doc(model.id)
-          .get();
-      final rawData = rawDoc.data()!;
+        // Check raw Firestore data to verify conversion
+        final rawDoc = await fakeFirestore
+            .collection('listLengthModels')
+            .doc(model.id)
+            .get();
+        final rawData = rawDoc.data()!;
 
-      // Verify JsonConverter worked: IList -> int
-      expect(rawData['items'], equals(3)); // Length stored as int
-      expect(rawData['numbers'], equals(60)); // Sum stored as int
-      expect(rawData['tags'], equals(['test', 'converter'])); // No conversion
+        // Verify JsonConverter worked: IList -> int
+        expect(rawData['items'], equals(3)); // Length stored as int
+        expect(rawData['numbers'], equals(60)); // Sum stored as int
+        expect(rawData['tags'], equals(['test', 'converter'])); // No conversion
 
-      // Retrieve through ODM to verify back conversion
-      final retrieved = await odm.listLengthModels(model.id).get();
-      expect(retrieved, isNotNull);
+        // Retrieve through ODM to verify back conversion
+        final retrieved = await odm.listLengthModels(model.id).get();
+        expect(retrieved, isNotNull);
 
-      // Verify JsonConverter worked: int -> IList
-      expect(retrieved!.items.length, equals(3));
-      expect(retrieved.items, equals(['item_0', 'item_1', 'item_2'].toIList()));
-      expect(retrieved.numbers.length, equals(1));
-      expect(retrieved.numbers.first, equals(60));
-      expect(retrieved.tags, equals(['test', 'converter'].toIList()));
+        // Verify JsonConverter worked: int -> IList
+        expect(retrieved!.items.length, equals(3));
+        expect(
+          retrieved.items,
+          equals(['item_0', 'item_1', 'item_2'].toIList()),
+        );
+        expect(retrieved.numbers.length, equals(1));
+        expect(retrieved.numbers.first, equals(60));
+        expect(retrieved.tags, equals(['test', 'converter'].toIList()));
 
-      print('✅ ODM JsonConverter working: List ↔ int conversion successful');
-    });
+        print('✅ ODM JsonConverter working: List ↔ int conversion successful');
+      },
+    );
 
     test('should patch IList fields using chain syntax in ODM', () async {
       final model = ListLengthModel(
@@ -71,13 +77,17 @@ void main() {
       await odm.listLengthModels(model.id).update(model);
 
       // Patch using chain syntax
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.items(['new', 'items', 'list'].toIList()),
-            $.numbers([25, 25, 50].toIList()),
-            $.tags(['updated', 'tags'].toIList()),
-            $.priority.increment(1),
-            $.isActive(true),
-          ]);
+      await odm
+          .listLengthModels(model.id)
+          .patch(
+            ($) => [
+              $.items(['new', 'items', 'list'].toIList()),
+              $.numbers([25, 25, 50].toIList()),
+              $.tags(['updated', 'tags'].toIList()),
+              $.priority.increment(1),
+              $.isActive(true),
+            ],
+          );
 
       // Verify patch worked
       final patched = await odm.listLengthModels(model.id).get();
@@ -114,45 +124,48 @@ void main() {
 
       // Save to Firestore (List -> int conversion)
       await odm.listLengthModels(model.id).update(model);
-      
+
       // Verify raw storage
       var rawDoc = await fakeFirestore
           .collection('listLengthModels')
           .doc(model.id)
           .get();
       var rawData = rawDoc.data()!;
-      
+
       expect(rawData['items'], equals(4)); // Length stored
       expect(rawData['numbers'], equals(60)); // Sum stored
-      
+
       // Retrieve from Firestore (int -> List conversion)
       final retrieved = await odm.listLengthModels(model.id).get();
       expect(retrieved, isNotNull);
-      
+
       // Verify reconstruction
       expect(retrieved!.items.length, equals(4));
-      expect(retrieved.items, equals(['item_0', 'item_1', 'item_2', 'item_3'].toIList()));
+      expect(
+        retrieved.items,
+        equals(['item_0', 'item_1', 'item_2', 'item_3'].toIList()),
+      );
       expect(retrieved.numbers.length, equals(1));
       expect(retrieved.numbers.first, equals(60));
-      
+
       // Modify and save again (demonstrating round trip)
       final updatedModel = retrieved.copyWith(
         items: retrieved.items.add('fifth'),
         numbers: retrieved.numbers.add(40),
       );
-      
+
       await odm.listLengthModels(updatedModel.id).update(updatedModel);
-      
+
       // Verify updated raw storage
       rawDoc = await fakeFirestore
           .collection('listLengthModels')
           .doc(model.id)
           .get();
       rawData = rawDoc.data()!;
-      
+
       expect(rawData['items'], equals(5)); // Updated length
       expect(rawData['numbers'], equals(100)); // Updated sum (60 + 40)
-      
+
       print('✅ ODM Back and forth conversion successful');
       print('✅ Final items length: ${rawData['items']}');
       print('✅ Final numbers sum: ${rawData['numbers']}');

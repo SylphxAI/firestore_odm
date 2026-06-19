@@ -72,13 +72,17 @@ void main() {
       await odm.listLengthModels(model.id).update(model);
 
       // Patch using chain syntax
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.items(['new', 'items', 'list'].toIList()),
-            $.numbers([25, 25, 50].toIList()),
-            $.tags(['updated', 'tags'].toIList()),
-            $.priority.increment(1),
-            $.isActive(true),
-          ]);
+      await odm
+          .listLengthModels(model.id)
+          .patch(
+            ($) => [
+              $.items(['new', 'items', 'list'].toIList()),
+              $.numbers([25, 25, 50].toIList()),
+              $.tags(['updated', 'tags'].toIList()),
+              $.priority.increment(1),
+              $.isActive(true),
+            ],
+          );
 
       // Verify patch worked
       final patched = await odm.listLengthModels(model.id).get();
@@ -146,77 +150,103 @@ void main() {
       expect(retrieved.nestedProfiles.first.bio, equals('Flutter Developer'));
       expect(retrieved.nestedProfiles[1].followers, equals(200));
 
-      print('✅ NestedProfiles stored and retrieved correctly without conversion');
-    });
-
-    test('should demonstrate numbers increment limitation (converter prevents atomic ops)', () async {
-      final model = ListLengthModel(
-        id: 'increment_test',
-        name: 'Increment Test',
-        description: 'Testing increment limitations',
-        numbers: [100].toIList(),
-        priority: 1,
+      print(
+        '✅ NestedProfiles stored and retrieved correctly without conversion',
       );
-
-      await odm.listLengthModels(model.id).update(model);
-
-      // This should work fine - priority is a regular int field
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.priority.increment(5),
-          ]);
-
-      final afterPriorityIncrement = await odm.listLengthModels(model.id).get();
-      expect(afterPriorityIncrement!.priority, equals(6)); // 1 + 5
-
-      // However, you CANNOT increment numbers because it's converted to sum
-      // The following would be conceptually wrong because numbers is converted to int (sum)
-      // await odm.listLengthModels(model.id).patch(($) => [
-      //   $.numbers.increment(10), // This doesn't make sense - increment a sum?
-      // ]);
-
-      print('✅ Priority increment works, but numbers increment not applicable');
-      print('⚠️  Numbers field is converted to sum - increment semantics unclear');
     });
 
-    test('should demonstrate array operations limitation on converted fields', () async {
-      final model = ListLengthModel(
-        id: 'array_ops_test',
-        name: 'Array Operations Test',
-        description: 'Testing array operation limitations',
-        numbers: [10, 20, 30].toIList(),
-        tags: ['tag1', 'tag2'].toIList(), // Regular array - supports atomic ops
-      );
+    test(
+      'should demonstrate numbers increment limitation (converter prevents atomic ops)',
+      () async {
+        final model = ListLengthModel(
+          id: 'increment_test',
+          name: 'Increment Test',
+          description: 'Testing increment limitations',
+          numbers: [100].toIList(),
+          priority: 1,
+        );
 
-      await odm.listLengthModels(model.id).update(model);
+        await odm.listLengthModels(model.id).update(model);
 
-      // Raw data shows the difference
-      final rawDoc = await fakeFirestore
-          .collection('listLengthModels')
-          .doc(model.id)
-          .get();
-      final rawData = rawDoc.data()!;
+        // This should work fine - priority is a regular int field
+        await odm
+            .listLengthModels(model.id)
+            .patch(($) => [$.priority.increment(5)]);
 
-      expect(rawData['numbers'], equals(60)); // Sum stored as single int
-      expect(rawData['tags'], equals(['tag1', 'tag2'])); // Array stored as array
+        final afterPriorityIncrement = await odm
+            .listLengthModels(model.id)
+            .get();
+        expect(afterPriorityIncrement!.priority, equals(6)); // 1 + 5
 
-      // You CANNOT do array operations on numbers because it's stored as int
-      // await odm.listLengthModels(model.id).patch(($) => [
-      //   $.numbers.arrayUnion([40]), // IMPOSSIBLE - numbers is int, not array
-      // ]);
+        // However, you CANNOT increment numbers because it's converted to sum
+        // The following would be conceptually wrong because numbers is converted to int (sum)
+        // await odm.listLengthModels(model.id).patch(($) => [
+        //   $.numbers.increment(10), // This doesn't make sense - increment a sum?
+        // ]);
 
-      // But you CAN do array operations on tags
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.tags(['tag1', 'tag2', 'tag3'].toIList()),
-          ]);
+        print(
+          '✅ Priority increment works, but numbers increment not applicable',
+        );
+        print(
+          '⚠️  Numbers field is converted to sum - increment semantics unclear',
+        );
+      },
+    );
 
-      final afterTagUpdate = await odm.listLengthModels(model.id).get();
-      expect(afterTagUpdate!.tags.length, equals(3));
-      expect(afterTagUpdate.tags.contains('tag3'), isTrue);
+    test(
+      'should demonstrate array operations limitation on converted fields',
+      () async {
+        final model = ListLengthModel(
+          id: 'array_ops_test',
+          name: 'Array Operations Test',
+          description: 'Testing array operation limitations',
+          numbers: [10, 20, 30].toIList(),
+          tags: [
+            'tag1',
+            'tag2',
+          ].toIList(), // Regular array - supports atomic ops
+        );
 
-      print('✅ Tags (regular array) supports modifications');
-      print('⚠️  Numbers (converted to sum) cannot use array operations');
-      print('⚠️  JSON type mismatch prevents atomic array operations on converted fields');
-    });
+        await odm.listLengthModels(model.id).update(model);
+
+        // Raw data shows the difference
+        final rawDoc = await fakeFirestore
+            .collection('listLengthModels')
+            .doc(model.id)
+            .get();
+        final rawData = rawDoc.data()!;
+
+        expect(rawData['numbers'], equals(60)); // Sum stored as single int
+        expect(
+          rawData['tags'],
+          equals(['tag1', 'tag2']),
+        ); // Array stored as array
+
+        // You CANNOT do array operations on numbers because it's stored as int
+        // await odm.listLengthModels(model.id).patch(($) => [
+        //   $.numbers.arrayUnion([40]), // IMPOSSIBLE - numbers is int, not array
+        // ]);
+
+        // But you CAN do array operations on tags
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.tags(['tag1', 'tag2', 'tag3'].toIList()),
+              ],
+            );
+
+        final afterTagUpdate = await odm.listLengthModels(model.id).get();
+        expect(afterTagUpdate!.tags.length, equals(3));
+        expect(afterTagUpdate.tags.contains('tag3'), isTrue);
+
+        print('✅ Tags (regular array) supports modifications');
+        print('⚠️  Numbers (converted to sum) cannot use array operations');
+        print(
+          '⚠️  JSON type mismatch prevents atomic array operations on converted fields',
+        );
+      },
+    );
 
     test('should handle edge cases in conversion', () async {
       const lengthConverter = ListLengthConverter();
@@ -232,7 +262,7 @@ void main() {
       // Test large numbers
       final largeList = List.generate(1000, (i) => 'item_$i').toIList();
       expect(lengthConverter.toJson(largeList), equals(1000));
-      
+
       final reconstructed = lengthConverter.fromJson(1000);
       expect(reconstructed.length, equals(1000));
       expect(reconstructed.first, equals('item_0'));
@@ -246,76 +276,89 @@ void main() {
       print('✅ Edge cases handled correctly in converters');
     });
 
-    test('should handle complex mixed operations with all field types', () async {
-      const profile = Profile(
-        bio: 'Mixed Operations Test',
-        avatar: 'mixed.jpg',
-        socialLinks: {'test': 'mixed'},
-        interests: ['testing'],
-        followers: 999,
-      );
+    test(
+      'should handle complex mixed operations with all field types',
+      () async {
+        const profile = Profile(
+          bio: 'Mixed Operations Test',
+          avatar: 'mixed.jpg',
+          socialLinks: {'test': 'mixed'},
+          interests: ['testing'],
+          followers: 999,
+        );
 
-      final model = ListLengthModel(
-        id: 'mixed_ops_test',
-        name: 'Mixed Operations Test',
-        description: 'Testing all field types together',
-        nestedProfiles: [profile].toIList(),
-        items: ['initial'].toIList(),
-        numbers: [100, 200].toIList(),
-        tags: ['start'].toIList(),
-        priority: 10,
-        createdAt: DateTime.now(),
-      );
+        final model = ListLengthModel(
+          id: 'mixed_ops_test',
+          name: 'Mixed Operations Test',
+          description: 'Testing all field types together',
+          nestedProfiles: [profile].toIList(),
+          items: ['initial'].toIList(),
+          numbers: [100, 200].toIList(),
+          tags: ['start'].toIList(),
+          priority: 10,
+          createdAt: DateTime.now(),
+        );
 
-      await odm.listLengthModels(model.id).update(model);
+        await odm.listLengthModels(model.id).update(model);
 
-      // Complex patch with all field types
-      const newProfile = Profile(
-        bio: 'Updated Profile',
-        avatar: 'updated.jpg',
-        socialLinks: {'updated': 'profile'},
-        interests: ['updated', 'testing'],
-        followers: 1500,
-      );
+        // Complex patch with all field types
+        const newProfile = Profile(
+          bio: 'Updated Profile',
+          avatar: 'updated.jpg',
+          socialLinks: {'updated': 'profile'},
+          interests: ['updated', 'testing'],
+          followers: 1500,
+        );
 
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.nestedProfiles([profile, newProfile].toIList()),
-            $.items(['new', 'updated', 'items'].toIList()),
-            $.numbers([50, 75, 25].toIList()),
-            $.tags(['updated', 'mixed', 'tags'].toIList()),
-            $.priority.increment(5),
-            $.isActive(true),
-            $.updatedAt(DateTime.now()),
-          ]);
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.nestedProfiles([profile, newProfile].toIList()),
+                $.items(['new', 'updated', 'items'].toIList()),
+                $.numbers([50, 75, 25].toIList()),
+                $.tags(['updated', 'mixed', 'tags'].toIList()),
+                $.priority.increment(5),
+                $.isActive(true),
+                $.updatedAt(DateTime.now()),
+              ],
+            );
 
-      final result = await odm.listLengthModels(model.id).get();
-      expect(result, isNotNull);
+        final result = await odm.listLengthModels(model.id).get();
+        expect(result, isNotNull);
 
-      // Verify all changes
-      expect(result!.nestedProfiles.length, equals(2));
-      expect(result.nestedProfiles[1].bio, equals('Updated Profile'));
-      expect(result.items.length, equals(3)); // Converted back from length
-      expect(result.numbers.first, equals(150)); // Converted back from sum (50+75+25=150)
-      expect(result.tags.length, equals(3)); // Regular array
-      expect(result.priority, equals(15)); // 10 + 5
-      expect(result.isActive, isTrue);
-      expect(result.updatedAt, isNotNull);
+        // Verify all changes
+        expect(result!.nestedProfiles.length, equals(2));
+        expect(result.nestedProfiles[1].bio, equals('Updated Profile'));
+        expect(result.items.length, equals(3)); // Converted back from length
+        expect(
+          result.numbers.first,
+          equals(150),
+        ); // Converted back from sum (50+75+25=150)
+        expect(result.tags.length, equals(3)); // Regular array
+        expect(result.priority, equals(15)); // 10 + 5
+        expect(result.isActive, isTrue);
+        expect(result.updatedAt, isNotNull);
 
-      // Verify raw storage
-      final rawDoc = await fakeFirestore
-          .collection('listLengthModels')
-          .doc(model.id)
-          .get();
-      final rawData = rawDoc.data()!;
+        // Verify raw storage
+        final rawDoc = await fakeFirestore
+            .collection('listLengthModels')
+            .doc(model.id)
+            .get();
+        final rawData = rawDoc.data()!;
 
-      expect(rawData['nestedProfiles'], isA<List>());
-      expect(rawData['nestedProfiles'].length, equals(2));
-      expect(rawData['items'], equals(3)); // Stored as length
-      expect(rawData['numbers'], equals(150)); // Stored as sum
-      expect(rawData['tags'], equals(['updated', 'mixed', 'tags'])); // Stored as array
+        expect(rawData['nestedProfiles'], isA<List>());
+        expect(rawData['nestedProfiles'].length, equals(2));
+        expect(rawData['items'], equals(3)); // Stored as length
+        expect(rawData['numbers'], equals(150)); // Stored as sum
+        expect(
+          rawData['tags'],
+          equals(['updated', 'mixed', 'tags']),
+        ); // Stored as array
 
-      print('✅ Complex mixed operations successful across all field types');
-    });
+        print('✅ Complex mixed operations successful across all field types');
+      },
+    );
 
     test('should demonstrate converter reversibility limitations', () async {
       // Important limitation: conversion is lossy for some operations
@@ -339,20 +382,31 @@ void main() {
       expect(retrieved.items, isNot(equals(originalItems))); // Content lost!
 
       // Numbers: lossy conversion - individual values lost, only sum preserved
-      expect(retrieved.numbers.length, equals(1)); // Reconstructed as single value
+      expect(
+        retrieved.numbers.length,
+        equals(1),
+      ); // Reconstructed as single value
       expect(retrieved.numbers.first, equals(100)); // Sum preserved
-      expect(retrieved.numbers, isNot(equals(originalNumbers))); // Structure lost!
+      expect(
+        retrieved.numbers,
+        isNot(equals(originalNumbers)),
+      ); // Structure lost!
 
       print('✅ Converter limitations documented:');
       print('   - Items: Content lost, only length preserved');
       print('   - Numbers: Individual values lost, only sum preserved');
-      print('⚠️  These converters are for storage optimization, not data preservation');
+      print(
+        '⚠️  These converters are for storage optimization, not data preservation',
+      );
     });
 
     test('should handle large collections efficiently', () async {
       // Generate large collections
       final largeItems = List.generate(10000, (i) => 'large_item_$i').toIList();
-      final largeNumbers = List.generate(1000, (i) => i + 1).toIList(); // Sum = 500500
+      final largeNumbers = List.generate(
+        1000,
+        (i) => i + 1,
+      ).toIList(); // Sum = 500500
       final largeTags = List.generate(500, (i) => 'tag_$i').toIList();
 
       final model = ListLengthModel(
@@ -368,7 +422,9 @@ void main() {
       await odm.listLengthModels(model.id).update(model);
       stopwatch.stop();
 
-      print('⏱️  Large collection update took: ${stopwatch.elapsedMilliseconds}ms');
+      print(
+        '⏱️  Large collection update took: ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       final rawDoc = await fakeFirestore
           .collection('listLengthModels')
@@ -378,7 +434,10 @@ void main() {
 
       // Verify conversion efficiency
       expect(rawData['items'], equals(10000)); // Massive compression!
-      expect(rawData['numbers'], equals(500500)); // Single number instead of 1000
+      expect(
+        rawData['numbers'],
+        equals(500500),
+      ); // Single number instead of 1000
       expect(rawData['tags'], isA<List>()); // Still full array
       expect(rawData['tags'].length, equals(500));
 
@@ -386,7 +445,9 @@ void main() {
       final retrieved = await odm.listLengthModels(model.id).get();
       retrieveStopwatch.stop();
 
-      print('⏱️  Large collection retrieval took: ${retrieveStopwatch.elapsedMilliseconds}ms');
+      print(
+        '⏱️  Large collection retrieval took: ${retrieveStopwatch.elapsedMilliseconds}ms',
+      );
 
       expect(retrieved!.items.length, equals(10000));
       expect(retrieved.numbers.first, equals(500500));
@@ -435,21 +496,23 @@ void main() {
       // This test documents the issue we discovered:
       // When a Freezed model has getter methods or custom methods,
       // the code generator incorrectly treats them as constructor parameters
-      
+
       const converter = ListLengthConverter();
-      
+
       // Test the converters work independently
       final testList = ['a', 'b', 'c'].toIList();
       final length = converter.toJson(testList);
       expect(length, equals(3));
-      
+
       final reconstructed = converter.fromJson(3);
       expect(reconstructed.length, equals(3));
-      
+
       print('✅ JsonConverters work correctly in isolation');
       print('⚠️  Issue: Model with getters/methods causes generator errors');
-      print('⚠️  Error: itemsLength and numbersSum treated as constructor params');
-      
+      print(
+        '⚠️  Error: itemsLength and numbersSum treated as constructor params',
+      );
+
       // The actual issue is in the generated code:
       // lib/test_schema.odm.dart tries to use:
       // itemsLength: data['itemsLength'] as int,
@@ -460,17 +523,20 @@ void main() {
     test('should verify JsonConverter functionality without model issues', () {
       const lengthConverter = ListLengthConverter();
       const sumConverter = ListSumConverter();
-      
+
       // Test ListLengthConverter
       final items = ['flutter', 'dart'].toIList();
       expect(lengthConverter.toJson(items), equals(2));
-      expect(lengthConverter.fromJson(2), equals(['item_0', 'item_1'].toIList()));
-      
-      // Test ListSumConverter  
+      expect(
+        lengthConverter.fromJson(2),
+        equals(['item_0', 'item_1'].toIList()),
+      );
+
+      // Test ListSumConverter
       final numbers = [10, 20, 30].toIList();
       expect(sumConverter.toJson(numbers), equals(60));
       expect(sumConverter.fromJson(60), equals([60].toIList()));
-      
+
       print('✅ Both JsonConverters work perfectly');
       print('✅ List → int conversion: ✓');
       print('✅ int → List conversion: ✓');
@@ -499,13 +565,24 @@ void main() {
       await odm.listLengthModels(model.id).update(model);
 
       // Use addAll patch - atomic operation, no duplicates
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.tags.addAll(['new1', 'new2', 'existing1']), // existing1 won't duplicate
-            $.priority.increment(1),
-          ]);
+      await odm
+          .listLengthModels(model.id)
+          .patch(
+            ($) => [
+              $.tags.addAll([
+                'new1',
+                'new2',
+                'existing1',
+              ]), // existing1 won't duplicate
+              $.priority.increment(1),
+            ],
+          );
 
       final result = await odm.listLengthModels(model.id).get();
-      expect(result!.tags.length, equals(4)); // existing1, existing2, new1, new2
+      expect(
+        result!.tags.length,
+        equals(4),
+      ); // existing1, existing2, new1, new2
       expect(result.tags.contains('existing1'), isTrue);
       expect(result.tags.contains('existing2'), isTrue);
       expect(result.tags.contains('new1'), isTrue);
@@ -527,10 +604,14 @@ void main() {
       await odm.listLengthModels(model.id).update(model);
 
       // Use removeAll patch - atomic operation
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.tags.removeAll(['remove1', 'remove2', 'nonexistent']),
-            $.priority.increment(-2),
-          ]);
+      await odm
+          .listLengthModels(model.id)
+          .patch(
+            ($) => [
+              $.tags.removeAll(['remove1', 'remove2', 'nonexistent']),
+              $.priority.increment(-2),
+            ],
+          );
 
       final result = await odm.listLengthModels(model.id).get();
       expect(result!.tags.length, equals(3)); // keep1, keep2, keep3
@@ -544,81 +625,102 @@ void main() {
       print('✅ ArrayRemove patch removes elements atomically');
     });
 
-    test('should combine arrayUnion and arrayRemove in single patch', skip: 'Cannot perform both arrayUnion and arrayRemove operations on the same field in a single update', () async {
-      final model = ListLengthModel(
-        id: 'array_combo_test',
-        name: 'Combined Array Operations',
-        description: 'Testing combined array patch operations',
-        tags: ['old1', 'old2', 'old3'].toIList(),
-        items: ['item1', 'item2'].toIList(), // This will be converted to length
-        priority: 10,
-      );
+    test(
+      'should combine arrayUnion and arrayRemove in single patch',
+      skip:
+          'Cannot perform both arrayUnion and arrayRemove operations on the same field in a single update',
+      () async {
+        final model = ListLengthModel(
+          id: 'array_combo_test',
+          name: 'Combined Array Operations',
+          description: 'Testing combined array patch operations',
+          tags: ['old1', 'old2', 'old3'].toIList(),
+          items: [
+            'item1',
+            'item2',
+          ].toIList(), // This will be converted to length
+          priority: 10,
+        );
 
-      await odm.listLengthModels(model.id).update(model);
+        await odm.listLengthModels(model.id).update(model);
 
-      // Combine multiple atomic operations in single patch
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.tags.removeAll(['old2']), // Remove one old tag
-            $.tags.addAll(['new1', 'new2']), // Add new tags
-            $.items(['updated1', 'updated2', 'updated3'].toIList()), // Replace items (gets converted)
-            $.priority.increment(5),
-          ]);
+        // Combine multiple atomic operations in single patch
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.tags.removeAll(['old2']), // Remove one old tag
+                $.tags.addAll(['new1', 'new2']), // Add new tags
+                $.items(
+                  ['updated1', 'updated2', 'updated3'].toIList(),
+                ), // Replace items (gets converted)
+                $.priority.increment(5),
+              ],
+            );
 
-      final result = await odm.listLengthModels(model.id).get();
-      
-      // Tags: atomic operations worked
-      expect(result!.tags.length, equals(4)); // old1, old3, new1, new2
-      expect(result.tags.contains('old1'), isTrue);
-      expect(result.tags.contains('old3'), isTrue);
-      expect(result.tags.contains('new1'), isTrue);
-      expect(result.tags.contains('new2'), isTrue);
-      expect(result.tags.contains('old2'), isFalse);
-      
-      // Items: converted field replaced
-      expect(result.items.length, equals(3)); // Length preserved
-      expect(result.priority, equals(15));
+        final result = await odm.listLengthModels(model.id).get();
 
-      // Check raw data
-      final rawDoc = await fakeFirestore
-          .collection('listLengthModels')
-          .doc(model.id)
-          .get();
-      final rawData = rawDoc.data()!;
-      expect(rawData['items'], equals(3)); // Stored as length
-      expect(rawData['tags'], isA<List>()); // Stored as array
+        // Tags: atomic operations worked
+        expect(result!.tags.length, equals(4)); // old1, old3, new1, new2
+        expect(result.tags.contains('old1'), isTrue);
+        expect(result.tags.contains('old3'), isTrue);
+        expect(result.tags.contains('new1'), isTrue);
+        expect(result.tags.contains('new2'), isTrue);
+        expect(result.tags.contains('old2'), isFalse);
 
-      print('✅ Combined atomic and replacement operations work together');
-    });
+        // Items: converted field replaced
+        expect(result.items.length, equals(3)); // Length preserved
+        expect(result.priority, equals(15));
 
-    test('should demonstrate converted fields cannot use array operations', () async {
-      final model = ListLengthModel(
-        id: 'converted_limitation_test',
-        name: 'Converted Field Limitations',
-        description: 'Showing array ops fail on converted fields',
-        items: ['item1', 'item2'].toIList(), // Gets converted to int
-        numbers: [10, 20].toIList(), // Gets converted to int
-        tags: ['tag1', 'tag2'].toIList(), // Stays as array
-      );
+        // Check raw data
+        final rawDoc = await fakeFirestore
+            .collection('listLengthModels')
+            .doc(model.id)
+            .get();
+        final rawData = rawDoc.data()!;
+        expect(rawData['items'], equals(3)); // Stored as length
+        expect(rawData['tags'], isA<List>()); // Stored as array
 
-      await odm.listLengthModels(model.id).update(model);
+        print('✅ Combined atomic and replacement operations work together');
+      },
+    );
 
-      // This works - tags is a real array
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.tags.addAll(['tag3']),
-          ]);
+    test(
+      'should demonstrate converted fields cannot use array operations',
+      () async {
+        final model = ListLengthModel(
+          id: 'converted_limitation_test',
+          name: 'Converted Field Limitations',
+          description: 'Showing array ops fail on converted fields',
+          items: ['item1', 'item2'].toIList(), // Gets converted to int
+          numbers: [10, 20].toIList(), // Gets converted to int
+          tags: ['tag1', 'tag2'].toIList(), // Stays as array
+        );
 
-      // These would FAIL at runtime because items/numbers are stored as ints:
-      // await odm.listLengthModels(model.id).patch(($) => [
-      //   $.items.arrayUnion(['item3']), // ERROR: arrayUnion on int field
-      //   $.numbers.arrayUnion([30]), // ERROR: arrayUnion on int field
-      // ]);
+        await odm.listLengthModels(model.id).update(model);
 
-      final result = await odm.listLengthModels(model.id).get();
-      expect(result!.tags.contains('tag3'), isTrue);
+        // This works - tags is a real array
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.tags.addAll(['tag3']),
+              ],
+            );
 
-      print('✅ Array operations work on real arrays (tags)');
-      print('⚠️  Array operations FAIL on converted fields (items/numbers)');
-    });
+        // These would FAIL at runtime because items/numbers are stored as ints:
+        // await odm.listLengthModels(model.id).patch(($) => [
+        //   $.items.arrayUnion(['item3']), // ERROR: arrayUnion on int field
+        //   $.numbers.arrayUnion([30]), // ERROR: arrayUnion on int field
+        // ]);
+
+        final result = await odm.listLengthModels(model.id).get();
+        expect(result!.tags.contains('tag3'), isTrue);
+
+        print('✅ Array operations work on real arrays (tags)');
+        print('⚠️  Array operations FAIL on converted fields (items/numbers)');
+      },
+    );
   });
 
   group('🗺️ Nested Map Operations Tests', () {
@@ -630,54 +732,73 @@ void main() {
       odm = FirestoreODM(testSchema, firestore: fakeFirestore);
     });
 
-    test('should patch individual Profile fields without replacing whole object', () async {
-      const originalProfile = Profile(
-        bio: 'Original Bio',
-        avatar: 'original.jpg',
-        socialLinks: {'twitter': '@original', 'github': 'original_user'},
-        interests: ['coding', 'reading'],
-        followers: 100,
-      );
+    test(
+      'should patch individual Profile fields without replacing whole object',
+      () async {
+        const originalProfile = Profile(
+          bio: 'Original Bio',
+          avatar: 'original.jpg',
+          socialLinks: {'twitter': '@original', 'github': 'original_user'},
+          interests: ['coding', 'reading'],
+          followers: 100,
+        );
 
-      final model = ListLengthModel(
-        id: 'profile_partial_update_test',
-        name: 'Profile Partial Update',
-        description: 'Testing partial profile updates',
-        nestedProfiles: [originalProfile].toIList(),
-        priority: 1,
-      );
+        final model = ListLengthModel(
+          id: 'profile_partial_update_test',
+          name: 'Profile Partial Update',
+          description: 'Testing partial profile updates',
+          nestedProfiles: [originalProfile].toIList(),
+          priority: 1,
+        );
 
-      await odm.listLengthModels(model.id).update(model);
+        await odm.listLengthModels(model.id).update(model);
 
-      // Update only specific fields, not the whole profile
-      final updatedProfile = originalProfile.copyWith(
-        followers: 150, // Only update follower count
-        socialLinks: {
-          ...originalProfile.socialLinks,
-          'linkedin': 'new_linkedin', // Add one new social link
-        },
-      );
+        // Update only specific fields, not the whole profile
+        final updatedProfile = originalProfile.copyWith(
+          followers: 150, // Only update follower count
+          socialLinks: {
+            ...originalProfile.socialLinks,
+            'linkedin': 'new_linkedin', // Add one new social link
+          },
+        );
 
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.nestedProfiles([updatedProfile].toIList()),
-            $.priority.increment(1),
-          ]);
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.nestedProfiles([updatedProfile].toIList()),
+                $.priority.increment(1),
+              ],
+            );
 
-      final result = await odm.listLengthModels(model.id).get();
-      final resultProfile = result!.nestedProfiles.first;
-      
-      // Verify only intended changes
-      expect(resultProfile.bio, equals('Original Bio')); // Unchanged
-      expect(resultProfile.avatar, equals('original.jpg')); // Unchanged
-      expect(resultProfile.interests, equals(['coding', 'reading'])); // Unchanged
-      expect(resultProfile.followers, equals(150)); // Updated
-      expect(resultProfile.socialLinks['twitter'], equals('@original')); // Unchanged
-      expect(resultProfile.socialLinks['github'], equals('original_user')); // Unchanged
-      expect(resultProfile.socialLinks['linkedin'], equals('new_linkedin')); // Added
-      expect(result.priority, equals(2));
+        final result = await odm.listLengthModels(model.id).get();
+        final resultProfile = result!.nestedProfiles.first;
 
-      print('✅ Partial profile updates preserve unchanged fields');
-    });
+        // Verify only intended changes
+        expect(resultProfile.bio, equals('Original Bio')); // Unchanged
+        expect(resultProfile.avatar, equals('original.jpg')); // Unchanged
+        expect(
+          resultProfile.interests,
+          equals(['coding', 'reading']),
+        ); // Unchanged
+        expect(resultProfile.followers, equals(150)); // Updated
+        expect(
+          resultProfile.socialLinks['twitter'],
+          equals('@original'),
+        ); // Unchanged
+        expect(
+          resultProfile.socialLinks['github'],
+          equals('original_user'),
+        ); // Unchanged
+        expect(
+          resultProfile.socialLinks['linkedin'],
+          equals('new_linkedin'),
+        ); // Added
+        expect(result.priority, equals(2));
+
+        print('✅ Partial profile updates preserve unchanged fields');
+      },
+    );
 
     test('should modify Profile arrays and maps incrementally', () async {
       const profile = Profile(
@@ -707,107 +828,140 @@ void main() {
         },
         interests: [
           ...profile.interests, // Keep existing
-          'streaming', 'opensource' // Add new
+          'streaming', 'opensource', // Add new
         ],
         followers: profile.followers + 50, // Increment
       );
 
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.nestedProfiles([expandedProfile].toIList()),
-            $.tags(['profile_tag', 'updated_tag'].toIList()),
-          ]);
+      await odm
+          .listLengthModels(model.id)
+          .patch(
+            ($) => [
+              $.nestedProfiles([expandedProfile].toIList()),
+              $.tags(['profile_tag', 'updated_tag'].toIList()),
+            ],
+          );
 
       final result = await odm.listLengthModels(model.id).get();
       final resultProfile = result!.nestedProfiles.first;
 
       // Verify incremental additions
       expect(resultProfile.socialLinks.length, equals(3));
-      expect(resultProfile.socialLinks['twitter'], equals('@tech_person')); // Original
-      expect(resultProfile.socialLinks['youtube'], equals('@tech_channel')); // Added
-      expect(resultProfile.socialLinks['discord'], equals('TechServer#1234')); // Added
-      
+      expect(
+        resultProfile.socialLinks['twitter'],
+        equals('@tech_person'),
+      ); // Original
+      expect(
+        resultProfile.socialLinks['youtube'],
+        equals('@tech_channel'),
+      ); // Added
+      expect(
+        resultProfile.socialLinks['discord'],
+        equals('TechServer#1234'),
+      ); // Added
+
       expect(resultProfile.interests.length, equals(4));
       expect(resultProfile.interests.contains('tech'), isTrue); // Original
       expect(resultProfile.interests.contains('gaming'), isTrue); // Original
       expect(resultProfile.interests.contains('streaming'), isTrue); // Added
       expect(resultProfile.interests.contains('opensource'), isTrue); // Added
-      
+
       expect(resultProfile.followers, equals(250)); // 200 + 50
       expect(result.tags.contains('updated_tag'), isTrue);
 
       print('✅ Incremental Profile modifications work correctly');
     });
 
-    test('should handle multiple profiles with different map operations', () async {
-      const devProfile = Profile(
-        bio: 'Software Developer',
-        avatar: 'dev.jpg',
-        socialLinks: {'github': 'dev_coder'},
-        interests: ['coding'],
-        followers: 300,
-      );
+    test(
+      'should handle multiple profiles with different map operations',
+      () async {
+        const devProfile = Profile(
+          bio: 'Software Developer',
+          avatar: 'dev.jpg',
+          socialLinks: {'github': 'dev_coder'},
+          interests: ['coding'],
+          followers: 300,
+        );
 
-      const designProfile = Profile(
-        bio: 'UI/UX Designer',
-        avatar: 'designer.jpg',
-        socialLinks: {'dribbble': 'cool_designer'},
-        interests: ['design'],
-        followers: 250,
-      );
+        const designProfile = Profile(
+          bio: 'UI/UX Designer',
+          avatar: 'designer.jpg',
+          socialLinks: {'dribbble': 'cool_designer'},
+          interests: ['design'],
+          followers: 250,
+        );
 
-      final model = ListLengthModel(
-        id: 'multi_profile_operations_test',
-        name: 'Multi Profile Operations',
-        description: 'Testing different operations on multiple profiles',
-        nestedProfiles: [devProfile, designProfile].toIList(),
-      );
+        final model = ListLengthModel(
+          id: 'multi_profile_operations_test',
+          name: 'Multi Profile Operations',
+          description: 'Testing different operations on multiple profiles',
+          nestedProfiles: [devProfile, designProfile].toIList(),
+        );
 
-      await odm.listLengthModels(model.id).update(model);
+        await odm.listLengthModels(model.id).update(model);
 
-      // Different operations for each profile
-      final updatedDevProfile = devProfile.copyWith(
-        socialLinks: {
-          ...devProfile.socialLinks,
-          'stackoverflow': 'helpful_dev', // Add professional platform
-          'twitter': '@dev_tweets', // Add social platform
-        },
-        interests: [...devProfile.interests, 'algorithms', 'opensource'],
-      );
+        // Different operations for each profile
+        final updatedDevProfile = devProfile.copyWith(
+          socialLinks: {
+            ...devProfile.socialLinks,
+            'stackoverflow': 'helpful_dev', // Add professional platform
+            'twitter': '@dev_tweets', // Add social platform
+          },
+          interests: [...devProfile.interests, 'algorithms', 'opensource'],
+        );
 
-      final updatedDesignProfile = designProfile.copyWith(
-        socialLinks: {
-          'dribbble': 'cool_designer', // Keep existing
-          'behance': 'amazing_portfolio', // Add portfolio platform
-          // Note: not adding all old ones = removing some
-        },
-        interests: [...designProfile.interests, 'typography', 'branding'],
-        followers: designProfile.followers + 75, // Increment followers
-      );
+        final updatedDesignProfile = designProfile.copyWith(
+          socialLinks: {
+            'dribbble': 'cool_designer', // Keep existing
+            'behance': 'amazing_portfolio', // Add portfolio platform
+            // Note: not adding all old ones = removing some
+          },
+          interests: [...designProfile.interests, 'typography', 'branding'],
+          followers: designProfile.followers + 75, // Increment followers
+        );
 
-      await odm.listLengthModels(model.id).patch(($) => [
-            $.nestedProfiles([updatedDevProfile, updatedDesignProfile].toIList()),
-          ]);
+        await odm
+            .listLengthModels(model.id)
+            .patch(
+              ($) => [
+                $.nestedProfiles(
+                  [updatedDevProfile, updatedDesignProfile].toIList(),
+                ),
+              ],
+            );
 
-      final result = await odm.listLengthModels(model.id).get();
-      
-      // Verify dev profile changes
-      final resultDevProfile = result!.nestedProfiles[0];
-      expect(resultDevProfile.socialLinks.length, equals(3));
-      expect(resultDevProfile.socialLinks['github'], equals('dev_coder'));
-      expect(resultDevProfile.socialLinks['stackoverflow'], equals('helpful_dev'));
-      expect(resultDevProfile.socialLinks['twitter'], equals('@dev_tweets'));
-      expect(resultDevProfile.interests.length, equals(3));
-      
-      // Verify design profile changes
-      final resultDesignProfile = result.nestedProfiles[1];
-      expect(resultDesignProfile.socialLinks.length, equals(2));
-      expect(resultDesignProfile.socialLinks['dribbble'], equals('cool_designer'));
-      expect(resultDesignProfile.socialLinks['behance'], equals('amazing_portfolio'));
-      expect(resultDesignProfile.interests.length, equals(3));
-      expect(resultDesignProfile.followers, equals(325)); // 250 + 75
+        final result = await odm.listLengthModels(model.id).get();
 
-      print('✅ Multiple profiles with different map/list operations updated successfully');
-    });
+        // Verify dev profile changes
+        final resultDevProfile = result!.nestedProfiles[0];
+        expect(resultDevProfile.socialLinks.length, equals(3));
+        expect(resultDevProfile.socialLinks['github'], equals('dev_coder'));
+        expect(
+          resultDevProfile.socialLinks['stackoverflow'],
+          equals('helpful_dev'),
+        );
+        expect(resultDevProfile.socialLinks['twitter'], equals('@dev_tweets'));
+        expect(resultDevProfile.interests.length, equals(3));
+
+        // Verify design profile changes
+        final resultDesignProfile = result.nestedProfiles[1];
+        expect(resultDesignProfile.socialLinks.length, equals(2));
+        expect(
+          resultDesignProfile.socialLinks['dribbble'],
+          equals('cool_designer'),
+        );
+        expect(
+          resultDesignProfile.socialLinks['behance'],
+          equals('amazing_portfolio'),
+        );
+        expect(resultDesignProfile.interests.length, equals(3));
+        expect(resultDesignProfile.followers, equals(325)); // 250 + 75
+
+        print(
+          '✅ Multiple profiles with different map/list operations updated successfully',
+        );
+      },
+    );
   });
 
   // group('🧪 JsonConverter Array Operations Tests', () {
@@ -832,11 +986,11 @@ void main() {
   //     // Verify that items field doesn't have add() method
   //     // This is a compile-time check - the code below should NOT compile
   //     // because JsonConverter changes the field type from IList<String> to int
-      
+
   //     try {
   //     // This should fail at compile time, not runtime
   //     // $.items.add('new_item') should not be available
-      
+
   //     // Instead, we can only do full replacement:
   //     await odm.listLengthModels(model.id).patch(($) => [
   //         $.items(['new1', 'new2', 'new3'].toIList()), // Full replacement only
@@ -858,68 +1012,68 @@ void main() {
   //     final finalResult = await odm.listLengthModels(model.id).get();
   //     print('✅ tags field has add() method available');
   //     print('   Final tags: ${finalResult!.tags}');
-      
+
   //     print('📋 Summary:');
   //     print('   - $.items.add() → NOT AVAILABLE (JsonConverter int field)');
   //     print('   - $.tags.add() → AVAILABLE (regular IList field)');
   //     print('   - JsonConverter fields lose array operation methods');
   //   });
 
-    // test('should test items.addAll() behavior on converted field', () async {
-    //   final model = ListLengthModel(
-    //     id: 'items_addall_test',
-    //     name: 'Items AddAll Test',
-    //     description: 'Testing addAll operations on converted items field',
-    //     items: ['item1', 'item2'].toIList(), // Converted to length: 2
-    //     numbers: [10, 20].toIList(), // Converted to sum: 30
-    //     tags: ['tag1'].toIList(), // No converter
-    //   );
+  // test('should test items.addAll() behavior on converted field', () async {
+  //   final model = ListLengthModel(
+  //     id: 'items_addall_test',
+  //     name: 'Items AddAll Test',
+  //     description: 'Testing addAll operations on converted items field',
+  //     items: ['item1', 'item2'].toIList(), // Converted to length: 2
+  //     numbers: [10, 20].toIList(), // Converted to sum: 30
+  //     tags: ['tag1'].toIList(), // No converter
+  //   );
 
-    //   await odm.listLengthModels(model.id).update(model);
+  //   await odm.listLengthModels(model.id).update(model);
 
-    //   try {
-    //     // Try addAll on converted items field
-    //     await odm.listLengthModels(model.id).patch(($) => [
-    //           $.items.addAll(['new1', 'new2', 'new3']), // Should this work?
-    //         ]);
+  //   try {
+  //     // Try addAll on converted items field
+  //     await odm.listLengthModels(model.id).patch(($) => [
+  //           $.items.addAll(['new1', 'new2', 'new3']), // Should this work?
+  //         ]);
 
-    //     final result = await odm.listLengthModels(model.id).get();
-    //     print('✅ items.addAll() worked on converted field');
-    //     print('   Result items length: ${result!.items.length}');
-    //     print('   Raw storage check needed...');
+  //     final result = await odm.listLengthModels(model.id).get();
+  //     print('✅ items.addAll() worked on converted field');
+  //     print('   Result items length: ${result!.items.length}');
+  //     print('   Raw storage check needed...');
 
-    //     // Check raw storage
-    //     final rawDoc = await fakeFirestore
-    //         .collection('listLengthModels')
-    //         .doc(model.id)
-    //         .get();
-    //     final rawData = rawDoc.data()!;
-    //     print('   Raw items value: ${rawData['items']} (should be int)');
-    //   } catch (e) {
-    //     print('❌ items.addAll() failed on converted field: $e');
-    //   }
+  //     // Check raw storage
+  //     final rawDoc = await fakeFirestore
+  //         .collection('listLengthModels')
+  //         .doc(model.id)
+  //         .get();
+  //     final rawData = rawDoc.data()!;
+  //     print('   Raw items value: ${rawData['items']} (should be int)');
+  //   } catch (e) {
+  //     print('❌ items.addAll() failed on converted field: $e');
+  //   }
 
-    //   try {
-    //     // Try addAll on converted numbers field
-    //     await odm.listLengthModels(model.id).patch(($) => [
-    //           $.numbers.addAll([5, 15, 25]), // Should this work?
-    //         ]);
+  //   try {
+  //     // Try addAll on converted numbers field
+  //     await odm.listLengthModels(model.id).patch(($) => [
+  //           $.numbers.addAll([5, 15, 25]), // Should this work?
+  //         ]);
 
-    //     final result = await odm.listLengthModels(model.id).get();
-    //     print('✅ numbers.addAll() worked on converted field');
-    //     print('   Result numbers: ${result!.numbers}');
+  //     final result = await odm.listLengthModels(model.id).get();
+  //     print('✅ numbers.addAll() worked on converted field');
+  //     print('   Result numbers: ${result!.numbers}');
 
-    //     // Check raw storage
-    //     final rawDoc = await fakeFirestore
-    //         .collection('listLengthModels')
-    //         .doc(model.id)
-    //         .get();
-    //     final rawData = rawDoc.data()!;
-    //     print('   Raw numbers value: ${rawData['numbers']} (should be int)');
-    //   } catch (e) {
-    //     print('❌ numbers.addAll() failed on converted field: $e');
-    //   }
-    // });
+  //     // Check raw storage
+  //     final rawDoc = await fakeFirestore
+  //         .collection('listLengthModels')
+  //         .doc(model.id)
+  //         .get();
+  //     final rawData = rawDoc.data()!;
+  //     print('   Raw numbers value: ${rawData['numbers']} (should be int)');
+  //   } catch (e) {
+  //     print('❌ numbers.addAll() failed on converted field: $e');
+  //   }
+  // });
 
   //   test('should test numbers.add() and increment behavior on converted field', () async {
   //     final model = ListLengthModel(
@@ -1047,7 +1201,7 @@ void main() {
   //             // Test converter fields
   //             $.items.addAll(['add1', 'add2']), // items converter
   //             $.numbers.addAll([25, 75]), // numbers converter
-              
+
   //             // Test regular fields
   //             $.tags.addAll(['tag2', 'tag3']), // regular array
   //             $.priority.increment(5), // regular int

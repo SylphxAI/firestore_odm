@@ -22,4 +22,3 @@ abstract interface class Upsertable<T> {
   /// upserted.
   FutureOr<void> upsert(T value);
 }
-

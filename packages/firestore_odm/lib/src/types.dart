@@ -1,12 +1,12 @@
-import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart' as firestore;
+import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart'
+    as firestore;
 
 sealed class FieldPath {
   Object toFirestore();
 
   static const FieldPath documentId = DocumentIdFieldPath();
 
-  const factory FieldPath.components([List<String> components]) =
-      PathFieldPath;
+  const factory FieldPath.components([List<String> components]) = PathFieldPath;
 }
 
 class DocumentIdFieldPath implements FieldPath {

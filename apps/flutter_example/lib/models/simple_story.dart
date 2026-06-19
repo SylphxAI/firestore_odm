@@ -14,7 +14,8 @@ abstract class SimpleStory with _$SimpleStory {
     required String title,
     required String content,
     required String authorId,
-    required DateTime createdAt, @Default([]) List<String> tags,
+    required DateTime createdAt,
+    @Default([]) List<String> tags,
     DateTime? updatedAt,
   }) = _SimpleStory;
 

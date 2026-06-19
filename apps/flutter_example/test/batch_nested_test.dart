@@ -40,14 +40,16 @@ void main() {
 
       // Test batch update with nested model changes
       await odm.runBatch((batch) {
-        batch.users.update(user.copyWith(
-          name: 'Updated Name',
-          profile: user.profile.copyWith(
-            bio: 'Updated bio',
-            followers: 200,
-            socialLinks: {'twitter': '@updated', 'github': '@newuser'},
+        batch.users.update(
+          user.copyWith(
+            name: 'Updated Name',
+            profile: user.profile.copyWith(
+              bio: 'Updated bio',
+              followers: 200,
+              socialLinks: {'twitter': '@updated', 'github': '@newuser'},
+            ),
           ),
-        ));
+        );
       });
 
       // Verify nested changes
@@ -109,10 +111,10 @@ void main() {
         // Insert posts into user's subcollection
         batch.users('subcol_user').posts.insert(post1);
         batch.users('subcol_user').posts.insert(post2);
-        
+
         // Update a post in the subcollection
         batch.users('subcol_user').posts.update(post1.copyWith(likes: 15));
-        
+
         // Delete a post from the subcollection
         batch.users('subcol_user').posts('post2').delete();
       });
@@ -124,46 +126,56 @@ void main() {
       expect(userPosts.first.likes, equals(15)); // Should be updated value
     });
 
-    test('should support patch operations with nested fields in batch', () async {
-      // Create a user
-      final user = User(
-        id: 'patch_user',
-        name: 'Patch User',
-        email: 'patch@example.com',
-        age: 28,
-        profile: const Profile(
-          bio: 'Original patch bio',
-          avatar: 'patch.jpg',
-          socialLinks: {'linkedin': '@patch'},
-          interests: ['testing'],
-          followers: 75,
-        ),
-        rating: 4.2,
-        isActive: true,
-        createdAt: DateTime.now(),
-      );
+    test(
+      'should support patch operations with nested fields in batch',
+      () async {
+        // Create a user
+        final user = User(
+          id: 'patch_user',
+          name: 'Patch User',
+          email: 'patch@example.com',
+          age: 28,
+          profile: const Profile(
+            bio: 'Original patch bio',
+            avatar: 'patch.jpg',
+            socialLinks: {'linkedin': '@patch'},
+            interests: ['testing'],
+            followers: 75,
+          ),
+          rating: 4.2,
+          isActive: true,
+          createdAt: DateTime.now(),
+        );
 
-      await odm.users.insert(user);
+        await odm.users.insert(user);
 
-      // Test batch patch with nested field updates
-      await odm.runBatch((batch) {
-        batch.users('patch_user').patch(($) => [
-          $.name('Patched Name'),
-          $.age(29),
-          $.profile.bio('Patched bio'),
-          $.profile.followers(100),
-          $.profile.socialLinks.set('github', '@patched'),
-        ]);
-      });
+        // Test batch patch with nested field updates
+        await odm.runBatch((batch) {
+          batch
+              .users('patch_user')
+              .patch(
+                ($) => [
+                  $.name('Patched Name'),
+                  $.age(29),
+                  $.profile.bio('Patched bio'),
+                  $.profile.followers(100),
+                  $.profile.socialLinks.set('github', '@patched'),
+                ],
+              );
+        });
 
-      // Verify patch changes
-      final patchedUser = await odm.users('patch_user').get();
-      expect(patchedUser?.name, equals('Patched Name'));
-      expect(patchedUser?.age, equals(29));
-      expect(patchedUser?.profile.bio, equals('Patched bio'));
-      expect(patchedUser?.profile.followers, equals(100));
-      expect(patchedUser?.profile.socialLinks['github'], equals('@patched'));
-      expect(patchedUser?.profile.socialLinks['linkedin'], equals('@patch')); // Should be preserved
-    });
+        // Verify patch changes
+        final patchedUser = await odm.users('patch_user').get();
+        expect(patchedUser?.name, equals('Patched Name'));
+        expect(patchedUser?.age, equals(29));
+        expect(patchedUser?.profile.bio, equals('Patched bio'));
+        expect(patchedUser?.profile.followers, equals(100));
+        expect(patchedUser?.profile.socialLinks['github'], equals('@patched'));
+        expect(
+          patchedUser?.profile.socialLinks['linkedin'],
+          equals('@patch'),
+        ); // Should be preserved
+      },
+    );
   });
 }

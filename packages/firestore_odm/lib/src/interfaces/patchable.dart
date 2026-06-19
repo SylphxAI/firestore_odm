@@ -27,5 +27,10 @@ abstract interface class Patchable<T> {
   /// to be applied to the document.
   ///
   /// Returns a [Future] that completes when the patch is successfully applied.
-  FutureOr<void> patch(List<UpdateOperation> Function(PatchBuilder<T, Map<String, dynamic>?> patchBuilder) patches);
+  FutureOr<void> patch(
+    List<UpdateOperation> Function(
+      PatchBuilder<T, Map<String, dynamic>?> patchBuilder,
+    )
+    patches,
+  );
 }

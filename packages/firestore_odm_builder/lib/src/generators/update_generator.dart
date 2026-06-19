@@ -1,4 +1,3 @@
-
 import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/type.dart' hide FunctionType;
 import 'package:code_builder/code_builder.dart';
@@ -46,9 +45,9 @@ class UpdateGenerator {
                 ..types.add(field.customConverter!.jsonType.reference),
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'toJson': field.customConverter!.toJson,
             },
           )
@@ -61,9 +60,9 @@ class UpdateGenerator {
               '_builderFunc${field.type.element3!.name3!.camelCase()}',
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
             },
           )
         : TypeAnalyzer.isDateTimeType(fieldType)
@@ -76,9 +75,9 @@ class UpdateGenerator {
                 ), // Use the actual type parameter
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
             },
           )
         : TypeAnalyzer.isDurationType(fieldType)
@@ -91,9 +90,9 @@ class UpdateGenerator {
                 ), // Use the actual type parameter
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
             },
           )
         : TypeAnalyzer.isNumericType(fieldType)
@@ -106,9 +105,9 @@ class UpdateGenerator {
                 ), // Use the actual type parameter
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
             },
           )
         : TypeChecker.fromRuntime(IMap).isAssignableFromType(fieldType)
@@ -124,9 +123,9 @@ class UpdateGenerator {
                 ]),
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'toJson': ConverterGenerator.getToJsonEnsured(
                 type: fieldType,
                 typeConverters: typeConverters,
@@ -154,9 +153,9 @@ class UpdateGenerator {
                 ]),
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'keyToJson': ConverterGenerator.getToJsonEnsured(
                 type: TypeAnalyzer.getMapKeyType(fieldType),
                 typeConverters: typeConverters,
@@ -181,9 +180,9 @@ class UpdateGenerator {
                 ]), // Use the actual type parameter
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'elementToJson': ConverterGenerator.getToJsonEnsured(
                 type: TypeAnalyzer.getIterableElementType(fieldType),
                 typeConverters: typeConverters,
@@ -203,9 +202,9 @@ class UpdateGenerator {
                 ), // Use the actual type parameter
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'toJson': ConverterGenerator.getToJsonEnsured(
                 type: fieldType,
                 typeConverters: typeConverters,
@@ -220,9 +219,9 @@ class UpdateGenerator {
                 ..types.add(getJsonType(type: fieldType)),
             ),
             arguments: {
-              'field': refer('path').property('append').call(
-                [literalString(jsonFieldName)],
-              ),
+              'field': refer(
+                'path',
+              ).property('append').call([literalString(jsonFieldName)]),
               'toJson': ConverterGenerator.getToJsonEnsured(type: fieldType),
             },
           );

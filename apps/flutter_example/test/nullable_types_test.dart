@@ -74,9 +74,13 @@ void main() {
         await db.nullableTypesTests.insert(model);
 
         // Patch the nullable map
-        await db.nullableTypesTests('test3').patch(($) => [
-          $.nullableMap({'updated': 'data'}),
-        ]);
+        await db
+            .nullableTypesTests('test3')
+            .patch(
+              ($) => [
+                $.nullableMap({'updated': 'data'}),
+              ],
+            );
 
         final result = await db.nullableTypesTests('test3').get();
         expect(result!.nullableMap!['updated'], equals('data'));
@@ -204,18 +208,22 @@ void main() {
       });
 
       test('should filter by non-nullable enum', () async {
-        await db.nullableTypesTests.insert(NullableTypesTestModel(
-          id: 'filter1',
-          name: 'Active',
-          status: TestStatus.active,
-          priority: Priority.high,
-        ));
-        await db.nullableTypesTests.insert(NullableTypesTestModel(
-          id: 'filter2',
-          name: 'Pending',
-          status: TestStatus.pending,
-          priority: Priority.low,
-        ));
+        await db.nullableTypesTests.insert(
+          NullableTypesTestModel(
+            id: 'filter1',
+            name: 'Active',
+            status: TestStatus.active,
+            priority: Priority.high,
+          ),
+        );
+        await db.nullableTypesTests.insert(
+          NullableTypesTestModel(
+            id: 'filter2',
+            name: 'Pending',
+            status: TestStatus.pending,
+            priority: Priority.low,
+          ),
+        );
 
         final activeResults = await db.nullableTypesTests
             .where(($) => $.status(isEqualTo: TestStatus.active))

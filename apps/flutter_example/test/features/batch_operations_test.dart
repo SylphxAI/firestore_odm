@@ -65,7 +65,10 @@ void main() {
             .get();
 
         expect(allUsers.length, equals(2));
-        expect(allUsers.map((u) => u.name), containsAll(['Batch User 1', 'Batch User 2']));
+        expect(
+          allUsers.map((u) => u.name),
+          containsAll(['Batch User 1', 'Batch User 2']),
+        );
       });
 
       test('should perform batch update operations', () async {
@@ -110,8 +113,12 @@ void main() {
 
         // Batch update users
         await odm.runBatch((batch) {
-          batch.users.update(users[0].copyWith(isActive: true, isPremium: true));
-          batch.users.update(users[1].copyWith(isActive: true, isPremium: true));
+          batch.users.update(
+            users[0].copyWith(isActive: true, isPremium: true),
+          );
+          batch.users.update(
+            users[1].copyWith(isActive: true, isPremium: true),
+          );
         });
 
         // Verify updates
@@ -277,12 +284,16 @@ void main() {
 
         // Batch patch user
         await odm.runBatch((batch) {
-          batch.users('batch_patch_user').patch(($) => [
-            $.isActive(true),
-            $.isPremium(true),
-            $.rating.increment(1),
-            $.profile.followers.increment(50),
-          ]);
+          batch
+              .users('batch_patch_user')
+              .patch(
+                ($) => [
+                  $.isActive(true),
+                  $.isPremium(true),
+                  $.rating.increment(1),
+                  $.profile.followers.increment(50),
+                ],
+              );
         });
 
         // Verify patch
@@ -337,44 +348,51 @@ void main() {
         await odm.runBatch((batch) {
           // Insert new user
           batch.users.insert(newUser);
-          
+
           // Update existing user
           batch.users.update(existingUser.copyWith(isActive: true));
-          
+
           // Patch existing user
-          batch.users('mixed_existing').patch(($) => [
-            $.isPremium(true),
-            $.rating.increment(0.5),
-          ]);
-          
+          batch
+              .users('mixed_existing')
+              .patch(($) => [$.isPremium(true), $.rating.increment(0.5)]);
+
           // Upsert another user
-          batch.users.upsert(User(
-            id: 'mixed_upsert',
-            name: 'Upsert User',
-            email: 'upsert@example.com',
-            age: 28,
-            profile: const Profile(
-              bio: 'Upsert user',
-              avatar: 'upsert.jpg',
-              socialLinks: {},
-              interests: ['mixed'],
-              followers: 120,
+          batch.users.upsert(
+            User(
+              id: 'mixed_upsert',
+              name: 'Upsert User',
+              email: 'upsert@example.com',
+              age: 28,
+              profile: const Profile(
+                bio: 'Upsert user',
+                avatar: 'upsert.jpg',
+                socialLinks: {},
+                interests: ['mixed'],
+                followers: 120,
+              ),
+              rating: 4,
+              isActive: true,
+              isPremium: true,
+              createdAt: DateTime.now(),
             ),
-            rating: 4,
-            isActive: true,
-            isPremium: true,
-            createdAt: DateTime.now(),
-          ));
+          );
         });
 
         // Verify all operations
         final allUsers = await odm.users
-            .where(($) => $.id(whereIn: ['mixed_existing', 'mixed_new', 'mixed_upsert']))
+            .where(
+              ($) => $.id(
+                whereIn: ['mixed_existing', 'mixed_new', 'mixed_upsert'],
+              ),
+            )
             .get();
 
         expect(allUsers.length, equals(3));
 
-        final existingUpdated = allUsers.firstWhere((u) => u.id == 'mixed_existing');
+        final existingUpdated = allUsers.firstWhere(
+          (u) => u.id == 'mixed_existing',
+        );
         expect(existingUpdated.isActive, isTrue);
         expect(existingUpdated.isPremium, isTrue);
         expect(existingUpdated.rating, equals(3.5));
@@ -396,22 +414,24 @@ void main() {
           await odm.runBatch((batch) {
             // Try to add more than 500 operations
             for (var i = 0; i < 501; i++) {
-              batch.users.insert(User(
-                id: 'limit_test_$i',
-                name: 'Limit Test $i',
-                email: 'limit$i@example.com',
-                age: 25,
-                profile: const Profile(
-                  bio: 'Limit test',
-                  avatar: 'limit.jpg',
-                  socialLinks: {},
-                  interests: ['limit'],
-                  followers: 100,
+              batch.users.insert(
+                User(
+                  id: 'limit_test_$i',
+                  name: 'Limit Test $i',
+                  email: 'limit$i@example.com',
+                  age: 25,
+                  profile: const Profile(
+                    bio: 'Limit test',
+                    avatar: 'limit.jpg',
+                    socialLinks: {},
+                    interests: ['limit'],
+                    followers: 100,
+                  ),
+                  rating: 3,
+                  isActive: true,
+                  createdAt: DateTime.now(),
                 ),
-                rating: 3,
-                isActive: true,
-                createdAt: DateTime.now(),
-              ));
+              );
             }
           });
         }, throwsA(isA<Exception>()));

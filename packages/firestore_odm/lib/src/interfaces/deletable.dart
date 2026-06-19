@@ -10,4 +10,3 @@ abstract interface class Deletable {
   /// Returns a [Future] that completes when the deletion is successfully applied.
   FutureOr<void> delete();
 }
-

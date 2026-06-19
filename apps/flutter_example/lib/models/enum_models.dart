@@ -49,7 +49,8 @@ abstract class EnumUser with _$EnumUser {
     AccountType? optional,
   }) = _EnumUser;
 
-  factory EnumUser.fromJson(Map<String, dynamic> json) => _$EnumUserFromJson(json);
+  factory EnumUser.fromJson(Map<String, dynamic> json) =>
+      _$EnumUserFromJson(json);
 }
 
 /// EnumTask model with numeric priority enum and status enum for comprehensive testing
@@ -69,7 +70,8 @@ abstract class EnumTask with _$EnumTask {
     DateTime? completedAt,
   }) = _EnumTask;
 
-  factory EnumTask.fromJson(Map<String, dynamic> json) => _$EnumTaskFromJson(json);
+  factory EnumTask.fromJson(Map<String, dynamic> json) =>
+      _$EnumTaskFromJson(json);
 }
 
 /// Test model for simplified enum orderBy (no annotation needed)
@@ -84,5 +86,6 @@ abstract class SimpleEnumTask with _$SimpleEnumTask {
     required DateTime createdAt,
   }) = _SimpleEnumTask;
 
-  factory SimpleEnumTask.fromJson(Map<String, dynamic> json) => _$SimpleEnumTaskFromJson(json);
+  factory SimpleEnumTask.fromJson(Map<String, dynamic> json) =>
+      _$SimpleEnumTaskFromJson(json);
 }

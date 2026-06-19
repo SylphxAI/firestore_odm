@@ -21,7 +21,7 @@ enum TestStatus {
   @JsonValue('active')
   active,
   @JsonValue('completed')
-  completed;
+  completed,
 }
 
 /// Test enum with numeric values
@@ -32,17 +32,14 @@ enum Priority {
   @JsonValue(2)
   medium,
   @JsonValue(3)
-  high;
+  high,
 }
 
 /// Nested class for issue #3 testing
 @JsonSerializable()
 @firestoreOdm
 class NestedData {
-  const NestedData({
-    required this.name,
-    this.value,
-  });
+  const NestedData({required this.name, this.value});
 
   factory NestedData.fromJson(Map<String, Object?> json) =>
       _$NestedDataFromJson(json);

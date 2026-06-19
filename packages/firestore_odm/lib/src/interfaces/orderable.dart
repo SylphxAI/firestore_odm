@@ -20,5 +20,16 @@ abstract interface class Orderable<T> {
   ///
   /// Returns a dynamic type that represents an `OrderedQuery` that supports
   /// strongly-typed pagination.
-  OrderedQuery<FirestoreSchema, T, O, PatchBuilder<T, Map<String, dynamic>?>, FilterBuilderRoot, OrderByFieldNode, AggregateBuilderRoot> orderBy<O extends Record>(O Function(OrderByFieldNode builder) orderByEntries);
+  OrderedQuery<
+    FirestoreSchema,
+    T,
+    O,
+    PatchBuilder<T, Map<String, dynamic>?>,
+    FilterBuilderRoot,
+    OrderByFieldNode,
+    AggregateBuilderRoot
+  >
+  orderBy<O extends Record>(
+    O Function(OrderByFieldNode builder) orderByEntries,
+  );
 }

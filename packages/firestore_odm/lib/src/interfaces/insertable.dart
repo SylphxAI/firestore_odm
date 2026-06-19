@@ -15,4 +15,3 @@ abstract interface class Insertable<T> {
   /// Returns a [Future] that completes when the document has been successfully inserted.
   FutureOr<void> insert(T value);
 }
-

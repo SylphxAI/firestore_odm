@@ -33,7 +33,7 @@ class Query<
         Aggregatable<T>,
         Limitable,
         Deletable {
-          final Map<String, dynamic> Function(T) _toJson;
+  final Map<String, dynamic> Function(T) _toJson;
   final T Function(Map<String, dynamic>) _fromJson;
   final String _documentIdFieldName;
 
@@ -90,7 +90,9 @@ class Query<
   }
 
   @override
-  Query<S, T, P, F, OB, AB> where(FilterOperation Function(F builder) filterFunc) {
+  Query<S, T, P, F, OB, AB> where(
+    FilterOperation Function(F builder) filterFunc,
+  ) {
     final filter = filterFunc(_filterBuilder);
     final newQuery = QueryFilterHandler.applyFilter(_query, filter);
     // Handle different types of query objects
@@ -107,7 +109,7 @@ class Query<
       documentIdFieldName: _documentIdFieldName,
     );
     final newQuery = QueryOrderbyHandler.applyOrderBy(_query, config);
-    return OrderedQuery<S, T, O, P, F, OB ,AB>(
+    return OrderedQuery<S, T, O, P, F, OB, AB>(
       query: newQuery,
       toJson: _toJson,
       fromJson: _fromJson,
@@ -133,9 +135,7 @@ class Query<
   }
 
   @override
-  Future<void> patch(
-    List<UpdateOperation> Function(P patchBuilder) patches,
-  ) {
+  Future<void> patch(List<UpdateOperation> Function(P patchBuilder) patches) {
     final operations = patches(_patchBuilder);
     return QueryHandler.patch(_query, operations);
   }
@@ -183,7 +183,10 @@ class Query<
   AggregateQuery<T, R, AB> aggregate<R extends Record>(
     R Function(AB selector) builder,
   ) {
-    final config = QueryAggregatableHandler.buildAggregate(builder, _aggregateBuilderFunc);
+    final config = QueryAggregatableHandler.buildAggregate(
+      builder,
+      _aggregateBuilderFunc,
+    );
     final newQuery = QueryAggregatableHandler.applyAggregate(
       _query,
       config.operations,

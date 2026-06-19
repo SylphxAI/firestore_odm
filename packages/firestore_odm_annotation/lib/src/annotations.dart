@@ -58,7 +58,6 @@ class Schema {
   const Schema();
 }
 
-
 @Target({TargetKind.classType})
 @immutable
 class FirestoreOdm {

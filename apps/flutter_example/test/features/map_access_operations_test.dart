@@ -145,7 +145,6 @@ void main() {
           )
           .get();
 
-
       // Use workaround for now - this is a fake_cloud_firestore limitation, not ODM limitation
       expect(workaroundMatch, hasLength(1));
       expect(workaroundMatch.first.name, equals('Map User'));

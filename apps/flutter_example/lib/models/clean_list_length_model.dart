@@ -48,18 +48,16 @@ abstract class CleanListLengthModel with _$CleanListLengthModel {
     @DocumentIdField() required String id,
     required String name,
     required String description,
-    
+
     // IList<String> that gets converted to/from int (length)
-    @ListLengthConverter()
-    @Default(IListConst([])) IList<String> items,
-    
+    @ListLengthConverter() @Default(IListConst([])) IList<String> items,
+
     // IList<int> that gets converted to/from int (sum)
-    @ListSumConverter()
-    @Default(IListConst([])) IList<int> numbers,
-    
+    @ListSumConverter() @Default(IListConst([])) IList<int> numbers,
+
     // Regular IList without converter for comparison
     @Default(IListConst([])) IList<String> tags,
-    
+
     @Default(0) int priority,
     @Default(false) bool isActive,
     DateTime? createdAt,

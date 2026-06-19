@@ -124,13 +124,13 @@ class TypeAnalyzer {
   /// Check if a type is a custom class (not primitive or built-in)
   static bool isCustomClass(DartType type) {
     final nonNullableType = _getNonNullableType(type);
- 
+
     return !isPrimitiveType(nonNullableType) &&
         !isIterableType(nonNullableType) &&
         !_mapChecker.isAssignableFromType(nonNullableType) &&
         // exclude enums from being treated as custom classes
         !(nonNullableType is InterfaceType &&
-          nonNullableType.element3 is EnumElement2) &&
+            nonNullableType.element3 is EnumElement2) &&
         !nonNullableType.isDartCoreType;
   }
 
@@ -212,19 +212,20 @@ class TypeAnalyzer {
         nonNullableType.getDisplayString() == 'Timestamp';
   }
 
-  static bool isAssignableFromType<T>(
-    DartType type,
-  ) => TypeChecker.fromRuntime(T).isAssignableFromType(type);
+  static bool isAssignableFromType<T>(DartType type) =>
+      TypeChecker.fromRuntime(T).isAssignableFromType(type);
 
   /// Check if a type is numeric (int, double, or num)
   static bool isNumericType(DartType type) =>
       _numChecker.isAssignableFromType(type);
 
   /// Check if a type is String
-  static bool isStringType(DartType type) => _stringChecker.isAssignableFromType(type);
+  static bool isStringType(DartType type) =>
+      _stringChecker.isAssignableFromType(type);
 
   /// Check if a type is bool
-  static bool isBoolType(DartType type) => _boolChecker.isAssignableFromType(type);
+  static bool isBoolType(DartType type) =>
+      _boolChecker.isAssignableFromType(type);
 
   /// Check if a type is int
   static bool isIntType(DartType type) {

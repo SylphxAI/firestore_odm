@@ -4,7 +4,6 @@ part 'manual_user.g.dart';
 
 @firestoreOdm
 class ManualUser {
-
   const ManualUser({
     required this.id,
     required this.name,

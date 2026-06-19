@@ -23,10 +23,14 @@ part 'test_schema.g.dart';
 @Collection<User>('users')
 @Collection<Post>('posts')
 @Collection<Post>('users/*/posts') // User subcollection
-@Collection<User>('users2') // Second User collection WITHOUT posts subcollection
+@Collection<User>(
+  'users2',
+) // Second User collection WITHOUT posts subcollection
 @Collection<Comment>('comments') // Root comments collection
 @Collection<Comment>('posts/*/comments') // Comments on posts in main collection
-@Collection<Comment>('users/*/posts/*/comments') // Nested: Comments on user posts (DEEP NESTING)
+@Collection<Comment>(
+  'users/*/posts/*/comments',
+) // Nested: Comments on user posts (DEEP NESTING)
 @Collection<SimpleStory>('simpleStories')
 @Collection<SharedPost>('sharedPosts') // Different path to avoid conflict
 @Collection<SharedPost>('users/*/sharedPosts') // Different subcollection path
@@ -44,11 +48,9 @@ part 'test_schema.g.dart';
 @Collection<ManualUser3<ManualUser3Profile<Book>>>(
   'manualUsers3',
 ) // complicated generic without toJson/fromJson implementation test
-
 @Collection<ManualUser3<ManualUser3Profile<String>>>(
   'manualUsers3Strings', // different collection name to avoid conflicts
 ) // complicated generic with different type parameter test
-
 @Collection<Task>('tasks') // Duration field test
 @Collection<ListLengthModel>(
   'listLengthModels',
@@ -56,11 +58,19 @@ part 'test_schema.g.dart';
 @Collection<StringGeneric>('stringGenerics') // Generic collection test
 @Collection<IntGeneric>('intGenerics') // Generic collection test
 @Collection<User>('snake_case_users') // Test snake_case to camelCase conversion
-@Collection<Post>('snake_case_users/*/user_posts') // Test snake_case subcollection
-@Collection<Comment>('snake_case_users/*/user_posts/*/post_comments') // Test nested snake_case subcollection
+@Collection<Post>(
+  'snake_case_users/*/user_posts',
+) // Test snake_case subcollection
+@Collection<Comment>(
+  'snake_case_users/*/user_posts/*/post_comments',
+) // Test nested snake_case subcollection
 @Collection<EnumUser>('enumUsers') // Enum + JsonValue test
 @Collection<EnumTask>('enumTasks') // Enum with numeric @JsonValue test
-@Collection<SimpleEnumTask>('simpleEnumTasks') // Simplified enum for automatic orderBy support
-@Collection<NullableTypesTestModel>('nullableTypesTests') // Issue #3: nullable types test
+@Collection<SimpleEnumTask>(
+  'simpleEnumTasks',
+) // Simplified enum for automatic orderBy support
+@Collection<NullableTypesTestModel>(
+  'nullableTypesTests',
+) // Issue #3: nullable types test
 @Collection<NestedData>('nestedData') // Nested data for issue #3 testing
 const TestSchema testSchema = _$TestSchema;

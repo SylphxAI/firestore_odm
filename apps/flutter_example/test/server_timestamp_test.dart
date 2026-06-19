@@ -39,11 +39,15 @@ void main() {
         await odm.users(user.id).update(user);
 
         // Test patch with server timestamps
-        await odm.users(user.id).patch(($) => [
-              $.lastLogin(FirestoreODM.serverTimestamp),
-              $.updatedAt(FirestoreODM.serverTimestamp),
-              $.name('Updated via Patch'),
-            ]);
+        await odm
+            .users(user.id)
+            .patch(
+              ($) => [
+                $.lastLogin(FirestoreODM.serverTimestamp),
+                $.updatedAt(FirestoreODM.serverTimestamp),
+                $.name('Updated via Patch'),
+              ],
+            );
 
         final updated = await odm.users(user.id).get();
         expect(updated, isNotNull);
@@ -52,12 +56,12 @@ void main() {
         expect(updated.updatedAt, isNotNull);
 
         print('lastLogin: ${updated.lastLogin}');
-        
+
         // Server timestamps should be recent (within last few seconds)
         final now = DateTime.now();
         final lastLoginDiff = now.difference(updated.lastLogin!).abs();
         final updatedAtDiff = now.difference(updated.updatedAt!).abs();
-        
+
         expect(lastLoginDiff.inMinutes, lessThan(1));
         expect(updatedAtDiff.inMinutes, lessThan(1));
 
@@ -82,12 +86,16 @@ void main() {
         await odm.posts(post.id).update(post);
 
         // Test modify with server timestamps
-        await odm.posts(post.id).modify((post) => post.copyWith(
-              title: 'Updated via Modify',
-              published: true,
-              publishedAt: FirestoreODM.serverTimestamp,
-              updatedAt: FirestoreODM.serverTimestamp,
-            ));
+        await odm
+            .posts(post.id)
+            .modify(
+              (post) => post.copyWith(
+                title: 'Updated via Modify',
+                published: true,
+                publishedAt: FirestoreODM.serverTimestamp,
+                updatedAt: FirestoreODM.serverTimestamp,
+              ),
+            );
 
         final updated = await odm.posts(post.id).get();
         expect(updated, isNotNull);
@@ -100,7 +108,7 @@ void main() {
         final now = DateTime.now();
         final publishedAtDiff = now.difference(updated.publishedAt!).abs();
         final updatedAtDiff = now.difference(updated.updatedAt!).abs();
-        
+
         expect(publishedAtDiff.inMinutes, lessThan(1));
         expect(updatedAtDiff.inMinutes, lessThan(1));
 
@@ -109,115 +117,140 @@ void main() {
         print('   updatedAt: ${updated.updatedAt}');
       });
 
-      test('should handle multiple server timestamps in single operation', () async {
-        final user = User(
-          id: 'multi_timestamp_user',
-          name: 'Multi Timestamp User',
-          email: 'multi@test.com',
-          age: 25,
-          profile: const Profile(
-            bio: 'Multiple timestamps test',
-            avatar: 'multi.jpg',
-            socialLinks: {},
-            interests: ['testing'],
-            followers: 50,
-          ),
-          rating: 3.5,
-          isActive: true,
-          createdAt: DateTime(2024),
-        );
+      test(
+        'should handle multiple server timestamps in single operation',
+        () async {
+          final user = User(
+            id: 'multi_timestamp_user',
+            name: 'Multi Timestamp User',
+            email: 'multi@test.com',
+            age: 25,
+            profile: const Profile(
+              bio: 'Multiple timestamps test',
+              avatar: 'multi.jpg',
+              socialLinks: {},
+              interests: ['testing'],
+              followers: 50,
+            ),
+            rating: 3.5,
+            isActive: true,
+            createdAt: DateTime(2024),
+          );
 
-        await odm.users(user.id).update(user);
+          await odm.users(user.id).update(user);
 
-        // Set multiple server timestamps at once
-        await odm.users(user.id).patch(($) => [
-              $.lastLogin(FirestoreODM.serverTimestamp),
-              $.updatedAt(FirestoreODM.serverTimestamp),
-              $.createdAt(FirestoreODM.serverTimestamp), // Override original
-              $.age.increment(1),
-            ]);
+          // Set multiple server timestamps at once
+          await odm
+              .users(user.id)
+              .patch(
+                ($) => [
+                  $.lastLogin(FirestoreODM.serverTimestamp),
+                  $.updatedAt(FirestoreODM.serverTimestamp),
+                  $.createdAt(
+                    FirestoreODM.serverTimestamp,
+                  ), // Override original
+                  $.age.increment(1),
+                ],
+              );
 
-        final updated = await odm.users(user.id).get();
-        expect(updated, isNotNull);
-        expect(updated!.age, equals(26)); // Incremented
-        expect(updated.lastLogin, isNotNull);
-        expect(updated.updatedAt, isNotNull);
-        expect(updated.createdAt, isNotNull);
+          final updated = await odm.users(user.id).get();
+          expect(updated, isNotNull);
+          expect(updated!.age, equals(26)); // Incremented
+          expect(updated.lastLogin, isNotNull);
+          expect(updated.updatedAt, isNotNull);
+          expect(updated.createdAt, isNotNull);
 
-        // All server timestamps should be very close to each other
-        final lastLogin = updated.lastLogin!;
-        final updatedAt = updated.updatedAt!;
-        final createdAt = updated.createdAt!;
+          // All server timestamps should be very close to each other
+          final lastLogin = updated.lastLogin!;
+          final updatedAt = updated.updatedAt!;
+          final createdAt = updated.createdAt!;
 
-        final diff1 = lastLogin.difference(updatedAt).abs();
-        final diff2 = lastLogin.difference(createdAt).abs();
-        
-        expect(diff1.inSeconds, lessThan(2)); // Should be nearly identical
-        expect(diff2.inSeconds, lessThan(2)); // Should be nearly identical
+          final diff1 = lastLogin.difference(updatedAt).abs();
+          final diff2 = lastLogin.difference(createdAt).abs();
 
-        print('✅ Multiple server timestamps work correctly');
-        print('   All timestamps within 2 seconds of each other');
-      });
+          expect(diff1.inSeconds, lessThan(2)); // Should be nearly identical
+          expect(diff2.inSeconds, lessThan(2)); // Should be nearly identical
+
+          print('✅ Multiple server timestamps work correctly');
+          print('   All timestamps within 2 seconds of each other');
+        },
+      );
     });
 
     group('⚠️ Server Timestamp Limitations & Edge Cases', () {
-      test('should demonstrate arithmetic operations create regular DateTime', () async {
-        final user = User(
-          id: 'arithmetic_test_user',
-          name: 'Arithmetic Test User',
-          email: 'arithmetic@test.com',
-          age: 30,
-          profile: const Profile(
-            bio: 'Testing arithmetic limitations',
-            avatar: 'arithmetic.jpg',
-            socialLinks: {},
-            interests: ['testing'],
-            followers: 100,
-          ),
-          rating: 4,
-          isActive: true,
-          createdAt: DateTime(2024),
-        );
+      test(
+        'should demonstrate arithmetic operations create regular DateTime',
+        () async {
+          final user = User(
+            id: 'arithmetic_test_user',
+            name: 'Arithmetic Test User',
+            email: 'arithmetic@test.com',
+            age: 30,
+            profile: const Profile(
+              bio: 'Testing arithmetic limitations',
+              avatar: 'arithmetic.jpg',
+              socialLinks: {},
+              interests: ['testing'],
+              followers: 100,
+            ),
+            rating: 4,
+            isActive: true,
+            createdAt: DateTime(2024),
+          );
 
-        await odm.users(user.id).update(user);
+          await odm.users(user.id).update(user);
 
-        // This creates a regular DateTime, NOT a server timestamp
-        final futureDate = FirestoreODM.serverTimestamp.add(const Duration(days: 30));
-        
-        await odm.users(user.id).modify((user) => user.copyWith(
-              lastLogin: FirestoreODM.serverTimestamp, // This IS a server timestamp
-              updatedAt: futureDate, // This is NOT a server timestamp
-            ));
+          // This creates a regular DateTime, NOT a server timestamp
+          final futureDate = FirestoreODM.serverTimestamp.add(
+            const Duration(days: 30),
+          );
 
-        final updated = await odm.users(user.id).get();
-        expect(updated, isNotNull);
+          await odm
+              .users(user.id)
+              .modify(
+                (user) => user.copyWith(
+                  lastLogin: FirestoreODM
+                      .serverTimestamp, // This IS a server timestamp
+                  updatedAt: futureDate, // This is NOT a server timestamp
+                ),
+              );
 
-        // lastLogin should be recent (server timestamp)
-        final now = DateTime.now();
-        final lastLoginDiff = now.difference(updated!.lastLogin!).abs();
-        expect(lastLoginDiff.inMinutes, lessThan(1));
+          final updated = await odm.users(user.id).get();
+          expect(updated, isNotNull);
 
-        // updatedAt should be the calculated future date (regular DateTime)
-        // The calculated date is based on the impossible timestamp value
-        expect(updated.updatedAt, equals(futureDate));
-        expect(updated.updatedAt!.isBefore(DateTime(1970)), isTrue); // Way in the past
+          // lastLogin should be recent (server timestamp)
+          final now = DateTime.now();
+          final lastLoginDiff = now.difference(updated!.lastLogin!).abs();
+          expect(lastLoginDiff.inMinutes, lessThan(1));
 
-        print('✅ Arithmetic operations create regular DateTime as expected');
-        print('   lastLogin (server): ${updated.lastLogin}');
-        print('   updatedAt (calculated): ${updated.updatedAt}');
-        print('⚠️  updatedAt is NOT a server timestamp due to arithmetic');
-      });
+          // updatedAt should be the calculated future date (regular DateTime)
+          // The calculated date is based on the impossible timestamp value
+          expect(updated.updatedAt, equals(futureDate));
+          expect(
+            updated.updatedAt!.isBefore(DateTime(1970)),
+            isTrue,
+          ); // Way in the past
+
+          print('✅ Arithmetic operations create regular DateTime as expected');
+          print('   lastLogin (server): ${updated.lastLogin}');
+          print('   updatedAt (calculated): ${updated.updatedAt}');
+          print('⚠️  updatedAt is NOT a server timestamp due to arithmetic');
+        },
+      );
 
       test('should verify serverTimestamp constant value', () {
         // The server timestamp constant should be an impossible date
         final serverTimestamp = FirestoreODM.serverTimestamp;
-        
+
         // Should be the specific impossible timestamp value
-        expect(serverTimestamp.millisecondsSinceEpoch, equals(-8640000000000000));
-        
+        expect(
+          serverTimestamp.millisecondsSinceEpoch,
+          equals(-8640000000000000),
+        );
+
         // Should be way before epoch
         expect(serverTimestamp.isBefore(DateTime(1970)), isTrue);
-        
+
         // Should be way before any reasonable date
         expect(serverTimestamp.isBefore(DateTime(1900)), isTrue);
 
@@ -246,11 +279,15 @@ void main() {
         expect(initial.updatedAt, isNull);
 
         // Set server timestamps on null fields
-        await odm.posts(post.id).patch(($) => [
-              $.publishedAt(FirestoreODM.serverTimestamp),
-              $.updatedAt(FirestoreODM.serverTimestamp),
-              $.published(true),
-            ]);
+        await odm
+            .posts(post.id)
+            .patch(
+              ($) => [
+                $.publishedAt(FirestoreODM.serverTimestamp),
+                $.updatedAt(FirestoreODM.serverTimestamp),
+                $.published(true),
+              ],
+            );
 
         final updated = await odm.posts(post.id).get();
         expect(updated!.publishedAt, isNotNull);
@@ -259,7 +296,10 @@ void main() {
 
         // Should be recent timestamps
         final now = DateTime.now();
-        expect(now.difference(updated.publishedAt!).abs().inMinutes, lessThan(1));
+        expect(
+          now.difference(updated.publishedAt!).abs().inMinutes,
+          lessThan(1),
+        );
         expect(now.difference(updated.updatedAt!).abs().inMinutes, lessThan(1));
 
         print('✅ Null to server timestamp transitions work correctly');
@@ -281,7 +321,8 @@ void main() {
           rating: 4,
           isActive: true,
           createdAt: DateTime(2024),
-          lastLogin: FirestoreODM.serverTimestamp, // Set server timestamp initially
+          lastLogin:
+              FirestoreODM.serverTimestamp, // Set server timestamp initially
         );
 
         await odm.users(user.id).update(user);
@@ -291,10 +332,9 @@ void main() {
         expect(initial!.lastLogin, isNotNull);
 
         // Set timestamp field back to null
-        await odm.users(user.id).patch(($) => [
-              $.lastLogin(null),
-              $.name('Timestamp Cleared'),
-            ]);
+        await odm
+            .users(user.id)
+            .patch(($) => [$.lastLogin(null), $.name('Timestamp Cleared')]);
 
         final updated = await odm.users(user.id).get();
         expect(updated!.lastLogin, isNull);
@@ -327,11 +367,15 @@ void main() {
 
         // Use server timestamp in transaction
         await odm.runTransaction((tx) async {
-          tx.users(user.id).patch(($) => [
-                $.lastLogin(FirestoreODM.serverTimestamp),
-                $.updatedAt(FirestoreODM.serverTimestamp),
-                $.isPremium(true),
-              ]);
+          tx
+              .users(user.id)
+              .patch(
+                ($) => [
+                  $.lastLogin(FirestoreODM.serverTimestamp),
+                  $.updatedAt(FirestoreODM.serverTimestamp),
+                  $.isPremium(true),
+                ],
+              );
         });
 
         final updated = await odm.users(user.id).get();
@@ -388,17 +432,25 @@ void main() {
 
         // Use server timestamps in batch operations
         await odm.runBatch((batch) {
-          batch.users(user1.id).patch(($) => [
-                $.lastLogin(FirestoreODM.serverTimestamp),
-                $.updatedAt(FirestoreODM.serverTimestamp),
-                $.isPremium(true),
-              ]);
+          batch
+              .users(user1.id)
+              .patch(
+                ($) => [
+                  $.lastLogin(FirestoreODM.serverTimestamp),
+                  $.updatedAt(FirestoreODM.serverTimestamp),
+                  $.isPremium(true),
+                ],
+              );
 
-          batch.users(user2.id).patch(($) => [
-                $.lastLogin(FirestoreODM.serverTimestamp),
-                $.updatedAt(FirestoreODM.serverTimestamp),
-                $.age.increment(1),
-              ]);
+          batch
+              .users(user2.id)
+              .patch(
+                ($) => [
+                  $.lastLogin(FirestoreODM.serverTimestamp),
+                  $.updatedAt(FirestoreODM.serverTimestamp),
+                  $.age.increment(1),
+                ],
+              );
         });
 
         final updated1 = await odm.users(user1.id).get();
@@ -414,11 +466,19 @@ void main() {
 
         // Both should have recent timestamps
         final now = DateTime.now();
-        expect(now.difference(updated1.lastLogin!).abs().inMinutes, lessThan(1));
-        expect(now.difference(updated2.lastLogin!).abs().inMinutes, lessThan(1));
+        expect(
+          now.difference(updated1.lastLogin!).abs().inMinutes,
+          lessThan(1),
+        );
+        expect(
+          now.difference(updated2.lastLogin!).abs().inMinutes,
+          lessThan(1),
+        );
 
         // Batch timestamps should be very close to each other
-        final timeDiff = updated1.lastLogin!.difference(updated2.lastLogin!).abs();
+        final timeDiff = updated1.lastLogin!
+            .difference(updated2.lastLogin!)
+            .abs();
         expect(timeDiff.inSeconds, lessThan(5)); // Should be nearly identical
 
         print('✅ Server timestamps work correctly in batch operations');
@@ -446,13 +506,17 @@ void main() {
         await odm.users(user.id).update(user);
 
         // Update both server timestamp and nested fields
-        await odm.users(user.id).patch(($) => [
-              $.lastLogin(FirestoreODM.serverTimestamp),
-              $.updatedAt(FirestoreODM.serverTimestamp),
-              $.profile.bio('Updated bio with timestamp'),
-              $.profile.followers.increment(25),
-              $.profile.socialLinks.set('github', '@nested_user'),
-            ]);
+        await odm
+            .users(user.id)
+            .patch(
+              ($) => [
+                $.lastLogin(FirestoreODM.serverTimestamp),
+                $.updatedAt(FirestoreODM.serverTimestamp),
+                $.profile.bio('Updated bio with timestamp'),
+                $.profile.followers.increment(25),
+                $.profile.socialLinks.set('github', '@nested_user'),
+              ],
+            );
 
         final updated = await odm.users(user.id).get();
         expect(updated!.lastLogin, isNotNull);
@@ -474,14 +538,14 @@ void main() {
         // Verify the constant properties
         final timestamp1 = FirestoreODM.serverTimestamp;
         final timestamp2 = FirestoreODM.serverTimestamp;
-        
+
         // Should be the same reference/value
         expect(timestamp1, equals(timestamp2));
         expect(identical(timestamp1, timestamp2), isTrue);
-        
+
         // Should have the impossible timestamp value
         expect(timestamp1.millisecondsSinceEpoch, equals(-8640000000000000));
-        
+
         // Should be recognizable as the special value
         expect(timestamp1.toString(), contains('-271821-04-20 01:00:00.000'));
 
@@ -504,13 +568,17 @@ void main() {
         await odm.posts(originalPost.id).update(originalPost);
 
         // Use copyWith with server timestamp
-        await odm.posts(originalPost.id).modify((post) => post.copyWith(
-              title: 'Updated with CopyWith',
-              published: true,
-              publishedAt: FirestoreODM.serverTimestamp,
-              updatedAt: FirestoreODM.serverTimestamp,
-              likes: 10,
-            ));
+        await odm
+            .posts(originalPost.id)
+            .modify(
+              (post) => post.copyWith(
+                title: 'Updated with CopyWith',
+                published: true,
+                publishedAt: FirestoreODM.serverTimestamp,
+                updatedAt: FirestoreODM.serverTimestamp,
+                likes: 10,
+              ),
+            );
 
         final updated = await odm.posts(originalPost.id).get();
         expect(updated!.title, equals('Updated with CopyWith'));
@@ -520,7 +588,10 @@ void main() {
         expect(updated.updatedAt, isNotNull);
 
         final now = DateTime.now();
-        expect(now.difference(updated.publishedAt!).abs().inMinutes, lessThan(1));
+        expect(
+          now.difference(updated.publishedAt!).abs().inMinutes,
+          lessThan(1),
+        );
         expect(now.difference(updated.updatedAt!).abs().inMinutes, lessThan(1));
 
         print('✅ Server timestamps work correctly with copyWith');
@@ -548,11 +619,15 @@ void main() {
 
         // Perform rapid successive updates with server timestamps
         final futures = List.generate(5, (i) async {
-          await odm.users(user.id).patch(($) => [
-                $.lastLogin(FirestoreODM.serverTimestamp),
-                $.updatedAt(FirestoreODM.serverTimestamp),
-                $.age.increment(1),
-              ]);
+          await odm
+              .users(user.id)
+              .patch(
+                ($) => [
+                  $.lastLogin(FirestoreODM.serverTimestamp),
+                  $.updatedAt(FirestoreODM.serverTimestamp),
+                  $.age.increment(1),
+                ],
+              );
         });
 
         await Future.wait(futures);

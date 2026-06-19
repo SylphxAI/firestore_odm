@@ -21,7 +21,7 @@ void main() {
         // This should compile if the extensions are generated correctly
         final usersCollection = batch.users;
         expect(usersCollection, isNotNull);
-        
+
         // Test insert operation
         final user = User(
           id: 'test_user',
@@ -38,10 +38,10 @@ void main() {
           isActive: true,
           createdAt: DateTime.now(),
         );
-        
+
         batch.users.insert(user);
       });
-      
+
       // Verify the user was inserted
       final users = await odm.users.get();
       expect(users.length, equals(1));

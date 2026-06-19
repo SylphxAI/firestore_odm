@@ -6,7 +6,6 @@ part 'dart_immutable_user.g.dart';
 @JsonSerializable()
 @firestoreOdm
 class DartImmutableUser {
-
   const DartImmutableUser({
     required this.id,
     required this.name,

@@ -43,7 +43,9 @@ class FilterGenerator {
     final builders = computeNeededBuilders(type: type);
 
     // Generate methods for all fields
-    final fields = getFields(type).values.map((field) => _generateFieldGetter(field: field)).toList();
+    final fields = getFields(
+      type,
+    ).values.map((field) => _generateFieldGetter(field: field)).toList();
 
     // Create extension
     return Class(

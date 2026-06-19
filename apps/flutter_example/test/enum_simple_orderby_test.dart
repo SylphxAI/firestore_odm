@@ -48,33 +48,34 @@ void main() {
         final priorityOrderedTasks = await odm.simpleEnumTasks
             .orderBy(($) => ($.priority(),))
             .get();
-        
+
         expect(priorityOrderedTasks.length, 3);
         print('✅ OrderBy by priority works automatically!');
-        
+
         // Test different ordering
         final statusOrderedTasks = await odm.simpleEnumTasks
             .orderBy(($) => ($.status(),))
             .get();
-        
+
         expect(statusOrderedTasks.length, 3);
         print('✅ OrderBy by status works automatically!');
-        
+
         // Test complex orderBy
         final complexOrderedTasks = await odm.simpleEnumTasks
             .orderBy(($) => ($.priority(), $.createdAt(descending: true)))
             .get();
-        
+
         expect(complexOrderedTasks.length, 3);
         print('✅ Complex orderBy with enum + DateTime works!');
-        
       } catch (e) {
         fail('Automatic enum OrderBy should work, but got error: $e');
       }
     });
 
-    test('should demonstrate automatic enum default value generation', () async {
-      print('''
+    test(
+      'should demonstrate automatic enum default value generation',
+      () async {
+        print('''
 🎯 Simplified Enum OrderBy Solution:
 
 1. Problem: OrderBy needs default values but enums are hard to default
@@ -88,8 +89,9 @@ void main() {
 
 ✅ Zero-config enum OrderBy support achieved!
 ''');
-      
-      expect(true, isTrue); // Test passes to show the documentation
-    });
+
+        expect(true, isTrue); // Test passes to show the documentation
+      },
+    );
   });
 }

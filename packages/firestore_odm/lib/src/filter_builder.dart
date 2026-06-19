@@ -442,7 +442,10 @@ mixin ArrayFilterableMixin<T, E, JE> on FilterBuilderNode {
 
   /// Check if the array contains any of the specified values
   ArrayContainsAnyOperation<JE> containsAny(Iterable<E> values) {
-    return ArrayContainsAnyOperation(field, values.map(_elementToJson).toList());
+    return ArrayContainsAnyOperation(
+      field,
+      values.map(_elementToJson).toList(),
+    );
   }
 }
 
@@ -714,8 +717,7 @@ abstract class MapFilterField<T, K, V, JV> extends FilterBuilderNode {
 
 /// Numeric field callable updater
 class NumericFieldUpdate<T extends num?> extends PatchBuilder<T, T> {
-  NumericFieldUpdate({required super.field})
-    : super(toJson: (value) => value);
+  NumericFieldUpdate({required super.field}) : super(toJson: (value) => value);
 
   /// Increment field value
   UpdateOperation increment(T value) {
@@ -729,11 +731,9 @@ class NumericFieldUpdate<T extends num?> extends PatchBuilder<T, T> {
 /// List field callable updater
 class ListFieldUpdate<T extends Iterable<E>?, E, R>
     extends PatchBuilder<T, List<R>?> {
-  ListFieldUpdate({
-    required super.field,
-    required R Function(E) elementToJson,
-  }) : _elementToJson = elementToJson,
-       super(toJson: (value) => value?.map(elementToJson).toList());
+  ListFieldUpdate({required super.field, required R Function(E) elementToJson})
+    : _elementToJson = elementToJson,
+      super(toJson: (value) => value?.map(elementToJson).toList());
 
   final R Function(E) _elementToJson;
 
@@ -881,7 +881,7 @@ class DartMapFieldUpdate<T extends Map<K, V>?, K, V, R>
     required super.keyToJson,
     required super.valueToJson,
   }) : super(
-          toJson: (value) =>
-              value == null ? {} : mapToJson(value, keyToJson, valueToJson),
-        );
+         toJson: (value) =>
+             value == null ? {} : mapToJson(value, keyToJson, valueToJson),
+       );
 }
