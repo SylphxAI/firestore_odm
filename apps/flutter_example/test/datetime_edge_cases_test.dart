@@ -197,7 +197,11 @@ void main() {
           final retrieved = await odm.users(user.id).get();
 
           expect(retrieved, isNotNull, reason: 'Failed for date: $date');
-          expect(retrieved!.createdAt, equals(date), reason: 'Date mismatch for: $date');
+          expect(
+            retrieved!.createdAt,
+            equals(date),
+            reason: 'Date mismatch for: $date',
+          );
         }
       });
     });
@@ -263,7 +267,12 @@ void main() {
             name: 'Now User 1',
             email: 'now1@example.com',
             age: 25,
-            profile: const Profile(bio: 'Now 1', avatar: 'now1.jpg', socialLinks: {}, interests: []),
+            profile: const Profile(
+              bio: 'Now 1',
+              avatar: 'now1.jpg',
+              socialLinks: {},
+              interests: [],
+            ),
             createdAt: now1,
           ),
           User(
@@ -271,7 +280,12 @@ void main() {
             name: 'Now User 2',
             email: 'now2@example.com',
             age: 25,
-            profile: const Profile(bio: 'Now 2', avatar: 'now2.jpg', socialLinks: {}, interests: []),
+            profile: const Profile(
+              bio: 'Now 2',
+              avatar: 'now2.jpg',
+              socialLinks: {},
+              interests: [],
+            ),
             createdAt: now2,
           ),
           User(
@@ -279,7 +293,12 @@ void main() {
             name: 'Now UTC User',
             email: 'nowutc@example.com',
             age: 25,
-            profile: const Profile(bio: 'Now UTC', avatar: 'nowutc.jpg', socialLinks: {}, interests: []),
+            profile: const Profile(
+              bio: 'Now UTC',
+              avatar: 'nowutc.jpg',
+              socialLinks: {},
+              interests: [],
+            ),
             createdAt: nowUtc,
           ),
         ];
@@ -302,49 +321,66 @@ void main() {
           final diff = retrievedUsers[i]!.createdAt!
               .difference(retrievedUsers[i + 1]!.createdAt!)
               .abs();
-          expect(diff.inSeconds, lessThan(10), reason: 'DateTime.now() calls too far apart');
+          expect(
+            diff.inSeconds,
+            lessThan(10),
+            reason: 'DateTime.now() calls too far apart',
+          );
         }
       });
     });
 
     group('🔄 DateTime Serialization Edge Cases', () {
-      test('should handle DateTime serialization round-trip with edge values', () async {
-        final edgeDates = [
-          DateTime.fromMillisecondsSinceEpoch(0), // Unix epoch
-          DateTime.fromMillisecondsSinceEpoch(1), // First millisecond
-          DateTime.fromMillisecondsSinceEpoch(-1), // Before epoch (if supported)
-          DateTime(2024, 1, 1), // Exact midnight
-          DateTime(2024, 1, 1, 23, 59, 59, 999), // Last millisecond of day
-        ];
+      test(
+        'should handle DateTime serialization round-trip with edge values',
+        () async {
+          final edgeDates = [
+            DateTime.fromMillisecondsSinceEpoch(0), // Unix epoch
+            DateTime.fromMillisecondsSinceEpoch(1), // First millisecond
+            DateTime.fromMillisecondsSinceEpoch(
+              -1,
+            ), // Before epoch (if supported)
+            DateTime(2024, 1, 1), // Exact midnight
+            DateTime(2024, 1, 1, 23, 59, 59, 999), // Last millisecond of day
+          ];
 
-        for (var i = 0; i < edgeDates.length; i++) {
-          final date = edgeDates[i];
-          final post = Post(
-            id: 'edge_post_$i',
-            title: 'Edge Post $i',
-            content: 'Testing edge date: $date',
-            authorId: 'author',
-            tags: ['edge', 'test'],
-            metadata: {'edge_case': i},
-            createdAt: date,
-            publishedAt: date,
-          );
+          for (var i = 0; i < edgeDates.length; i++) {
+            final date = edgeDates[i];
+            final post = Post(
+              id: 'edge_post_$i',
+              title: 'Edge Post $i',
+              content: 'Testing edge date: $date',
+              authorId: 'author',
+              tags: ['edge', 'test'],
+              metadata: {'edge_case': i},
+              createdAt: date,
+              publishedAt: date,
+            );
 
-          await odm.posts(post.id).update(post);
-          final retrieved = await odm.posts(post.id).get();
+            await odm.posts(post.id).update(post);
+            final retrieved = await odm.posts(post.id).get();
 
-          expect(retrieved, isNotNull, reason: 'Failed for edge date: $date');
-          expect(retrieved!.createdAt, equals(date), reason: 'createdAt mismatch for: $date');
-          expect(retrieved.publishedAt, equals(date), reason: 'publishedAt mismatch for: $date');
+            expect(retrieved, isNotNull, reason: 'Failed for edge date: $date');
+            expect(
+              retrieved!.createdAt,
+              equals(date),
+              reason: 'createdAt mismatch for: $date',
+            );
+            expect(
+              retrieved.publishedAt,
+              equals(date),
+              reason: 'publishedAt mismatch for: $date',
+            );
 
-          // Verify millisecond precision is maintained
-          expect(
-            retrieved.createdAt.millisecondsSinceEpoch,
-            equals(date.millisecondsSinceEpoch),
-            reason: 'Millisecond precision lost for: $date',
-          );
-        }
-      });
+            // Verify millisecond precision is maintained
+            expect(
+              retrieved.createdAt.millisecondsSinceEpoch,
+              equals(date.millisecondsSinceEpoch),
+              reason: 'Millisecond precision lost for: $date',
+            );
+          }
+        },
+      );
 
       test('should handle DateTime with zero components', () async {
         final zeroComponentDates = [
@@ -384,49 +420,57 @@ void main() {
     });
 
     group('🚫 DateTime Null Safety Edge Cases', () {
-      test('should handle transitions between null and non-null DateTime fields', () async {
-        final user = User(
-          id: 'null_transition_user',
-          name: 'Null Transition User',
-          email: 'null.transition@example.com',
-          age: 25,
-          profile: const Profile(
-            bio: 'Testing null transitions',
-            avatar: 'null.jpg',
-            socialLinks: {},
-            interests: [],
-          ),
-          createdAt: DateTime.now(),
-        );
+      test(
+        'should handle transitions between null and non-null DateTime fields',
+        () async {
+          final user = User(
+            id: 'null_transition_user',
+            name: 'Null Transition User',
+            email: 'null.transition@example.com',
+            age: 25,
+            profile: const Profile(
+              bio: 'Testing null transitions',
+              avatar: 'null.jpg',
+              socialLinks: {},
+              interests: [],
+            ),
+            createdAt: DateTime.now(),
+          );
 
-        // Initial state: lastLogin is null
-        await odm.users(user.id).update(user);
-        var retrieved = await odm.users(user.id).get();
-        expect(retrieved!.lastLogin, isNull);
-        expect(retrieved.updatedAt, isNull);
+          // Initial state: lastLogin is null
+          await odm.users(user.id).update(user);
+          var retrieved = await odm.users(user.id).get();
+          expect(retrieved!.lastLogin, isNull);
+          expect(retrieved.updatedAt, isNull);
 
-        // Update to non-null
-        final loginTime = DateTime.now();
-        await odm.users(user.id).modify((user) => user.copyWith(
-              lastLogin: loginTime,
-              updatedAt: DateTime.now(),
-            ));
+          // Update to non-null
+          final loginTime = DateTime.now();
+          await odm
+              .users(user.id)
+              .modify(
+                (user) => user.copyWith(
+                  lastLogin: loginTime,
+                  updatedAt: DateTime.now(),
+                ),
+              );
 
-        retrieved = await odm.users(user.id).get();
-        expect(retrieved!.lastLogin, isNotNull);
-        expect(retrieved.lastLogin, equals(loginTime));
-        expect(retrieved.updatedAt, isNotNull);
+          retrieved = await odm.users(user.id).get();
+          expect(retrieved!.lastLogin, isNotNull);
+          expect(retrieved.lastLogin, equals(loginTime));
+          expect(retrieved.updatedAt, isNotNull);
 
-        // Update back to null
-        await odm.users(user.id).modify((user) => user.copyWith(
-              lastLogin: null,
-              updatedAt: null,
-            ));
+          // Update back to null
+          await odm
+              .users(user.id)
+              .modify(
+                (user) => user.copyWith(lastLogin: null, updatedAt: null),
+              );
 
-        retrieved = await odm.users(user.id).get();
-        expect(retrieved!.lastLogin, isNull);
-        expect(retrieved.updatedAt, isNull);
-      });
+          retrieved = await odm.users(user.id).get();
+          expect(retrieved!.lastLogin, isNull);
+          expect(retrieved.updatedAt, isNull);
+        },
+      );
 
       test('should handle multiple null DateTime fields correctly', () async {
         final user = User(
@@ -455,60 +499,81 @@ void main() {
     });
 
     group('⚠️ DateTime Comparison Edge Cases', () {
-      test('should handle DateTime equality with different precisions', () async {
-        final baseTime = DateTime(2024, 6, 15, 12, 30, 45);
-        final timeWithMs = DateTime(2024, 6, 15, 12, 30, 45, 123);
-        final timeWithMicros = DateTime(2024, 6, 15, 12, 30, 45, 123, 456);
+      test(
+        'should handle DateTime equality with different precisions',
+        () async {
+          final baseTime = DateTime(2024, 6, 15, 12, 30, 45);
+          final timeWithMs = DateTime(2024, 6, 15, 12, 30, 45, 123);
+          final timeWithMicros = DateTime(2024, 6, 15, 12, 30, 45, 123, 456);
 
-        final users = [
-          User(
-            id: 'base_time',
-            name: 'Base Time',
-            email: 'base@example.com',
-            age: 25,
-            profile: const Profile(bio: 'Base', avatar: 'base.jpg', socialLinks: {}, interests: []),
-            createdAt: baseTime,
-          ),
-          User(
-            id: 'time_with_ms',
-            name: 'Time With Ms',
-            email: 'ms@example.com',
-            age: 25,
-            profile: const Profile(bio: 'With Ms', avatar: 'ms.jpg', socialLinks: {}, interests: []),
-            createdAt: timeWithMs,
-          ),
-          User(
-            id: 'time_with_micros',
-            name: 'Time With Micros',
-            email: 'micros@example.com',
-            age: 25,
-            profile: const Profile(bio: 'With Micros', avatar: 'micros.jpg', socialLinks: {}, interests: []),
-            createdAt: timeWithMicros,
-          ),
-        ];
+          final users = [
+            User(
+              id: 'base_time',
+              name: 'Base Time',
+              email: 'base@example.com',
+              age: 25,
+              profile: const Profile(
+                bio: 'Base',
+                avatar: 'base.jpg',
+                socialLinks: {},
+                interests: [],
+              ),
+              createdAt: baseTime,
+            ),
+            User(
+              id: 'time_with_ms',
+              name: 'Time With Ms',
+              email: 'ms@example.com',
+              age: 25,
+              profile: const Profile(
+                bio: 'With Ms',
+                avatar: 'ms.jpg',
+                socialLinks: {},
+                interests: [],
+              ),
+              createdAt: timeWithMs,
+            ),
+            User(
+              id: 'time_with_micros',
+              name: 'Time With Micros',
+              email: 'micros@example.com',
+              age: 25,
+              profile: const Profile(
+                bio: 'With Micros',
+                avatar: 'micros.jpg',
+                socialLinks: {},
+                interests: [],
+              ),
+              createdAt: timeWithMicros,
+            ),
+          ];
 
-        for (final user in users) {
-          await odm.users(user.id).update(user);
-        }
+          for (final user in users) {
+            await odm.users(user.id).update(user);
+          }
 
-        final retrievedUsers = await Future.wait([
-          odm.users('base_time').get(),
-          odm.users('time_with_ms').get(),
-          odm.users('time_with_micros').get(),
-        ]);
+          final retrievedUsers = await Future.wait([
+            odm.users('base_time').get(),
+            odm.users('time_with_ms').get(),
+            odm.users('time_with_micros').get(),
+          ]);
 
-        // Verify times are different due to precision
-        expect(
-          retrievedUsers[0]!.createdAt!.millisecondsSinceEpoch,
-          isNot(equals(retrievedUsers[1]!.createdAt!.millisecondsSinceEpoch)),
-        );
+          // Verify times are different due to precision
+          expect(
+            retrievedUsers[0]!.createdAt!.millisecondsSinceEpoch,
+            isNot(equals(retrievedUsers[1]!.createdAt!.millisecondsSinceEpoch)),
+          );
 
-        // But they should be very close (same second)
-        expect(
-          retrievedUsers[0]!.createdAt!.difference(retrievedUsers[1]!.createdAt!).abs().inSeconds,
-          equals(0),
-        );
-      });
+          // But they should be very close (same second)
+          expect(
+            retrievedUsers[0]!.createdAt!
+                .difference(retrievedUsers[1]!.createdAt!)
+                .abs()
+                .inSeconds,
+            equals(0),
+          );
+        },
+      );
 
       test('should handle DateTime arithmetic edge cases', () async {
         final baseTime = DateTime(2024, 1, 1, 12);
@@ -547,7 +612,9 @@ void main() {
         final retrieved = await odm.users(user.id).get();
 
         expect(retrieved, isNotNull);
-        final calculatedDiff = retrieved!.updatedAt!.difference(retrieved.createdAt!);
+        final calculatedDiff = retrieved!.updatedAt!.difference(
+          retrieved.createdAt!,
+        );
         expect(calculatedDiff, equals(yearBoundaryDiff));
       });
     });

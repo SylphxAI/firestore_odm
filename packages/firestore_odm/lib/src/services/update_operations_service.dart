@@ -487,7 +487,6 @@ abstract class QueryFilterHandler {
     return query.where(filter.toFilter());
   }
 
-
   static FilterOperation buildFilter<T, F extends FilterBuilderRoot>({
     required F builderRoot,
     required FilterOperation Function(F builder) filterBuilder,

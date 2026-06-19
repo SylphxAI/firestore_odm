@@ -13,8 +13,10 @@ abstract class SimpleGeneric<T> with _$SimpleGeneric<T> {
     required String type,
   }) = _SimpleGeneric<T>;
 
-  factory SimpleGeneric.fromJson(Map<String, dynamic> json, T Function(Object?) fromJsonT) =>
-      _$SimpleGenericFromJson(json, fromJsonT);
+  factory SimpleGeneric.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object?) fromJsonT,
+  ) => _$SimpleGenericFromJson(json, fromJsonT);
 }
 
 // Typedef for concrete usage in schema

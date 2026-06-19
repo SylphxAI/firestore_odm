@@ -119,10 +119,8 @@ void main() {
         // Complex bulk modification: update non-premium users
         await odm.users
             .where(
-              ($) => $.and(
-                $.isPremium(isEqualTo: false),
-                $.rating(isLessThan: 4),
-              ),
+              ($) =>
+                  $.and($.isPremium(isEqualTo: false), $.rating(isLessThan: 4)),
             )
             .modify(
               (user) => user.copyWith(

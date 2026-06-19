@@ -13,12 +13,14 @@ abstract class Comment with _$Comment {
     required String authorId,
     required String authorName,
     required String postId,
-    required DateTime createdAt, @Default(0) int likes,
+    required DateTime createdAt,
+    @Default(0) int likes,
     @Default(false) bool isEdited,
     DateTime? editedAt,
     List<String>? mentions,
     String? parentCommentId, // For nested replies
   }) = _Comment;
 
-  factory Comment.fromJson(Map<String, dynamic> json) => _$CommentFromJson(json);
+  factory Comment.fromJson(Map<String, dynamic> json) =>
+      _$CommentFromJson(json);
 }

@@ -170,11 +170,15 @@ void main() {
       final userPosts = await odm.users('manual_subcol_user').posts.get();
       expect(userPosts.length, equals(2));
 
-      final retrievedPost1 = userPosts.firstWhere((p) => p.id == 'manual_user_post_1');
+      final retrievedPost1 = userPosts.firstWhere(
+        (p) => p.id == 'manual_user_post_1',
+      );
       expect(retrievedPost1.title, equals('Updated Manual User Post 1'));
       expect(retrievedPost1.likes, equals(30));
 
-      final retrievedPost2 = userPosts.firstWhere((p) => p.id == 'manual_user_post_2');
+      final retrievedPost2 = userPosts.firstWhere(
+        (p) => p.id == 'manual_user_post_2',
+      );
       expect(retrievedPost2.title, equals('Manual User Post 2'));
       expect(retrievedPost2.likes, equals(35));
     });
@@ -205,14 +209,18 @@ void main() {
       batch.users.insert(user);
 
       // Apply patch operations
-      batch.users('manual_patch_user').patch(($) => [
-        $.name('Patched Manual User'),
-        $.age(33),
-        $.profile.bio('Patched bio using manual batch'),
-        $.profile.followers(100),
-        $.profile.socialLinks.set('github', '@patched'),
-        $.isPremium(true),
-      ]);
+      batch
+          .users('manual_patch_user')
+          .patch(
+            ($) => [
+              $.name('Patched Manual User'),
+              $.age(33),
+              $.profile.bio('Patched bio using manual batch'),
+              $.profile.followers(100),
+              $.profile.socialLinks.set('github', '@patched'),
+              $.isPremium(true),
+            ],
+          );
 
       // Commit the batch manually
       await batch.commit();
@@ -222,7 +230,10 @@ void main() {
       expect(retrievedUser, isNotNull);
       expect(retrievedUser!.name, equals('Patched Manual User'));
       expect(retrievedUser.age, equals(33));
-      expect(retrievedUser.profile.bio, equals('Patched bio using manual batch'));
+      expect(
+        retrievedUser.profile.bio,
+        equals('Patched bio using manual batch'),
+      );
       expect(retrievedUser.profile.followers, equals(100));
       expect(retrievedUser.profile.socialLinks['github'], equals('@patched'));
       expect(retrievedUser.isPremium, isTrue);

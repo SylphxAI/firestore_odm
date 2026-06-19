@@ -10,12 +10,13 @@ import '../utils/model_analyzer.dart';
 
 /// Generator for aggregate field selectors using code_builder
 class AggregateGenerator {
-
   static TypeDefinition getTypeDefinition(FieldInfo field) {
     final args = {
       'field': field.isDocumentId
           ? refer('FieldPath.documentId')
-          : refer('path').property('append').call([literalString(field.jsonName)]),
+          : refer(
+              'path',
+            ).property('append').call([literalString(field.jsonName)]),
       'context': refer('\$context'),
     };
     if (field.type is TypeParameterType) {
@@ -23,7 +24,9 @@ class AggregateGenerator {
         type: TypeReference(
           (b) => b..symbol = '\$${field.type.element3!.name3}',
         ),
-        instance: refer('_builderFunc${field.type.element3!.name3!.camelCase()}'),
+        instance: refer(
+          '_builderFunc${field.type.element3!.name3!.camelCase()}',
+        ),
         namedArguments: args,
       );
     }
@@ -48,6 +51,7 @@ class AggregateGenerator {
       namedArguments: args,
     );
   }
+
   /// Generate numeric field accessor method for aggregation
   static Field _generateNumericFieldAccessor(FieldInfo field) {
     final typeDef = getTypeDefinition(field);
@@ -58,7 +62,9 @@ class AggregateGenerator {
         ..modifier = FieldModifier.final$
         ..late = true
         ..type = typeDef.type
-        ..assignment = typeDef.instance.newInstance([], typeDef.namedArguments).code,
+        ..assignment = typeDef.instance
+            .newInstance([], typeDef.namedArguments)
+            .code,
     );
   }
 

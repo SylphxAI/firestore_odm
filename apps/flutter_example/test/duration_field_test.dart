@@ -35,8 +35,14 @@ void main() {
         expect(retrieved, isNotNull);
         expect(retrieved!.id, equals('task_with_duration'));
         expect(retrieved.title, equals('Test Task'));
-        expect(retrieved.estimatedDuration, equals(const Duration(hours: 2, minutes: 30)));
-        expect(retrieved.actualDuration, equals(const Duration(hours: 3, minutes: 15)));
+        expect(
+          retrieved.estimatedDuration,
+          equals(const Duration(hours: 2, minutes: 30)),
+        );
+        expect(
+          retrieved.actualDuration,
+          equals(const Duration(hours: 3, minutes: 15)),
+        );
         expect(retrieved.isCompleted, isTrue);
       });
 
@@ -54,7 +60,10 @@ void main() {
         final retrieved = await odm.tasks(task.id).get();
 
         expect(retrieved, isNotNull);
-        expect(retrieved!.estimatedDuration, equals(const Duration(minutes: 45)));
+        expect(
+          retrieved!.estimatedDuration,
+          equals(const Duration(minutes: 45)),
+        );
         expect(retrieved.actualDuration, isNull);
         expect(retrieved.isCompleted, isFalse);
       });
@@ -64,27 +73,32 @@ void main() {
           {
             'id': 'duration_seconds',
             'duration': const Duration(seconds: 30),
-            'description': 'Short task in seconds'
+            'description': 'Short task in seconds',
           },
           {
             'id': 'duration_minutes',
             'duration': const Duration(minutes: 15),
-            'description': 'Medium task in minutes'
+            'description': 'Medium task in minutes',
           },
           {
             'id': 'duration_hours',
             'duration': const Duration(hours: 8),
-            'description': 'Long task in hours'
+            'description': 'Long task in hours',
           },
           {
             'id': 'duration_days',
             'duration': const Duration(days: 2),
-            'description': 'Very long task in days'
+            'description': 'Very long task in days',
           },
           {
             'id': 'duration_mixed',
-            'duration': const Duration(days: 1, hours: 2, minutes: 30, seconds: 45),
-            'description': 'Complex duration with mixed units'
+            'duration': const Duration(
+              days: 1,
+              hours: 2,
+              minutes: 30,
+              seconds: 45,
+            ),
+            'description': 'Complex duration with mixed units',
           },
         ];
 
@@ -120,16 +134,23 @@ void main() {
         await odm.tasks(originalTask.id).update(originalTask);
 
         // Update the task with actual duration
-        await odm.tasks(originalTask.id).modify((task) => task.copyWith(
-              actualDuration: const Duration(hours: 1, minutes: 30),
-              isCompleted: true,
-              completedAt: DateTime.now(),
-            ));
+        await odm
+            .tasks(originalTask.id)
+            .modify(
+              (task) => task.copyWith(
+                actualDuration: const Duration(hours: 1, minutes: 30),
+                isCompleted: true,
+                completedAt: DateTime.now(),
+              ),
+            );
 
         final updated = await odm.tasks(originalTask.id).get();
         expect(updated, isNotNull);
         expect(updated!.estimatedDuration, equals(const Duration(hours: 1)));
-        expect(updated.actualDuration, equals(const Duration(hours: 1, minutes: 30)));
+        expect(
+          updated.actualDuration,
+          equals(const Duration(hours: 1, minutes: 30)),
+        );
         expect(updated.isCompleted, isTrue);
         expect(updated.completedAt, isNotNull);
       });
@@ -149,14 +170,20 @@ void main() {
         await odm.tasks(task.id).update(task);
 
         // Modify estimated duration
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              estimatedDuration: const Duration(hours: 3),
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) =>
+                  task.copyWith(estimatedDuration: const Duration(hours: 3)),
+            );
 
         final modified = await odm.tasks(task.id).get();
         expect(modified, isNotNull);
         expect(modified!.estimatedDuration, equals(const Duration(hours: 3)));
-        expect(modified.actualDuration, equals(const Duration(hours: 2, minutes: 15)));
+        expect(
+          modified.actualDuration,
+          equals(const Duration(hours: 2, minutes: 15)),
+        );
       });
 
       test('should patch non-duration fields correctly', () async {
@@ -172,13 +199,17 @@ void main() {
         await odm.tasks(originalTask.id).update(originalTask);
 
         // Patch non-duration fields (Duration fields have serialization issues with patch operations)
-        await odm.tasks(originalTask.id).patch(($) => [
-              $.title('Updated Title'),
-              $.description('Updated description'),
-              $.isCompleted(true),
-              $.priority(3),
-              $.completedAt(DateTime.now()),
-            ]);
+        await odm
+            .tasks(originalTask.id)
+            .patch(
+              ($) => [
+                $.title('Updated Title'),
+                $.description('Updated description'),
+                $.isCompleted(true),
+                $.priority(3),
+                $.completedAt(DateTime.now()),
+              ],
+            );
 
         final patched = await odm.tasks(originalTask.id).get();
         expect(patched, isNotNull);
@@ -206,12 +237,16 @@ void main() {
         await odm.tasks(task.id).update(task);
 
         // Patch duration fields using chain syntax
-        await odm.tasks(task.id).patch(($) => [
-              $.estimatedDuration(const Duration(hours: 1)),
-              $.actualDuration(const Duration(minutes: 45)),
-              $.isCompleted(true),
-              $.priority.increment(1),
-            ]);
+        await odm
+            .tasks(task.id)
+            .patch(
+              ($) => [
+                $.estimatedDuration(const Duration(hours: 1)),
+                $.actualDuration(const Duration(minutes: 45)),
+                $.isCompleted(true),
+                $.priority.increment(1),
+              ],
+            );
 
         final patched = await odm.tasks(task.id).get();
         expect(patched, isNotNull);
@@ -235,24 +270,36 @@ void main() {
         await odm.tasks(task.id).update(task);
 
         // Patch only estimated duration using chain syntax
-        await odm.tasks(task.id).patch(($) => [
-              $.estimatedDuration(const Duration(minutes: 45)),
-            ]);
+        await odm
+            .tasks(task.id)
+            .patch(($) => [$.estimatedDuration(const Duration(minutes: 45))]);
 
         final afterFirstPatch = await odm.tasks(task.id).get();
         expect(afterFirstPatch, isNotNull);
-        expect(afterFirstPatch!.estimatedDuration, equals(const Duration(minutes: 45)));
-        expect(afterFirstPatch.actualDuration, equals(const Duration(minutes: 25))); // Unchanged
+        expect(
+          afterFirstPatch!.estimatedDuration,
+          equals(const Duration(minutes: 45)),
+        );
+        expect(
+          afterFirstPatch.actualDuration,
+          equals(const Duration(minutes: 25)),
+        ); // Unchanged
 
         // Patch only actual duration using chain syntax
-        await odm.tasks(task.id).patch(($) => [
-              $.actualDuration(const Duration(minutes: 50)),
-            ]);
+        await odm
+            .tasks(task.id)
+            .patch(($) => [$.actualDuration(const Duration(minutes: 50))]);
 
         final afterSecondPatch = await odm.tasks(task.id).get();
         expect(afterSecondPatch, isNotNull);
-        expect(afterSecondPatch!.estimatedDuration, equals(const Duration(minutes: 45))); // Unchanged
-        expect(afterSecondPatch.actualDuration, equals(const Duration(minutes: 50))); // Updated
+        expect(
+          afterSecondPatch!.estimatedDuration,
+          equals(const Duration(minutes: 45)),
+        ); // Unchanged
+        expect(
+          afterSecondPatch.actualDuration,
+          equals(const Duration(minutes: 50)),
+        ); // Updated
       });
 
       test('should patch duration to null using chain syntax', () async {
@@ -270,14 +317,16 @@ void main() {
         await odm.tasks(task.id).update(task);
 
         // Patch actual duration to null using chain syntax
-        await odm.tasks(task.id).patch(($) => [
-              $.actualDuration(null),
-              $.isCompleted(false),
-            ]);
+        await odm
+            .tasks(task.id)
+            .patch(($) => [$.actualDuration(null), $.isCompleted(false)]);
 
         final patched = await odm.tasks(task.id).get();
         expect(patched, isNotNull);
-        expect(patched!.estimatedDuration, equals(const Duration(hours: 2))); // Unchanged
+        expect(
+          patched!.estimatedDuration,
+          equals(const Duration(hours: 2)),
+        ); // Unchanged
         expect(patched.actualDuration, isNull); // Set to null
         expect(patched.isCompleted, isFalse); // Updated
       });
@@ -336,52 +385,64 @@ void main() {
             .where('estimatedDuration', isLessThan: fourHoursInMicroseconds)
             .get();
 
-        expect(shortToMediumTasks.docs.length, equals(2)); // short_task and medium_task
+        expect(
+          shortToMediumTasks.docs.length,
+          equals(2),
+        ); // short_task and medium_task
       });
 
-      test('should handle completed vs incomplete tasks with durations', () async {
-        final completedTask = Task(
-          id: 'completed_with_duration',
-          title: 'Completed Task',
-          description: 'Task that is completed',
-          estimatedDuration: const Duration(hours: 1),
-          actualDuration: const Duration(minutes: 45),
-          isCompleted: true,
-          priority: 1,
-          createdAt: DateTime.now(),
-          completedAt: DateTime.now(),
-        );
+      test(
+        'should handle completed vs incomplete tasks with durations',
+        () async {
+          final completedTask = Task(
+            id: 'completed_with_duration',
+            title: 'Completed Task',
+            description: 'Task that is completed',
+            estimatedDuration: const Duration(hours: 1),
+            actualDuration: const Duration(minutes: 45),
+            isCompleted: true,
+            priority: 1,
+            createdAt: DateTime.now(),
+            completedAt: DateTime.now(),
+          );
 
-        final incompleteTask = Task(
-          id: 'incomplete_with_duration',
-          title: 'Incomplete Task',
-          description: 'Task that is not completed',
-          estimatedDuration: const Duration(hours: 2),
-          priority: 2,
-          createdAt: DateTime.now(),
-        );
+          final incompleteTask = Task(
+            id: 'incomplete_with_duration',
+            title: 'Incomplete Task',
+            description: 'Task that is not completed',
+            estimatedDuration: const Duration(hours: 2),
+            priority: 2,
+            createdAt: DateTime.now(),
+          );
 
-        await odm.tasks(completedTask.id).update(completedTask);
-        await odm.tasks(incompleteTask.id).update(incompleteTask);
+          await odm.tasks(completedTask.id).update(completedTask);
+          await odm.tasks(incompleteTask.id).update(incompleteTask);
 
-        // Query completed tasks
-        final completedTasks = await fakeFirestore
-            .collection('tasks')
-            .where('isCompleted', isEqualTo: true)
-            .get();
+          // Query completed tasks
+          final completedTasks = await fakeFirestore
+              .collection('tasks')
+              .where('isCompleted', isEqualTo: true)
+              .get();
 
-        expect(completedTasks.docs.length, equals(1));
-        expect(completedTasks.docs.first.id, equals('completed_with_duration'));
+          expect(completedTasks.docs.length, equals(1));
+          expect(
+            completedTasks.docs.first.id,
+            equals('completed_with_duration'),
+          );
 
-        // Query incomplete tasks
-        final incompleteTasks = await fakeFirestore
-            .collection('tasks')
-            .where('isCompleted', isEqualTo: false)
-            .get();
+          // Query incomplete tasks
+          final incompleteTasks = await fakeFirestore
+              .collection('tasks')
+              .where('isCompleted', isEqualTo: false)
+              .get();
 
-        expect(incompleteTasks.docs.length, equals(1));
-        expect(incompleteTasks.docs.first.id, equals('incomplete_with_duration'));
-      });
+          expect(incompleteTasks.docs.length, equals(1));
+          expect(
+            incompleteTasks.docs.first.id,
+            equals('incomplete_with_duration'),
+          );
+        },
+      );
     });
 
     group('🧮 Duration Calculations', () {
@@ -401,14 +462,18 @@ void main() {
         final retrieved = await odm.tasks(task.id).get();
 
         expect(retrieved, isNotNull);
-        
+
         // Test duration comparisons
-        expect(retrieved!.actualDuration! > retrieved.estimatedDuration, isTrue);
-        
+        expect(
+          retrieved!.actualDuration! > retrieved.estimatedDuration,
+          isTrue,
+        );
+
         // Test duration arithmetic
-        final overtime = retrieved.actualDuration! - retrieved.estimatedDuration;
+        final overtime =
+            retrieved.actualDuration! - retrieved.estimatedDuration;
         expect(overtime, equals(const Duration(minutes: 30)));
-        
+
         // Test duration in different units
         expect(retrieved.estimatedDuration.inMinutes, equals(120));
         expect(retrieved.actualDuration!.inMinutes, equals(150));
@@ -431,51 +496,60 @@ void main() {
 
         expect(retrieved, isNotNull);
         expect(retrieved!.estimatedDuration, equals(Duration.zero));
-        expect(retrieved.actualDuration, equals(const Duration(microseconds: 1)));
+        expect(
+          retrieved.actualDuration,
+          equals(const Duration(microseconds: 1)),
+        );
       });
     });
 
     group('🔄 Round-trip Serialization', () {
-      test('should maintain duration precision through serialization', () async {
-        final originalTask = Task(
-          id: 'precision_test',
-          title: 'Precision Test',
-          description: 'Testing duration precision',
-          estimatedDuration: const Duration(
-            days: 1,
-            hours: 2,
-            minutes: 30,
-            seconds: 45,
-            milliseconds: 123,
-            microseconds: 456,
-          ),
-          actualDuration: const Duration(
-            hours: 1,
-            minutes: 15,
-            seconds: 30,
-            milliseconds: 789,
-          ),
-          priority: 1,
-          createdAt: DateTime.now(),
-        );
+      test(
+        'should maintain duration precision through serialization',
+        () async {
+          final originalTask = Task(
+            id: 'precision_test',
+            title: 'Precision Test',
+            description: 'Testing duration precision',
+            estimatedDuration: const Duration(
+              days: 1,
+              hours: 2,
+              minutes: 30,
+              seconds: 45,
+              milliseconds: 123,
+              microseconds: 456,
+            ),
+            actualDuration: const Duration(
+              hours: 1,
+              minutes: 15,
+              seconds: 30,
+              milliseconds: 789,
+            ),
+            priority: 1,
+            createdAt: DateTime.now(),
+          );
 
-        await odm.tasks(originalTask.id).update(originalTask);
-        final retrieved = await odm.tasks(originalTask.id).get();
+          await odm.tasks(originalTask.id).update(originalTask);
+          final retrieved = await odm.tasks(originalTask.id).get();
 
-        expect(retrieved, isNotNull);
-        expect(retrieved!.estimatedDuration, equals(originalTask.estimatedDuration));
-        expect(retrieved.actualDuration, equals(originalTask.actualDuration));
-        
-        // Verify microsecond precision is maintained
-        expect(
-          retrieved.estimatedDuration.inMicroseconds,
-          equals(originalTask.estimatedDuration.inMicroseconds),
-        );
-        expect(
-          retrieved.actualDuration!.inMicroseconds,
-          equals(originalTask.actualDuration!.inMicroseconds),
-        );
-      });
+          expect(retrieved, isNotNull);
+          expect(
+            retrieved!.estimatedDuration,
+            equals(originalTask.estimatedDuration),
+          );
+          expect(retrieved.actualDuration, equals(originalTask.actualDuration));
+
+          // Verify microsecond precision is maintained
+          expect(
+            retrieved.estimatedDuration.inMicroseconds,
+            equals(originalTask.estimatedDuration.inMicroseconds),
+          );
+          expect(
+            retrieved.actualDuration!.inMicroseconds,
+            equals(originalTask.actualDuration!.inMicroseconds),
+          );
+        },
+      );
     });
   });
 }

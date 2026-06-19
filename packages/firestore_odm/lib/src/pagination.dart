@@ -9,7 +9,8 @@ abstract class QueryPaginationHandler {
 
   /// Smart value extraction using the SAME builder function as orderBy
   /// This ensures perfect consistency and type safety
-  static List<dynamic> buildValuesFromObject<T, O extends Record, OB extends OrderByFieldNode>({
+  static List<dynamic>
+  buildValuesFromObject<T, O extends Record, OB extends OrderByFieldNode>({
     required T object,
     required Map<String, dynamic> Function(T) toJson,
     required O Function(OB selector) orderByFunc,
@@ -21,7 +22,8 @@ abstract class QueryPaginationHandler {
 
     final context = OrderByExtractorContext(
       id: objectMap[documentIdFieldName],
-      data: objectMap);
+      data: objectMap,
+    );
 
     final builder = orderBuilderFunc(context);
 

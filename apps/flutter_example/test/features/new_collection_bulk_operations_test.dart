@@ -113,195 +113,184 @@ void main() {
     });
 
     group('⚡ Collection Bulk Incremental Modify', () {
-      test(
-        'should perform bulk modify with atomic operations',
-        () async {
-          // Create test users
-          final users = [
-            User(
-              id: 'inc_col_1',
-              name: 'Inc Collection 1',
-              email: 'inc1@example.com',
-              age: 25,
-              profile: const Profile(
-                bio: 'Inc bio 1',
-                avatar: 'inc1.jpg',
-                socialLinks: {},
-                interests: ['increment'],
-                followers: 100,
-              ),
-              rating: 3,
-              isActive: true,
-              createdAt: DateTime.now(),
+      test('should perform bulk modify with atomic operations', () async {
+        // Create test users
+        final users = [
+          User(
+            id: 'inc_col_1',
+            name: 'Inc Collection 1',
+            email: 'inc1@example.com',
+            age: 25,
+            profile: const Profile(
+              bio: 'Inc bio 1',
+              avatar: 'inc1.jpg',
+              socialLinks: {},
+              interests: ['increment'],
+              followers: 100,
             ),
-            User(
-              id: 'inc_col_2',
-              name: 'Inc Collection 2',
-              email: 'inc2@example.com',
-              age: 30,
-              profile: const Profile(
-                bio: 'Inc bio 2',
-                avatar: 'inc2.jpg',
-                socialLinks: {},
-                interests: ['increment'],
-                followers: 150,
-              ),
-              rating: 4,
-              createdAt: DateTime.now(),
+            rating: 3,
+            isActive: true,
+            createdAt: DateTime.now(),
+          ),
+          User(
+            id: 'inc_col_2',
+            name: 'Inc Collection 2',
+            email: 'inc2@example.com',
+            age: 30,
+            profile: const Profile(
+              bio: 'Inc bio 2',
+              avatar: 'inc2.jpg',
+              socialLinks: {},
+              interests: ['increment'],
+              followers: 150,
             ),
-            User(
-              id: 'inc_col_3',
-              name: 'Inc Collection 3',
-              email: 'inc3@example.com',
-              age: 40,
-              profile: const Profile(
-                bio: 'Inc bio 3',
-                avatar: 'inc3.jpg',
-                socialLinks: {},
-                interests: ['increment'],
-                followers: 200,
-              ),
-              rating: 4.5,
-              isActive: true,
-              isPremium: true,
-              createdAt: DateTime.now(),
+            rating: 4,
+            createdAt: DateTime.now(),
+          ),
+          User(
+            id: 'inc_col_3',
+            name: 'Inc Collection 3',
+            email: 'inc3@example.com',
+            age: 40,
+            profile: const Profile(
+              bio: 'Inc bio 3',
+              avatar: 'inc3.jpg',
+              socialLinks: {},
+              interests: ['increment'],
+              followers: 200,
             ),
-          ];
+            rating: 4.5,
+            isActive: true,
+            isPremium: true,
+            createdAt: DateTime.now(),
+          ),
+        ];
 
-          // Insert all users
-          for (final user in users) {
-            await odm.users(user.id).update(user);
-          }
+        // Insert all users
+        for (final user in users) {
+          await odm.users(user.id).update(user);
+        }
 
-          // ✅ NEW: Bulk modify on entire collection
-          await odm.users.modify(
-            (user) => user.copyWith(
-              age:
-                  user.age +
-                  1, // Should auto-convert to FieldValue.increment(1)
-              rating:
-                  user.rating +
-                  0.5, // Should auto-convert to FieldValue.increment(0.5)
-              profile: user.profile.copyWith(
-                followers:
-                    user.profile.followers +
-                    50, // Should auto-convert to FieldValue.increment(50)
-              ),
+        // ✅ NEW: Bulk modify on entire collection
+        await odm.users.modify(
+          (user) => user.copyWith(
+            age: user.age + 1, // Should auto-convert to FieldValue.increment(1)
+            rating:
+                user.rating +
+                0.5, // Should auto-convert to FieldValue.increment(0.5)
+            profile: user.profile.copyWith(
+              followers:
+                  user.profile.followers +
+                  50, // Should auto-convert to FieldValue.increment(50)
             ),
-          );
+          ),
+        );
 
-          // Verify atomic increments worked
-          final incrementedUsers = await odm.users.get();
-          expect(incrementedUsers.length, equals(3));
+        // Verify atomic increments worked
+        final incrementedUsers = await odm.users.get();
+        expect(incrementedUsers.length, equals(3));
 
-          for (final user in incrementedUsers) {
-            // Ages should be incremented by 1
-            expect(user.age, greaterThanOrEqualTo(26)); // 25+1, 30+1, 40+1
-            // Ratings should be incremented by 0.5
-            expect(
-              user.rating,
-              greaterThanOrEqualTo(3.5),
-            ); // 3.0+0.5, 4.0+0.5, 4.5+0.5
-            // Followers should be incremented by 50
-            expect(
-              user.profile.followers,
-              greaterThanOrEqualTo(150),
-            ); // 100+50, 150+50, 200+50
-          }
+        for (final user in incrementedUsers) {
+          // Ages should be incremented by 1
+          expect(user.age, greaterThanOrEqualTo(26)); // 25+1, 30+1, 40+1
+          // Ratings should be incremented by 0.5
+          expect(
+            user.rating,
+            greaterThanOrEqualTo(3.5),
+          ); // 3.0+0.5, 4.0+0.5, 4.5+0.5
+          // Followers should be incremented by 50
+          expect(
+            user.profile.followers,
+            greaterThanOrEqualTo(150),
+          ); // 100+50, 150+50, 200+50
+        }
 
-          print(
-            '✅ FirestoreCollection.modify() - Atomic operations work on entire collection',
-          );
-        },
-      );
+        print(
+          '✅ FirestoreCollection.modify() - Atomic operations work on entire collection',
+        );
+      });
 
-      test(
-        'should handle complex atomic operations in modify',
-        () async {
-          // Create users with arrays and mixed data
-          final users = [
-            User(
-              id: 'complex_1',
-              name: 'Complex User 1',
-              email: 'complex1@example.com',
-              age: 25,
-              tags: ['tag1', 'tag2'], // Will add to this array
-              scores: [80, 90], // Will add to this array
-              profile: const Profile(
-                bio: 'Complex bio 1',
-                avatar: 'complex1.jpg',
-                socialLinks: {'twitter': '@complex1'},
-                interests: ['complex'],
-                followers: 500,
-              ),
-              rating: 3,
-              isActive: true,
-              createdAt: DateTime.now(),
+      test('should handle complex atomic operations in modify', () async {
+        // Create users with arrays and mixed data
+        final users = [
+          User(
+            id: 'complex_1',
+            name: 'Complex User 1',
+            email: 'complex1@example.com',
+            age: 25,
+            tags: ['tag1', 'tag2'], // Will add to this array
+            scores: [80, 90], // Will add to this array
+            profile: const Profile(
+              bio: 'Complex bio 1',
+              avatar: 'complex1.jpg',
+              socialLinks: {'twitter': '@complex1'},
+              interests: ['complex'],
+              followers: 500,
             ),
-            User(
-              id: 'complex_2',
-              name: 'Complex User 2',
-              email: 'complex2@example.com',
-              age: 30,
-              tags: ['tag3', 'tag4'], // Will add to this array
-              scores: [85, 95], // Will add to this array
-              profile: const Profile(
-                bio: 'Complex bio 2',
-                avatar: 'complex2.jpg',
-                socialLinks: {'linkedin': 'complex2'},
-                interests: ['complex'],
-                followers: 750,
-              ),
-              rating: 4,
-              isPremium: true,
-              createdAt: DateTime.now(),
+            rating: 3,
+            isActive: true,
+            createdAt: DateTime.now(),
+          ),
+          User(
+            id: 'complex_2',
+            name: 'Complex User 2',
+            email: 'complex2@example.com',
+            age: 30,
+            tags: ['tag3', 'tag4'], // Will add to this array
+            scores: [85, 95], // Will add to this array
+            profile: const Profile(
+              bio: 'Complex bio 2',
+              avatar: 'complex2.jpg',
+              socialLinks: {'linkedin': 'complex2'},
+              interests: ['complex'],
+              followers: 750,
             ),
-          ];
+            rating: 4,
+            isPremium: true,
+            createdAt: DateTime.now(),
+          ),
+        ];
 
-          // Insert users
-          for (final user in users) {
-            await odm.users(user.id).update(user);
-          }
+        // Insert users
+        for (final user in users) {
+          await odm.users(user.id).update(user);
+        }
 
-          // ✅ NEW: Complex modify with array operations
-          await odm.users.modify(
-            (user) => user.copyWith(
-              age: user.age + 2, // Numeric increment
-              tags: [
-                ...user.tags,
-                'new_tag',
-              ], // Array union (should auto-detect)
-              scores: [...user.scores, 100], // Array union with new score
-              profile: user.profile.copyWith(
-                followers:
-                    user.profile.followers + 100, // Nested numeric increment
-              ),
+        // ✅ NEW: Complex modify with array operations
+        await odm.users.modify(
+          (user) => user.copyWith(
+            age: user.age + 2, // Numeric increment
+            tags: [...user.tags, 'new_tag'], // Array union (should auto-detect)
+            scores: [...user.scores, 100], // Array union with new score
+            profile: user.profile.copyWith(
+              followers:
+                  user.profile.followers + 100, // Nested numeric increment
             ),
-          );
+          ),
+        );
 
-          // Verify complex atomic operations
-          final updatedUsers = await odm.users.get();
-          expect(updatedUsers.length, equals(2));
+        // Verify complex atomic operations
+        final updatedUsers = await odm.users.get();
+        expect(updatedUsers.length, equals(2));
 
-          for (final user in updatedUsers) {
-            // Age should be incremented
-            expect(user.age, greaterThanOrEqualTo(27)); // 25+2 or 30+2
-            // Tags should include new_tag
-            expect(user.tags, contains('new_tag'));
-            // Scores should include 100
-            expect(user.scores, contains(100));
-            // Followers should be incremented
-            expect(
-              user.profile.followers,
-              greaterThanOrEqualTo(600),
-            ); // 500+100 or 750+100
-          }
+        for (final user in updatedUsers) {
+          // Age should be incremented
+          expect(user.age, greaterThanOrEqualTo(27)); // 25+2 or 30+2
+          // Tags should include new_tag
+          expect(user.tags, contains('new_tag'));
+          // Scores should include 100
+          expect(user.scores, contains(100));
+          // Followers should be incremented
+          expect(
+            user.profile.followers,
+            greaterThanOrEqualTo(600),
+          ); // 500+100 or 750+100
+        }
 
-          print(
-            '✅ FirestoreCollection.modify() - Complex atomic operations work',
-          );
-        },
-      );
+        print(
+          '✅ FirestoreCollection.modify() - Complex atomic operations work',
+        );
+      });
 
       test('should handle server timestamps in modify', () async {
         // Create a user
@@ -343,16 +332,12 @@ void main() {
         expect(updatedUser.lastLogin, isNotNull);
         expect(updatedUser.updatedAt, isNotNull);
 
-        print(
-          '✅ FirestoreCollection.modify() - Server timestamps work',
-        );
+        print('✅ FirestoreCollection.modify() - Server timestamps work');
       });
 
       test('should handle empty collection in modify', () async {
         // Try to incrementally modify empty collection - should not error
-        await odm.users.modify(
-          (user) => user.copyWith(age: user.age + 1),
-        );
+        await odm.users.modify((user) => user.copyWith(age: user.age + 1));
 
         // Collection should still be empty
         final users = await odm.users.get();

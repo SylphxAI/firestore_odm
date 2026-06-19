@@ -209,114 +209,111 @@ void main() {
         }
       });
 
-      test(
-        'should compare modify vs modify vs patch for nested fields',
-        () async {
-          // Create three identical users to compare different methods
-          final baseUser = User(
-            id: 'comparison_base',
-            name: 'Base User',
-            email: 'base@example.com',
-            age: 25,
-            profile: Profile(
-              bio: 'Base user',
-              avatar: 'base.jpg',
-              socialLinks: {'initial': 'value'},
-              interests: ['base'],
-              followers: 1000,
-              lastActive: DateTime.now(),
-            ),
-            rating: 3,
-            tags: ['base'],
-            isActive: true,
-            createdAt: DateTime.now(),
-          );
+      test('should compare modify vs modify vs patch for nested fields', () async {
+        // Create three identical users to compare different methods
+        final baseUser = User(
+          id: 'comparison_base',
+          name: 'Base User',
+          email: 'base@example.com',
+          age: 25,
+          profile: Profile(
+            bio: 'Base user',
+            avatar: 'base.jpg',
+            socialLinks: {'initial': 'value'},
+            interests: ['base'],
+            followers: 1000,
+            lastActive: DateTime.now(),
+          ),
+          rating: 3,
+          tags: ['base'],
+          isActive: true,
+          createdAt: DateTime.now(),
+        );
 
-          // Create three identical users
-          await odm
-              .users('method_incremental')
-              .update(baseUser.copyWith(id: 'method_incremental'));
-          await odm
-              .users('method_modify')
-              .update(baseUser.copyWith(id: 'method_modify'));
-          await odm
-              .users('method_patch')
-              .update(baseUser.copyWith(id: 'method_patch'));
+        // Create three identical users
+        await odm
+            .users('method_incremental')
+            .update(baseUser.copyWith(id: 'method_incremental'));
+        await odm
+            .users('method_modify')
+            .update(baseUser.copyWith(id: 'method_modify'));
+        await odm
+            .users('method_patch')
+            .update(baseUser.copyWith(id: 'method_patch'));
 
-          final startTime = DateTime.now();
+        final startTime = DateTime.now();
 
-          // Method 1: modify (claims to be atomic)
-          print('🔬 Method 1: modify');
-          await odm
-              .users('method_incremental')
-              .modify(
-                (user) => user.copyWith(
-                  age: user.age + 5,
-                  profile: user.profile.copyWith(
-                    followers: user.profile.followers + 200,
-                    interests: [...user.profile.interests, 'incremental'],
-                  ),
+        // Method 1: modify (claims to be atomic)
+        print('🔬 Method 1: modify');
+        await odm
+            .users('method_incremental')
+            .modify(
+              (user) => user.copyWith(
+                age: user.age + 5,
+                profile: user.profile.copyWith(
+                  followers: user.profile.followers + 200,
+                  interests: [...user.profile.interests, 'incremental'],
                 ),
-              );
+              ),
+            );
 
-          // Method 2: modify (non-atomic, complete replacement)
-          print('🔬 Method 2: modify');
-          await odm
-              .users('method_modify')
-              .modify(
-                (user) => user.copyWith(
-                  age: user.age + 5,
-                  profile: user.profile.copyWith(
-                    followers: user.profile.followers + 200,
-                    interests: [...user.profile.interests, 'modify'],
-                  ),
+        // Method 2: modify (non-atomic, complete replacement)
+        print('🔬 Method 2: modify');
+        await odm
+            .users('method_modify')
+            .modify(
+              (user) => user.copyWith(
+                age: user.age + 5,
+                profile: user.profile.copyWith(
+                  followers: user.profile.followers + 200,
+                  interests: [...user.profile.interests, 'modify'],
                 ),
-              );
+              ),
+            );
 
-          // Method 3: patch (true atomic operations)
-          print('🔬 Method 3: patch');
-          await odm
-              .users('method_patch')
-              .patch(
-                ($) => [
-                  $.age.increment(5),
-                  $.profile.followers.increment(200),
-                  $.profile.interests.add('patch'),
-                ],
-              );
+        // Method 3: patch (true atomic operations)
+        print('🔬 Method 3: patch');
+        await odm
+            .users('method_patch')
+            .patch(
+              ($) => [
+                $.age.increment(5),
+                $.profile.followers.increment(200),
+                $.profile.interests.add('patch'),
+              ],
+            );
 
-          final endTime = DateTime.now();
-          print(
-            '⏱️ All operations completed in ${endTime.difference(startTime).inMilliseconds}ms',
-          );
+        final endTime = DateTime.now();
+        print(
+          '⏱️ All operations completed in ${endTime.difference(startTime).inMilliseconds}ms',
+        );
 
-          // Verify result consistency
-          final incrementalUser = await odm.users('method_incremental').get();
-          final modifyUser = await odm.users('method_modify').get();
-          final patchUser = await odm.users('method_patch').get();
+        // Verify result consistency
+        final incrementalUser = await odm.users('method_incremental').get();
+        final modifyUser = await odm.users('method_modify').get();
+        final patchUser = await odm.users('method_patch').get();
 
-          // All methods should produce the same final result
-          expect(incrementalUser!.age, equals(30));
-          expect(modifyUser!.age, equals(30));
-          expect(patchUser!.age, equals(30));
+        // All methods should produce the same final result
+        expect(incrementalUser!.age, equals(30));
+        expect(modifyUser!.age, equals(30));
+        expect(patchUser!.age, equals(30));
 
-          expect(incrementalUser.profile.followers, equals(1200));
-          expect(modifyUser.profile.followers, equals(1200));
-          expect(patchUser.profile.followers, equals(1200));
+        expect(incrementalUser.profile.followers, equals(1200));
+        expect(modifyUser.profile.followers, equals(1200));
+        expect(patchUser.profile.followers, equals(1200));
 
-          expect(incrementalUser.profile.interests, hasLength(2));
-          expect(modifyUser.profile.interests, hasLength(2));
-          expect(patchUser.profile.interests, hasLength(2));
+        expect(incrementalUser.profile.interests, hasLength(2));
+        expect(modifyUser.profile.interests, hasLength(2));
+        expect(patchUser.profile.interests, hasLength(2));
 
-          print('✅ All methods produced consistent results');
-          print(
-            '📝 However, only patch() guarantees true atomic operations for nested fields',
-          );
-          print(
-            '📝 modify() may use atomic operations for top-level fields only',
-          );
-        },
-      );
+        print('✅ All methods produced consistent results');
+        print(
+          '📝 However, only patch() guarantees true atomic operations for nested fields',
+        );
+        print(
+          '📝 modify() may use atomic operations for top-level fields only',
+        );
+      });
 
       test('should verify atomic detection limitations', () async {
         final user = User(

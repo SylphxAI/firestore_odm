@@ -15,5 +15,7 @@ abstract interface class Filterable<T> {
   /// the schema of type [T].
   ///
   /// Returns a dynamic type representing the query with the applied filter.
-  dynamic where(FilterOperation Function(FilterBuilderRoot builder) filterBuilder);
+  dynamic where(
+    FilterOperation Function(FilterBuilderRoot builder) filterBuilder,
+  );
 }

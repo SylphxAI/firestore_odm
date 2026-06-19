@@ -20,7 +20,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -44,7 +47,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        flutter-channel: [stable, beta]
+        # Pinned to a project-compatible version (Dart 3.8.x). The stable/beta
+        # channel matrix broke once stable moved to Dart >=3.12 (analyzer 8.x).
+        flutter-version: ['3.32.8']
       fail-fast: false
 
     steps:
@@ -54,7 +59,7 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: ${{ matrix.flutter-channel }}
+          flutter-version: ${{ matrix.flutter-version }}
           cache: true
 
       - name: 🔧 Setup Melos
@@ -62,6 +67,9 @@ jobs:
 
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
+
+      - name: 🏗️ Generate Code
+        run: melos run generate
 
       - name: 🧪 Run Unit Tests
         run: melos run test:unit --no-select
@@ -80,7 +88,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -89,19 +100,22 @@ jobs:
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
 
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
       - name: 📊 Generate Coverage
-        run: |
-          melos run test:unit --no-select
-          # Merge coverage from all packages
-          dart pub global activate coverage
-          format_coverage --lcov --in=coverage --out=coverage/lcov.info --packages=.packages --report-on=lib
+        # All tests live in flutter_example; `flutter test --coverage` writes
+        # apps/flutter_example/coverage/lcov.info. (The old format_coverage step
+        # relied on the removed `.packages` file and had no coverage input.)
+        run: melos exec --scope="flutter_example" -- flutter test --coverage
 
       - name: 📤 Upload Coverage
         uses: codecov/codecov-action@v3
         with:
-          file: coverage/lcov.info
+          file: apps/flutter_example/coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
 
   # Performance testing
   performance:
@@ -115,7 +129,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -124,10 +141,11 @@ jobs:
       - name: 📦 Bootstrap Dependencies
         run: melos bootstrap
 
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
       - name: ⚡ Performance Benchmarks
-        run: |
-          cd flutter_example
-          flutter test test/ --dart-define=PERFORMANCE_TEST=true
+        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true
 
   # Security scanning
   security:
@@ -139,7 +157,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos
@@ -167,7 +188,10 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          # Pinned: project targets Dart ^3.8.1 / analyzer ^7.4.5. Newer Flutter
+          # stable (Dart >=3.12) resolves test/analyzer >=8 and breaks
+          # `melos bootstrap`. Revisit when the analyzer 8.x upgrade lands.
+          flutter-version: 3.32.8
           cache: true
 
       - name: 🔧 Setup Melos

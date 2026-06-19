@@ -15,46 +15,59 @@ void main() {
     });
 
     group('🕐 Duration Calculation from DateTime Fields', () {
-      test('should calculate actual duration from start and completion times', () async {
-        final createdTime = DateTime.now().subtract(const Duration(hours: 2));
-        final startTime = DateTime.now().subtract(const Duration(hours: 1, minutes: 30));
-        final completionTime = DateTime.now().subtract(const Duration(minutes: 15));
-        
-        final expectedDuration = completionTime.difference(startTime);
+      test(
+        'should calculate actual duration from start and completion times',
+        () async {
+          final createdTime = DateTime.now().subtract(const Duration(hours: 2));
+          final startTime = DateTime.now().subtract(
+            const Duration(hours: 1, minutes: 30),
+          );
+          final completionTime = DateTime.now().subtract(
+            const Duration(minutes: 15),
+          );
 
-        final task = Task(
-          id: 'time_calc_task',
-          title: 'Time Calculation Task',
-          description: 'Testing duration calculation from DateTime fields',
-          estimatedDuration: const Duration(hours: 1),
-          actualDuration: expectedDuration, // Manually set for comparison
-          isCompleted: true,
-          priority: 1,
-          createdAt: createdTime,
-          startedAt: startTime,
-          completedAt: completionTime,
-          updatedAt: completionTime,
-        );
+          final expectedDuration = completionTime.difference(startTime);
 
-        await odm.tasks(task.id).update(task);
-        final retrieved = await odm.tasks(task.id).get();
+          final task = Task(
+            id: 'time_calc_task',
+            title: 'Time Calculation Task',
+            description: 'Testing duration calculation from DateTime fields',
+            estimatedDuration: const Duration(hours: 1),
+            actualDuration: expectedDuration, // Manually set for comparison
+            isCompleted: true,
+            priority: 1,
+            createdAt: createdTime,
+            startedAt: startTime,
+            completedAt: completionTime,
+            updatedAt: completionTime,
+          );
 
-        expect(retrieved, isNotNull);
-        expect(retrieved!.startedAt, equals(startTime));
-        expect(retrieved.completedAt, equals(completionTime));
-        expect(retrieved.actualDuration, equals(expectedDuration));
+          await odm.tasks(task.id).update(task);
+          final retrieved = await odm.tasks(task.id).get();
 
-        // Verify calculated duration matches stored duration
-        final calculatedDuration = retrieved.completedAt!.difference(retrieved.startedAt!);
-        expect(calculatedDuration, equals(retrieved.actualDuration));
-        expect(calculatedDuration.inMinutes, equals(75)); // 1 hour 15 minutes
-      });
+          expect(retrieved, isNotNull);
+          expect(retrieved!.startedAt, equals(startTime));
+          expect(retrieved.completedAt, equals(completionTime));
+          expect(retrieved.actualDuration, equals(expectedDuration));
+
+          // Verify calculated duration matches stored duration
+          final calculatedDuration = retrieved.completedAt!.difference(
+            retrieved.startedAt!,
+          );
+          expect(calculatedDuration, equals(retrieved.actualDuration));
+          expect(calculatedDuration.inMinutes, equals(75)); // 1 hour 15 minutes
+        },
+      );
 
       test('should handle tasks with multiple duration updates', () async {
         final createdTime = DateTime.now().subtract(const Duration(hours: 3));
-        final firstStart = DateTime.now().subtract(const Duration(hours: 2, minutes: 30));
+        final firstStart = DateTime.now().subtract(
+          const Duration(hours: 2, minutes: 30),
+        );
         final firstPause = DateTime.now().subtract(const Duration(hours: 2));
-        final secondStart = DateTime.now().subtract(const Duration(hours: 1, minutes: 30));
+        final secondStart = DateTime.now().subtract(
+          const Duration(hours: 1, minutes: 30),
+        );
         final completion = DateTime.now().subtract(const Duration(minutes: 30));
 
         // Calculate total working time (excluding pause period)
@@ -81,43 +94,56 @@ void main() {
 
         expect(retrieved, isNotNull);
         expect(retrieved!.actualDuration, equals(totalWorkTime));
-        expect(retrieved.actualDuration!.inMinutes, equals(90)); // 30 + 60 minutes
-        
+        expect(
+          retrieved.actualDuration!.inMinutes,
+          equals(90),
+        ); // 30 + 60 minutes
+
         // Verify the actual duration is less than the total elapsed time
-        final totalElapsed = retrieved.completedAt!.difference(retrieved.startedAt!);
+        final totalElapsed = retrieved.completedAt!.difference(
+          retrieved.startedAt!,
+        );
         expect(retrieved.actualDuration, lessThan(totalElapsed));
       });
 
-      test('should calculate work-in-progress duration for ongoing tasks', () async {
-        final createdTime = DateTime.now().subtract(const Duration(hours: 1));
-        final startTime = DateTime.now().subtract(const Duration(minutes: 45));
-        final currentTime = DateTime.now();
+      test(
+        'should calculate work-in-progress duration for ongoing tasks',
+        () async {
+          final createdTime = DateTime.now().subtract(const Duration(hours: 1));
+          final startTime = DateTime.now().subtract(
+            const Duration(minutes: 45),
+          );
+          final currentTime = DateTime.now();
 
-        final task = Task(
-          id: 'wip_task',
-          title: 'Work in Progress Task',
-          description: 'Currently being worked on',
-          estimatedDuration: const Duration(hours: 2),
-          priority: 1,
-          createdAt: createdTime,
-          startedAt: startTime,
-          updatedAt: currentTime,
-        );
+          final task = Task(
+            id: 'wip_task',
+            title: 'Work in Progress Task',
+            description: 'Currently being worked on',
+            estimatedDuration: const Duration(hours: 2),
+            priority: 1,
+            createdAt: createdTime,
+            startedAt: startTime,
+            updatedAt: currentTime,
+          );
 
-        await odm.tasks(task.id).update(task);
-        final retrieved = await odm.tasks(task.id).get();
+          await odm.tasks(task.id).update(task);
+          final retrieved = await odm.tasks(task.id).get();
 
-        expect(retrieved, isNotNull);
-        expect(retrieved!.isCompleted, isFalse);
-        expect(retrieved.actualDuration, isNull);
-        expect(retrieved.startedAt, isNotNull);
-        expect(retrieved.completedAt, isNull);
+          expect(retrieved, isNotNull);
+          expect(retrieved!.isCompleted, isFalse);
+          expect(retrieved.actualDuration, isNull);
+          expect(retrieved.startedAt, isNotNull);
+          expect(retrieved.completedAt, isNull);
 
-        // Calculate elapsed time since start
-        final elapsedTime = currentTime.difference(retrieved.startedAt!);
-        expect(elapsedTime.inMinutes, greaterThanOrEqualTo(45));
-        expect(elapsedTime.inMinutes, lessThan(50)); // Allow for small test execution time
-      });
+          // Calculate elapsed time since start
+          final elapsedTime = currentTime.difference(retrieved.startedAt!);
+          expect(elapsedTime.inMinutes, greaterThanOrEqualTo(45));
+          expect(
+            elapsedTime.inMinutes,
+            lessThan(50),
+          ); // Allow for small test execution time
+        },
+      );
     });
 
     group('📊 Duration vs Estimation Analysis', () {
@@ -147,7 +173,9 @@ void main() {
         ];
 
         for (final testCase in testCases) {
-          final startTime = DateTime.now().subtract(testCase['actual']! as Duration);
+          final startTime = DateTime.now().subtract(
+            testCase['actual']! as Duration,
+          );
           final endTime = DateTime.now();
 
           final task = Task(
@@ -176,20 +204,26 @@ void main() {
 
         // Underestimated task
         final underTask = allTasks[0]!;
-        final underVariance = underTask.actualDuration! - underTask.estimatedDuration;
+        final underVariance =
+            underTask.actualDuration! - underTask.estimatedDuration;
         expect(underVariance.isNegative, isFalse);
         expect(underVariance.inMinutes, equals(90)); // 1.5 hours over
 
         // Overestimated task
         final overTask = allTasks[1]!;
-        final overVariance = overTask.actualDuration! - overTask.estimatedDuration;
+        final overVariance =
+            overTask.actualDuration! - overTask.estimatedDuration;
         expect(overVariance.isNegative, isTrue);
         expect(overVariance.abs().inMinutes, equals(75)); // 1.25 hours under
 
         // Accurate task
         final accurateTask = allTasks[2]!;
-        final accurateVariance = accurateTask.actualDuration! - accurateTask.estimatedDuration;
-        expect(accurateVariance.abs().inMinutes, lessThan(10)); // Within 10 minutes
+        final accurateVariance =
+            accurateTask.actualDuration! - accurateTask.estimatedDuration;
+        expect(
+          accurateVariance.abs().inMinutes,
+          lessThan(10),
+        ); // Within 10 minutes
       });
 
       test('should calculate estimation accuracy metrics', () async {
@@ -254,8 +288,12 @@ void main() {
     group('🔄 Task Lifecycle Time Tracking', () {
       test('should track complete task lifecycle with timestamps', () async {
         final createdTime = DateTime.now().subtract(const Duration(days: 2));
-        final startTime = DateTime.now().subtract(const Duration(days: 1, hours: 8));
-        final pauseTime = DateTime.now().subtract(const Duration(days: 1, hours: 4));
+        final startTime = DateTime.now().subtract(
+          const Duration(days: 1, hours: 8),
+        );
+        final pauseTime = DateTime.now().subtract(
+          const Duration(days: 1, hours: 4),
+        );
         final resumeTime = DateTime.now().subtract(const Duration(hours: 6));
         final completeTime = DateTime.now().subtract(const Duration(hours: 2));
 
@@ -273,32 +311,38 @@ void main() {
         await odm.tasks(task.id).update(task);
 
         // Start task
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              startedAt: startTime,
-              updatedAt: startTime,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) =>
+                  task.copyWith(startedAt: startTime, updatedAt: startTime),
+            );
 
         // Pause task (implicit - just update timestamp)
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              updatedAt: pauseTime,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify((task) => task.copyWith(updatedAt: pauseTime));
 
         // Resume task (implicit - update timestamp)
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              updatedAt: resumeTime,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify((task) => task.copyWith(updatedAt: resumeTime));
 
         // Complete task
         final workingTime1 = pauseTime.difference(startTime);
         final workingTime2 = completeTime.difference(resumeTime);
         final totalWorkingTime = workingTime1 + workingTime2;
 
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              isCompleted: true,
-              completedAt: completeTime,
-              actualDuration: totalWorkingTime,
-              updatedAt: completeTime,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) => task.copyWith(
+                isCompleted: true,
+                completedAt: completeTime,
+                actualDuration: totalWorkingTime,
+                updatedAt: completeTime,
+              ),
+            );
 
         final finalTask = await odm.tasks(task.id).get();
 
@@ -311,16 +355,18 @@ void main() {
 
         // Verify working time calculations
         expect(finalTask.actualDuration!.inHours, equals(8)); // 4 + 4 hours
-        
+
         // Verify total elapsed time vs working time
-        final totalElapsed = finalTask.completedAt!.difference(finalTask.startedAt!);
+        final totalElapsed = finalTask.completedAt!.difference(
+          finalTask.startedAt!,
+        );
         expect(totalElapsed.inHours, equals(30)); // ~1.25 days
         expect(finalTask.actualDuration, lessThan(totalElapsed));
       });
 
       test('should handle task reopening and completion cycles', () async {
         final initialTime = DateTime.now().subtract(const Duration(days: 3));
-        
+
         final task = Task(
           id: 'reopen_task',
           title: 'Reopenable Task',
@@ -337,13 +383,17 @@ void main() {
         final firstComplete = firstStart.add(const Duration(hours: 3));
         final firstDuration = firstComplete.difference(firstStart);
 
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              startedAt: firstStart,
-              completedAt: firstComplete,
-              actualDuration: firstDuration,
-              isCompleted: true,
-              updatedAt: firstComplete,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) => task.copyWith(
+                startedAt: firstStart,
+                completedAt: firstComplete,
+                actualDuration: firstDuration,
+                isCompleted: true,
+                updatedAt: firstComplete,
+              ),
+            );
 
         var retrieved = await odm.tasks(task.id).get();
         expect(retrieved!.isCompleted, isTrue);
@@ -351,16 +401,23 @@ void main() {
 
         // Reopen task
         final reopenTime = firstComplete.add(const Duration(hours: 6));
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              isCompleted: false,
-              completedAt: null,
-              updatedAt: reopenTime,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) => task.copyWith(
+                isCompleted: false,
+                completedAt: null,
+                updatedAt: reopenTime,
+              ),
+            );
 
         retrieved = await odm.tasks(task.id).get();
         expect(retrieved!.isCompleted, isFalse);
         expect(retrieved.completedAt, isNull);
-        expect(retrieved.actualDuration, isNotNull); // Preserve previous duration
+        expect(
+          retrieved.actualDuration,
+          isNotNull,
+        ); // Preserve previous duration
 
         // Second completion cycle
         final secondStart = reopenTime.add(const Duration(hours: 1));
@@ -368,13 +425,17 @@ void main() {
         final additionalDuration = secondComplete.difference(secondStart);
         final totalDuration = firstDuration + additionalDuration;
 
-        await odm.tasks(task.id).modify((task) => task.copyWith(
-              startedAt: secondStart, // Update to most recent start
-              completedAt: secondComplete,
-              actualDuration: totalDuration,
-              isCompleted: true,
-              updatedAt: secondComplete,
-            ));
+        await odm
+            .tasks(task.id)
+            .modify(
+              (task) => task.copyWith(
+                startedAt: secondStart, // Update to most recent start
+                completedAt: secondComplete,
+                actualDuration: totalDuration,
+                isCompleted: true,
+                updatedAt: secondComplete,
+              ),
+            );
 
         final finalTask = await odm.tasks(task.id).get();
         expect(finalTask!.isCompleted, isTrue);
@@ -383,38 +444,45 @@ void main() {
     });
 
     group('⏰ Time Tracking Edge Cases', () {
-      test('should handle tasks completed before start time (data integrity)', () async {
-        final createdTime = DateTime.now().subtract(const Duration(hours: 2));
-        final invalidCompleteTime = DateTime.now().subtract(const Duration(hours: 1));
-        final invalidStartTime = DateTime.now(); // After completion!
+      test(
+        'should handle tasks completed before start time (data integrity)',
+        () async {
+          final createdTime = DateTime.now().subtract(const Duration(hours: 2));
+          final invalidCompleteTime = DateTime.now().subtract(
+            const Duration(hours: 1),
+          );
+          final invalidStartTime = DateTime.now(); // After completion!
 
-        final task = Task(
-          id: 'invalid_timing_task',
-          title: 'Invalid Timing Task',
-          description: 'Task with invalid start/completion timing',
-          estimatedDuration: const Duration(hours: 1),
-          actualDuration: const Duration(minutes: -60), // Negative duration
-          isCompleted: true,
-          priority: 1,
-          createdAt: createdTime,
-          startedAt: invalidStartTime,
-          completedAt: invalidCompleteTime,
-        );
+          final task = Task(
+            id: 'invalid_timing_task',
+            title: 'Invalid Timing Task',
+            description: 'Task with invalid start/completion timing',
+            estimatedDuration: const Duration(hours: 1),
+            actualDuration: const Duration(minutes: -60), // Negative duration
+            isCompleted: true,
+            priority: 1,
+            createdAt: createdTime,
+            startedAt: invalidStartTime,
+            completedAt: invalidCompleteTime,
+          );
 
-        await odm.tasks(task.id).update(task);
-        final retrieved = await odm.tasks(task.id).get();
+          await odm.tasks(task.id).update(task);
+          final retrieved = await odm.tasks(task.id).get();
 
-        expect(retrieved, isNotNull);
-        // The system should store what we give it, even if logically invalid
-        expect(retrieved!.startedAt, equals(invalidStartTime));
-        expect(retrieved.completedAt, equals(invalidCompleteTime));
-        expect(retrieved.actualDuration!.isNegative, isTrue);
+          expect(retrieved, isNotNull);
+          // The system should store what we give it, even if logically invalid
+          expect(retrieved!.startedAt, equals(invalidStartTime));
+          expect(retrieved.completedAt, equals(invalidCompleteTime));
+          expect(retrieved.actualDuration!.isNegative, isTrue);
 
-        // Calculate the "correct" duration based on stored times
-        final calculatedDuration = retrieved.completedAt!.difference(retrieved.startedAt!);
-        expect(calculatedDuration.isNegative, isTrue);
-        expect(calculatedDuration.inMinutes, equals(-60));
-      });
+          // Calculate the "correct" duration based on stored times
+          final calculatedDuration = retrieved.completedAt!.difference(
+            retrieved.startedAt!,
+          );
+          expect(calculatedDuration.isNegative, isTrue);
+          expect(calculatedDuration.inMinutes, equals(-60));
+        },
+      );
 
       test('should handle very short duration tasks', () async {
         final startTime = DateTime.now();
@@ -465,53 +533,63 @@ void main() {
 
         expect(retrieved, isNotNull);
         expect(retrieved!.actualDuration!.inDays, equals(365));
-        expect(retrieved.actualDuration, greaterThan(retrieved.estimatedDuration));
-        
+        expect(
+          retrieved.actualDuration,
+          greaterThan(retrieved.estimatedDuration),
+        );
+
         // Verify the duration is approximately a year
         expect(retrieved.actualDuration!.inDays, greaterThanOrEqualTo(364));
         expect(retrieved.actualDuration!.inDays, lessThanOrEqualTo(366));
       });
 
-      test('should handle tasks with null duration but valid timestamps', () async {
-        final startTime = DateTime.now().subtract(const Duration(hours: 2));
-        final endTime = DateTime.now();
+      test(
+        'should handle tasks with null duration but valid timestamps',
+        () async {
+          final startTime = DateTime.now().subtract(const Duration(hours: 2));
+          final endTime = DateTime.now();
 
-        final task = Task(
-          id: 'null_duration_task',
-          title: 'Null Duration Task',
-          description: 'Task with timestamps but null actual duration',
-          estimatedDuration: const Duration(hours: 2),
-          isCompleted: true,
-          priority: 1,
-          createdAt: startTime.subtract(const Duration(hours: 1)),
-          startedAt: startTime,
-          completedAt: endTime,
-        );
+          final task = Task(
+            id: 'null_duration_task',
+            title: 'Null Duration Task',
+            description: 'Task with timestamps but null actual duration',
+            estimatedDuration: const Duration(hours: 2),
+            isCompleted: true,
+            priority: 1,
+            createdAt: startTime.subtract(const Duration(hours: 1)),
+            startedAt: startTime,
+            completedAt: endTime,
+          );
 
-        await odm.tasks(task.id).update(task);
-        final retrieved = await odm.tasks(task.id).get();
+          await odm.tasks(task.id).update(task);
+          final retrieved = await odm.tasks(task.id).get();
 
-        expect(retrieved, isNotNull);
-        expect(retrieved!.actualDuration, isNull);
-        expect(retrieved.startedAt, isNotNull);
-        expect(retrieved.completedAt, isNotNull);
-        expect(retrieved.isCompleted, isTrue);
+          expect(retrieved, isNotNull);
+          expect(retrieved!.actualDuration, isNull);
+          expect(retrieved.startedAt, isNotNull);
+          expect(retrieved.completedAt, isNotNull);
+          expect(retrieved.isCompleted, isTrue);
 
-        // We can still calculate duration from timestamps
-        final implicitDuration = retrieved.completedAt!.difference(retrieved.startedAt!);
-        expect(implicitDuration.inHours, equals(2));
-      });
+          // We can still calculate duration from timestamps
+          final implicitDuration = retrieved.completedAt!.difference(
+            retrieved.startedAt!,
+          );
+          expect(implicitDuration.inHours, equals(2));
+        },
+      );
     });
 
     group('📈 Time Tracking Analytics', () {
       test('should analyze task completion patterns over time', () async {
         final baseTime = DateTime(2024);
-        
+
         // Create tasks completed over different time periods
         final tasks = List.generate(10, (index) {
           final dayOffset = index * 3; // Every 3 days
           final taskStart = baseTime.add(Duration(days: dayOffset));
-          final taskEnd = taskStart.add(Duration(hours: 2 + index)); // Increasing duration
+          final taskEnd = taskStart.add(
+            Duration(hours: 2 + index),
+          ); // Increasing duration
 
           return Task(
             id: 'pattern_task_$index',
@@ -545,17 +623,24 @@ void main() {
           microseconds: totalDuration.inMicroseconds ~/ retrievedTasks.length,
         );
 
-        expect(averageDuration.inHours, equals(6)); // (2+3+4+...+11)/10 = 6.5 ≈ 6
+        expect(
+          averageDuration.inHours,
+          equals(6),
+        ); // (2+3+4+...+11)/10 = 6.5 ≈ 6
 
         // Find longest and shortest tasks
-        final durations = retrievedTasks.map((task) => task!.actualDuration!).toList();
+        final durations = retrievedTasks
+            .map((task) => task!.actualDuration!)
+            .toList();
         durations.sort((a, b) => a.inMicroseconds.compareTo(b.inMicroseconds));
 
         expect(durations.first.inHours, equals(2)); // Shortest
         expect(durations.last.inHours, equals(11)); // Longest
 
         // Calculate completion rate over time (all should be completed)
-        final completedCount = retrievedTasks.where((task) => task!.isCompleted).length;
+        final completedCount = retrievedTasks
+            .where((task) => task!.isCompleted)
+            .length;
         expect(completedCount, equals(10)); // 100% completion rate
       });
     });

@@ -73,7 +73,10 @@ void main() {
 
       test('should handle null document in stream', () async {
         final stream = <User?>[];
-        final subscription = odm.users('non_existent_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('non_existent_user')
+            .stream
+            .listen(stream.add);
 
         await Future.delayed(const Duration(milliseconds: 100));
 
@@ -105,7 +108,10 @@ void main() {
         await odm.users('delete_stream_user').update(user);
 
         final stream = <User?>[];
-        final subscription = odm.users('delete_stream_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('delete_stream_user')
+            .stream
+            .listen(stream.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 100));
@@ -251,7 +257,10 @@ void main() {
         await odm.users('realtime_user').update(user);
 
         final stream = <User?>[];
-        final subscription = odm.users('realtime_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('realtime_user')
+            .stream
+            .listen(stream.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 50));
@@ -312,7 +321,10 @@ void main() {
         await odm.users('concurrent_user').update(user);
 
         final stream = <User?>[];
-        final subscription = odm.users('concurrent_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('concurrent_user')
+            .stream
+            .listen(stream.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 50));
@@ -321,9 +333,7 @@ void main() {
         final updateFutures = [
           odm
               .users('concurrent_user')
-              .modify(
-                (user) => user.copyWith(rating: user.rating + 0.1),
-              ),
+              .modify((user) => user.copyWith(rating: user.rating + 0.1)),
           odm
               .users('concurrent_user')
               .modify(
@@ -384,11 +394,20 @@ void main() {
         final stream2 = <User?>[];
         final stream3 = <User?>[];
 
-        final subscription1 = odm.users('multi_sub_user').stream.listen(stream1.add);
+        final subscription1 = odm
+            .users('multi_sub_user')
+            .stream
+            .listen(stream1.add);
 
-        final subscription2 = odm.users('multi_sub_user').stream.listen(stream2.add);
+        final subscription2 = odm
+            .users('multi_sub_user')
+            .stream
+            .listen(stream2.add);
 
-        final subscription3 = odm.users('multi_sub_user').stream.listen(stream3.add);
+        final subscription3 = odm
+            .users('multi_sub_user')
+            .stream
+            .listen(stream3.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 100));
@@ -438,7 +457,10 @@ void main() {
         await odm.users('cancel_sub_user').update(user);
 
         final stream = <User?>[];
-        final subscription = odm.users('cancel_sub_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('cancel_sub_user')
+            .stream
+            .listen(stream.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 100));
@@ -485,7 +507,10 @@ void main() {
         await odm.users('high_freq_user').update(user);
 
         final stream = <User?>[];
-        final subscription = odm.users('high_freq_user').stream.listen(stream.add);
+        final subscription = odm
+            .users('high_freq_user')
+            .stream
+            .listen(stream.add);
 
         // Wait for initial state
         await Future.delayed(const Duration(milliseconds: 50));

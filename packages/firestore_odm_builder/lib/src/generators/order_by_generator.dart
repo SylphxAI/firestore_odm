@@ -51,7 +51,7 @@ class OrderByGenerator {
       final firstEnumValue = enumElement.fields
           .where((f) => f.isEnumConstant)
           .firstOrNull;
-      
+
       if (firstEnumValue != null) {
         final enumDefaultValue = '${enumElement.name}.${firstEnumValue.name}';
         return TypeDefinition(
@@ -60,14 +60,11 @@ class OrderByGenerator {
               ..symbol = 'OrderByField'
               ..types.add(field.type.reference),
           ),
-          namedArguments: {
-            ...args,
-            'defaultValue': refer(enumDefaultValue),
-          },
+          namedArguments: {...args, 'defaultValue': refer(enumDefaultValue)},
         );
       }
     }
-    
+
     return TypeDefinition(
       type: TypeReference(
         (b) => b

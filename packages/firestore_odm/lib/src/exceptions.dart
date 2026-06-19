@@ -43,11 +43,7 @@ class FirestoreODMValidationException implements FirestoreODMException {
   /// The field that failed validation, if applicable.
   final String? field;
 
-  const FirestoreODMValidationException(
-    this.message, {
-    this.code,
-    this.field,
-  });
+  const FirestoreODMValidationException(this.message, {this.code, this.field});
 
   @override
   String toString() {

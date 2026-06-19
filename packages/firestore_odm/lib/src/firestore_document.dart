@@ -15,7 +15,12 @@ import 'filter_builder.dart';
 
 /// A wrapper around Firestore DocumentReference with type safety and caching
 /// Uses Interface + Composition architecture with services handling operations
-class FirestoreDocument<S extends FirestoreSchema, T, Path extends Record, P extends PatchBuilder<T, Map<String, dynamic>?>>
+class FirestoreDocument<
+  S extends FirestoreSchema,
+  T,
+  Path extends Record,
+  P extends PatchBuilder<T, Map<String, dynamic>?>
+>
     implements
         Gettable<T?>,
         Streamable<T?>,
@@ -43,9 +48,9 @@ class FirestoreDocument<S extends FirestoreSchema, T, Path extends Record, P ext
     required T Function(Map<String, dynamic>) fromJson,
     required this.documentIdField,
     required P patchBuilder,
-  })  : _toJson = toJson,
-        _fromJson = fromJson,
-        _patchBuilder = patchBuilder;
+  }) : _toJson = toJson,
+       _fromJson = fromJson,
+       _patchBuilder = patchBuilder;
 
   /// Stream of document snapshots
   @override
@@ -58,8 +63,7 @@ class FirestoreDocument<S extends FirestoreSchema, T, Path extends Record, P ext
 
   /// Gets the document data
   @override
-  Future<T?> get() =>
-      DocumentHandler.get(ref, _fromJson, documentIdField);
+  Future<T?> get() => DocumentHandler.get(ref, _fromJson, documentIdField);
 
   /// Sets the document data
   @override
@@ -97,17 +101,21 @@ class FirestoreDocument<S extends FirestoreSchema, T, Path extends Record, P ext
   /// ```
   @override
   Future<void> modify(T Function(T docData) modifier, {bool atomic = true}) =>
-      DocumentHandler.modify(ref, modifier, _toJson, _fromJson, documentIdField, atomic: atomic);
+      DocumentHandler.modify(
+        ref,
+        modifier,
+        _toJson,
+        _fromJson,
+        documentIdField,
+        atomic: atomic,
+      );
 
   /// Delete this document
   @override
   Future<void> delete() => DocumentHandler.delete(ref);
 
   @override
-  Future<void> patch(
-    List<UpdateOperation> Function(P updateBuilder)
-    patches,
-  ) {
+  Future<void> patch(List<UpdateOperation> Function(P updateBuilder) patches) {
     final operations = patches(_patchBuilder);
     return DocumentHandler.patch(ref, operations);
   }

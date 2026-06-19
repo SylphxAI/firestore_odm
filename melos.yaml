@@ -16,18 +16,14 @@ scripts:
     
   # Development scripts
   analyze:
-    run: dart analyze .
+    # `melos exec` runs per-package; a plain `run` would execute once at the
+    # workspace root (melos >=6), defeating the flutter_example exclusion.
+    run: melos exec --ignore="flutter_example" -- dart analyze .
     description: Run static analysis on all packages.
-    packageFilters:
-      ignore:
-        - flutter_example
 
   test:
-    run: dart test
-    description: Run tests in all packages.
-    packageFilters:
-      ignore:
-        - flutter_example
+    run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
+    description: Run tests in all packages (those with a test/ dir).
 
   fix:
     run: dart fix --apply
@@ -38,24 +34,20 @@ scripts:
     description: Check if all files are formatted correctly.
 
   build:example:
-    run: dart run build_runner build --delete-conflicting-outputs
+    run: melos exec --scope="flutter_example" -- dart run build_runner build --delete-conflicting-outputs
     description: Generate code for the example.
-    packageFilters:
-      scope: flutter_example
 
   # Testing scripts
   test:unit:
-    run: dart test
-    description: Run unit tests.
-    packageFilters:
-      ignore:
-        - flutter_example
+    # `--dir-exists=test` skips packages without a test/ dir; otherwise
+    # `dart test` aborts with "Could not find package test". Currently no
+    # library package has unit tests — all tests are integration tests.
+    run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
+    description: Run unit tests (packages with a test/ dir).
 
   test:integration:
-    run: flutter test
+    run: melos exec --scope="flutter_example" -- flutter test
     description: Run integration tests.
-    packageFilters:
-      scope: flutter_example
 
   test:all:
     run: |
@@ -104,13 +96,8 @@ scripts:
 
   # Publishing scripts
   publish:dry-run:
-    run: dart pub publish --dry-run
+    run: melos exec --scope="firestore_odm_annotation,firestore_odm,firestore_odm_builder" -- dart pub publish --dry-run
     description: Verify packages are ready to publish.
-    packageFilters:
-      scope:
-        - firestore_odm_annotation
-        - firestore_odm
-        - firestore_odm_builder
 
   publish:packages:
     run: dart pub publish --force

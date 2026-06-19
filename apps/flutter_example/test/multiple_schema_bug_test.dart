@@ -264,10 +264,7 @@ void main() {
               tx
                   .users(user.id)
                   .patch(
-                    ($) => [
-                      $.name('Main TX Updated'),
-                      $.rating.increment(0.5),
-                    ],
+                    ($) => [$.name('Main TX Updated'), $.rating.increment(0.5)],
                   );
             }),
             secondaryODM.runTransaction((tx) async {

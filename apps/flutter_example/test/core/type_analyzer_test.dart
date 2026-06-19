@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Test models for type analysis
 class IterableTestModel {
-
   const IterableTestModel({
     required this.id,
     required this.standardList,
@@ -30,7 +29,6 @@ class IterableTestModel {
 
 /// Test model with immutable collections (if available)
 class ImmutableTestModel {
-
   const ImmutableTestModel({
     required this.id,
     required this.regularList,

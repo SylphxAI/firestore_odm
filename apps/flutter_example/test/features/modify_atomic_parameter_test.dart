@@ -37,13 +37,21 @@ void main() {
       await odm.users.insert(user);
 
       // Test modify with default atomic behavior (should be true)
-      await odm.users('atomic_default_user').modify((user) => user.copyWith(
-        age: user.age + 5, // Should use FieldValue.increment(5)
-        tags: [...user.tags, 'new'], // Should use FieldValue.arrayUnion(['new'])
-        profile: user.profile.copyWith(
-          followers: user.profile.followers + 10, // Should use atomic increment
-        ),
-      ));
+      await odm
+          .users('atomic_default_user')
+          .modify(
+            (user) => user.copyWith(
+              age: user.age + 5, // Should use FieldValue.increment(5)
+              tags: [
+                ...user.tags,
+                'new',
+              ], // Should use FieldValue.arrayUnion(['new'])
+              profile: user.profile.copyWith(
+                followers:
+                    user.profile.followers + 10, // Should use atomic increment
+              ),
+            ),
+          );
 
       // Verify the changes
       final updatedUser = await odm.users('atomic_default_user').get();
@@ -76,13 +84,22 @@ void main() {
       await odm.users.insert(user);
 
       // Test modify with explicit atomic: true
-      await odm.users('atomic_true_user').modify((user) => user.copyWith(
-        age: user.age + 5, // Should use FieldValue.increment(5)
-        tags: [...user.tags, 'explicit'], // Should use FieldValue.arrayUnion(['explicit'])
-        profile: user.profile.copyWith(
-          followers: user.profile.followers + 15, // Should use atomic increment
-        ),
-      ), atomic: true);
+      await odm
+          .users('atomic_true_user')
+          .modify(
+            (user) => user.copyWith(
+              age: user.age + 5, // Should use FieldValue.increment(5)
+              tags: [
+                ...user.tags,
+                'explicit',
+              ], // Should use FieldValue.arrayUnion(['explicit'])
+              profile: user.profile.copyWith(
+                followers:
+                    user.profile.followers + 15, // Should use atomic increment
+              ),
+            ),
+            atomic: true,
+          );
 
       // Verify the changes
       final updatedUser = await odm.users('atomic_true_user').get();
@@ -115,11 +132,21 @@ void main() {
       await odm.users.insert(user);
 
       // Test modify with atomic: false
-      await odm.users('atomic_false_user').modify((user) => user.copyWith(
-        age: user.age + 5, // Should use simple field update, not FieldValue.increment
-        tags: [...user.tags, 'non_atomic'], // Should use simple field update, not FieldValue.arrayUnion
-        name: 'Updated Name', // Simple field update
-      ), atomic: false);
+      await odm
+          .users('atomic_false_user')
+          .modify(
+            (user) => user.copyWith(
+              age:
+                  user.age +
+                  5, // Should use simple field update, not FieldValue.increment
+              tags: [
+                ...user.tags,
+                'non_atomic',
+              ], // Should use simple field update, not FieldValue.arrayUnion
+              name: 'Updated Name', // Simple field update
+            ),
+            atomic: false,
+          );
 
       // Verify the changes
       final updatedUser = await odm.users('atomic_false_user').get();
@@ -141,7 +168,13 @@ void main() {
           scores: [10],
           tags: ['bulk'],
           isActive: true,
-          profile: Profile(bio: 'Bio 1', avatar: 'avatar1.jpg', socialLinks: {'twitter': '@user1'}, interests: ['tech'], followers: 50),
+          profile: Profile(
+            bio: 'Bio 1',
+            avatar: 'avatar1.jpg',
+            socialLinks: {'twitter': '@user1'},
+            interests: ['tech'],
+            followers: 50,
+          ),
         ),
         const User(
           id: 'bulk_user_2',
@@ -151,7 +184,13 @@ void main() {
           scores: [20],
           tags: ['bulk'],
           isActive: true,
-          profile: Profile(bio: 'Bio 2', avatar: 'avatar2.jpg', socialLinks: {'twitter': '@user2'}, interests: ['tech'], followers: 75),
+          profile: Profile(
+            bio: 'Bio 2',
+            avatar: 'avatar2.jpg',
+            socialLinks: {'twitter': '@user2'},
+            interests: ['tech'],
+            followers: 75,
+          ),
         ),
       ];
 
@@ -162,10 +201,13 @@ void main() {
       // Test bulk modify with atomic operations
       await odm.users
           .where(($) => $.tags(arrayContains: 'bulk'))
-          .modify((user) => user.copyWith(
-            age: user.age + 1, // Should use atomic increment
-            tags: [...user.tags, 'updated'], // Should use atomic array union
-          ), atomic: true);
+          .modify(
+            (user) => user.copyWith(
+              age: user.age + 1, // Should use atomic increment
+              tags: [...user.tags, 'updated'], // Should use atomic array union
+            ),
+            atomic: true,
+          );
 
       // Verify the changes
       final updatedUsers = await odm.users
@@ -202,10 +244,17 @@ void main() {
       await odm.users.insert(user);
 
       // Test that modify still works (deprecated but functional)
-      await odm.users('backward_compat_user').modify((user) => user.copyWith(
-        age: user.age + 5, // Should use FieldValue.increment(5)
-        tags: [...user.tags, 'backward'], // Should use FieldValue.arrayUnion(['backward'])
-      ));
+      await odm
+          .users('backward_compat_user')
+          .modify(
+            (user) => user.copyWith(
+              age: user.age + 5, // Should use FieldValue.increment(5)
+              tags: [
+                ...user.tags,
+                'backward',
+              ], // Should use FieldValue.arrayUnion(['backward'])
+            ),
+          );
 
       // Verify the changes
       final updatedUser = await odm.users('backward_compat_user').get();
@@ -238,10 +287,18 @@ void main() {
 
       // Test modify in transaction with atomic parameter
       await odm.runTransaction((tx) async {
-        await tx.users('tx_atomic_user').modify((user) => user.copyWith(
-          age: user.age + 10, // Should use atomic increment
-          tags: [...user.tags, 'transaction'], // Should use atomic array union
-        ), atomic: true);
+        await tx
+            .users('tx_atomic_user')
+            .modify(
+              (user) => user.copyWith(
+                age: user.age + 10, // Should use atomic increment
+                tags: [
+                  ...user.tags,
+                  'transaction',
+                ], // Should use atomic array union
+              ),
+              atomic: true,
+            );
       });
 
       // Verify the changes

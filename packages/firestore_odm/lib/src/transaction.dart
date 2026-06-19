@@ -66,9 +66,9 @@ class TransactionCollection<
     required this.context,
     required this.documentIdField,
     required P patchBuilder,
-  })  : _toJson = toJson,
-        _fromJson = fromJson,
-        _patchBuilder = patchBuilder;
+  }) : _toJson = toJson,
+       _fromJson = fromJson,
+       _patchBuilder = patchBuilder;
 
   /// Gets a document reference with the specified ID
   /// Documents are cached to ensure consistency
@@ -104,9 +104,9 @@ class TransactionDocument<
     required this.documentIdField,
     required this.context,
     required P patchBuilder,
-  })  : _toJson = toJson,
-        _fromJson = fromJson,
-        _patchBuilder = patchBuilder;
+  }) : _toJson = toJson,
+       _fromJson = fromJson,
+       _patchBuilder = patchBuilder;
 
   @override
   Future<T?> get() async {

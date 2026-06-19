@@ -14,7 +14,7 @@ extension DartTypeExtension on DartType {
     if (name == 'dynamic') {
       return TypeReference((b) => b..symbol = 'dynamic');
     }
-    
+
     final uri = element.library2?.uri.toString();
     final typeArguments = switch (this) {
       InterfaceType type => type.typeArguments.map((t) => t.reference).toList(),
@@ -25,7 +25,7 @@ extension DartTypeExtension on DartType {
         ..symbol = name
         ..url = uri
         ..types.addAll(typeArguments)
-        ..isNullable = nullabilitySuffix == NullabilitySuffix.question 
+        ..isNullable = nullabilitySuffix == NullabilitySuffix.question
             ? true
             : null,
     );
@@ -76,7 +76,7 @@ extension ElementExtension on Element {
       (b) => b
         ..symbol = name
         ..url = uri
-        ..types.addAll(typeParameters.map((t) => t.reference))
+        ..types.addAll(typeParameters.map((t) => t.reference)),
     );
   }
 }
@@ -100,7 +100,7 @@ extension Element3Extension on Element2 {
       (b) => b
         ..symbol = name
         ..url = uri
-        ..types.addAll(typeParameters.map((t) => t.reference))
+        ..types.addAll(typeParameters.map((t) => t.reference)),
     );
   }
 }
@@ -109,78 +109,78 @@ class TypeReferences {
   static final string = TypeReference(
     (b) => b
       ..symbol = 'String'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final int = TypeReference(
     (b) => b
       ..symbol = 'int'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final double = TypeReference(
     (b) => b
       ..symbol = 'double'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final bool = TypeReference(
     (b) => b
       ..symbol = 'bool'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final dynamic = TypeReference((b) => b..symbol = 'dynamic');
   static final list = TypeReference(
     (b) => b
       ..symbol = 'List'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final map = TypeReference(
     (b) => b
       ..symbol = 'Map'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final set = TypeReference(
     (b) => b
       ..symbol = 'Set'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final dateTime = TypeReference(
     (b) => b
       ..symbol = 'DateTime'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
   static final duration = TypeReference(
     (b) => b
       ..symbol = 'Duration'
-      ..url = 'dart:core'
+      ..url = 'dart:core',
   );
 
   static final timestamp = TypeReference(
     (b) => b
       ..symbol = 'Timestamp'
-      ..url = 'package:cloud_firestore/cloud_firestore.dart'
+      ..url = 'package:cloud_firestore/cloud_firestore.dart',
   );
 
   static final geoPoint = TypeReference(
     (b) => b
       ..symbol = 'GeoPoint'
-      ..url = 'package:cloud_firestore/cloud_firestore.dart'
+      ..url = 'package:cloud_firestore/cloud_firestore.dart',
   );
 
   static final documentReference = TypeReference(
     (b) => b
       ..symbol = 'DocumentReference'
-      ..url = 'package:cloud_firestore/cloud_firestore.dart'
+      ..url = 'package:cloud_firestore/cloud_firestore.dart',
   );
 
   static final uint8List = TypeReference(
     (b) => b
       ..symbol = 'Uint8List'
-      ..url = 'dart:typed_data'
+      ..url = 'dart:typed_data',
   );
 
   static final bytes = TypeReference(
     (b) => b
       ..symbol = 'Bytes'
-      ..url = 'package:firebase_storage/firebase_storage.dart'
+      ..url = 'package:firebase_storage/firebase_storage.dart',
   );
 
   static TypeReference listOf(TypeReference type) {
@@ -195,7 +195,6 @@ class TypeReferences {
     return set.rebuild((b) => b..types.add(type));
   }
 }
-
 
 extension TypeReferenceX on TypeReference {
   TypeReference withNullability(bool isNullable) {
@@ -215,7 +214,6 @@ extension TypeReferenceX on TypeReference {
   }
 }
 
-
 extension DartTypeIterableX on Iterable<DartType> {
   List<TypeReference> get references => map((t) => t.reference).toList();
 }
@@ -228,7 +226,7 @@ extension Element2IterableX on Iterable<Element2> {
   List<TypeReference> get references => map((e) => e.reference).toList();
 }
 
-extension ExpressionnX on Expression  {
+extension ExpressionnX on Expression {
   /// Converts the expression to a string representation
   Expression debug(String message) {
     return refer('/* $message */ ${accept(DartEmitter())}');

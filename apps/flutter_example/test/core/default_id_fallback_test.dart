@@ -438,7 +438,8 @@ void main() {
 
       test(
         'Verify document ID field detection priority works correctly',
-        skip: 'Skip this test due to fake_cloud_firestore compatibility issues with FieldPathType',
+        skip:
+            'Skip this test due to fake_cloud_firestore compatibility issues with FieldPathType',
         () async {
           // This test verifies that our TypeAnalyzer properly detects ID fields
           // User: has @DocumentIdField annotation on 'id' field

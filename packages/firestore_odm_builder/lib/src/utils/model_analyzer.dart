@@ -220,8 +220,8 @@ TypeReference getJsonType({required DartType type}) {
     final base = allString
         ? TypeReferences.string
         : allInt
-            ? TypeReferences.int
-            : TypeReferences.dynamic;
+        ? TypeReferences.int
+        : TypeReferences.dynamic;
     return base.withNullability(type.isNullable);
   }
 

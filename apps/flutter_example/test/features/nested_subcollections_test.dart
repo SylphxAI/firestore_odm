@@ -577,15 +577,21 @@ void main() {
         // Verify document types
         expect(
           odm.users('test'),
-          isA<FirestoreDocument<TestSchema, User, dynamic, UserPatchBuilder<User>>>(),
+          isA<
+            FirestoreDocument<TestSchema, User, dynamic, UserPatchBuilder<User>>
+          >(),
         );
         expect(
           odm.posts('test'),
-          isA<FirestoreDocument<TestSchema, Post, dynamic, PostPatchBuilder<Post>>>(),
+          isA<
+            FirestoreDocument<TestSchema, Post, dynamic, PostPatchBuilder<Post>>
+          >(),
         );
         expect(
           odm.users('test').posts('test'),
-          isA<FirestoreDocument<TestSchema, Post, dynamic, PostPatchBuilder<Post>>>(),
+          isA<
+            FirestoreDocument<TestSchema, Post, dynamic, PostPatchBuilder<Post>>
+          >(),
         );
       });
 

@@ -8,7 +8,6 @@ part 'immutable_user.g.dart';
 @freezed
 @firestoreOdm
 abstract class ImmutableUser with _$ImmutableUser {
-
   const factory ImmutableUser({
     @DocumentIdField() required String id,
     required String name,

@@ -6,10 +6,7 @@ import 'package:firestore_odm/src/types.dart';
 import 'package:firestore_odm/src/utils.dart';
 
 typedef AggregateBuilderFunc<AB extends AggregateFieldNode> =
-    AB Function({
-      required AggregateContext context,
-      required FieldPath field,
-    });
+    AB Function({required AggregateContext context, required FieldPath field});
 
 abstract class AggregateContext {
   R resolve<R extends num?>(AggregateOperation operation);
@@ -52,17 +49,12 @@ class AggregateResultContext extends AggregateContext {
 /// Selector that provides strongly-typed field access for aggregations
 abstract class AggregateFieldNode extends Node {
   final AggregateContext $context;
-  const AggregateFieldNode({
-    super.field,
-    required AggregateContext context,
-  }) : $context = context;
+  const AggregateFieldNode({super.field, required AggregateContext context})
+    : $context = context;
 }
 
 abstract class AggregateBuilderRoot extends AggregateFieldNode {
-  const AggregateBuilderRoot({
-    super.field,
-    required super.context,
-  });
+  const AggregateBuilderRoot({super.field, required super.context});
 
   /// Get count of documents
   int count();
@@ -80,10 +72,7 @@ class AggregateField<T extends num?> extends AggregateFieldNode {
   ///
   /// [name] - The name of the field in the document
   /// [context] - The aggregate context used to resolve operations
-  const AggregateField({
-    required super.field,
-    required super.context,
-  });
+  const AggregateField({required super.field, required super.context});
 
   /// Get sum of this field
   T sum() {
@@ -290,7 +279,7 @@ abstract class QueryAggregatableHandler {
     final sumOps = operations.whereType<SumOperation>().toList();
     final avgOps = operations.whereType<AverageOperation>().toList();
 
-    if (sumOps.isNotEmpty || avgOps.isNotEmpty ) {
+    if (sumOps.isNotEmpty || avgOps.isNotEmpty) {
       // Calculate sums
       for (final op in sumOps) {
         results[op.key] = _calculateSum(snapshot, op.field, toJson);
@@ -342,7 +331,10 @@ abstract class QueryAggregatableHandler {
   }
 
   /// Get nested value from JSON using dot notation
-  static dynamic _getNestedValue(Map<String, dynamic> json, PathFieldPath field) {
+  static dynamic _getNestedValue(
+    Map<String, dynamic> json,
+    PathFieldPath field,
+  ) {
     dynamic current = json;
     for (final part in field.components) {
       if (current is Map<String, dynamic> && current.containsKey(part)) {

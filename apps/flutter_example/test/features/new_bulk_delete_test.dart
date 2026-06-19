@@ -149,9 +149,7 @@ void main() {
 
         // ✅ NEW: Delete users using complex AND condition
         await odm.users
-            .where(
-              ($) => $.and($.age(isLessThan: 25), $.rating(isLessThan: 3)),
-            )
+            .where(($) => $.and($.age(isLessThan: 25), $.rating(isLessThan: 3)))
             .delete();
 
         // Verify only the good user remains

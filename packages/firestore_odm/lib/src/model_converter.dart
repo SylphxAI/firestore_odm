@@ -69,14 +69,20 @@ class IterableConverter<T>
 }
 
 Map<String, R> mapToJson<K, V, R>(
-    Map<K, V> data, String Function(K) keyToJson, R Function(V) valueToJson) {
+  Map<K, V> data,
+  String Function(K) keyToJson,
+  R Function(V) valueToJson,
+) {
   return data.map((key, value) {
     return MapEntry(keyToJson(key), valueToJson(value));
   });
 }
 
 Map<K, V> mapFromJson<K, V, R>(
-    Map<String, R> data, K Function(String) keyFromJson, V Function(R) valueFromJson) {
+  Map<String, R> data,
+  K Function(String) keyFromJson,
+  V Function(R) valueFromJson,
+) {
   return data.map((key, value) {
     return MapEntry(keyFromJson(key), valueFromJson(value));
   });
@@ -86,18 +92,17 @@ List<R> listToJson<T, R>(Iterable<T> data, R Function(T) elementToJson) {
   return data.map((item) => elementToJson(item)).toList();
 }
 
-List<T> listFromJson<R, T>(
-    List<R> data, T Function(R) elementFromJson) {
+List<T> listFromJson<R, T>(List<R> data, T Function(R) elementFromJson) {
   return data.map((item) => elementFromJson(item)).toList();
 }
 
-class ListConverter<T, R>
-    implements FirestoreConverter<List<T>, List<R>> {
+class ListConverter<T, R> implements FirestoreConverter<List<T>, List<R>> {
   final FirestoreConverter<T, R> elementConverter;
   const ListConverter(this.elementConverter);
 
   @override
-  List<T> fromJson(List<R> data) => data.map((item) => elementConverter.fromJson(item)).toList();
+  List<T> fromJson(List<R> data) =>
+      data.map((item) => elementConverter.fromJson(item)).toList();
 
   @override
   List<R> toJson(Iterable<T> data) => listToJson(data, elementConverter.toJson);

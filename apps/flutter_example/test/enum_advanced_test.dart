@@ -25,16 +25,19 @@ void main() {
         );
 
         await odm.enumTasks(task.id).update(task);
-        
+
         // Check raw storage values
         final doc = await fake.collection('enumTasks').doc(task.id).get();
         final data = doc.data()!;
-        
+
         expect(data['priority'], 3); // Numeric @JsonValue
         expect(data['status'], 'in_progress'); // String @JsonValue
         expect(data['defaultPriority'], 2); // Default to Priority.medium
-        expect(data['defaultStatus'], 'pending'); // Default to TaskStatus.pending
-        
+        expect(
+          data['defaultStatus'],
+          'pending',
+        ); // Default to TaskStatus.pending
+
         // Verify deserialization
         final retrieved = await odm.enumTasks(task.id).get();
         expect(retrieved, isNotNull);
@@ -55,7 +58,7 @@ void main() {
           ),
           EnumTask(
             id: 'medium',
-            title: 'Medium Priority Task', 
+            title: 'Medium Priority Task',
             priority: Priority.medium, // 2
             status: TaskStatus.inProgress,
             createdAt: DateTime.now(),
@@ -84,12 +87,12 @@ void main() {
         // Verify storage values
         final docs = await fake.collection('enumTasks').get();
         final storedData = {for (var doc in docs.docs) doc.id: doc.data()};
-        
+
         expect(storedData['low']!['priority'], 1);
         expect(storedData['medium']!['priority'], 2);
         expect(storedData['high']!['priority'], 3);
         expect(storedData['critical']!['priority'], 4);
-        
+
         expect(storedData['low']!['status'], 'pending');
         expect(storedData['medium']!['status'], 'in_progress');
         expect(storedData['high']!['status'], 'completed');
@@ -108,7 +111,7 @@ void main() {
           EnumUser(
             id: 'user_free',
             name: 'Free User',
-            accountType: AccountType.free, // 'free' 
+            accountType: AccountType.free, // 'free'
           ),
           EnumUser(
             id: 'user_pro',
@@ -122,7 +125,9 @@ void main() {
         }
 
         // Order by accountType ascending (alphabetical: enterprise, free, pro)
-        final ascending = await odm.enumUsers.orderBy(($) => ($.accountType(),)).get();
+        final ascending = await odm.enumUsers
+            .orderBy(($) => ($.accountType(),))
+            .get();
         expect(ascending.map((u) => u.accountType).toList(), [
           AccountType.enterprise,
           AccountType.free,
@@ -150,7 +155,7 @@ void main() {
             createdAt: DateTime.now(),
           ),
           EnumTask(
-            id: 'task_low', 
+            id: 'task_low',
             title: 'Low Task',
             priority: Priority.low, // 1
             status: TaskStatus.pending,
@@ -158,7 +163,7 @@ void main() {
           ),
           EnumTask(
             id: 'task_high',
-            title: 'High Task', 
+            title: 'High Task',
             priority: Priority.high, // 3
             status: TaskStatus.pending,
             createdAt: DateTime.now(),
@@ -177,12 +182,14 @@ void main() {
         }
 
         // Order by priority ascending (1, 2, 3, 4)
-        final ascending = await odm.enumTasks.orderBy(($) => ($.priority(),)).get();
+        final ascending = await odm.enumTasks
+            .orderBy(($) => ($.priority(),))
+            .get();
         expect(ascending.map((t) => t.priority).toList(), [
-          Priority.low,     // 1
-          Priority.medium,  // 2
-          Priority.high,    // 3
-          Priority.critical,// 4
+          Priority.low, // 1
+          Priority.medium, // 2
+          Priority.high, // 3
+          Priority.critical, // 4
         ]);
 
         // Order by priority descending (4, 3, 2, 1)
@@ -190,10 +197,10 @@ void main() {
             .orderBy(($) => ($.priority(descending: true),))
             .get();
         expect(descending.map((t) => t.priority).toList(), [
-          Priority.critical,// 4
-          Priority.high,    // 3
-          Priority.medium,  // 2
-          Priority.low,     // 1
+          Priority.critical, // 4
+          Priority.high, // 3
+          Priority.medium, // 2
+          Priority.low, // 1
         ]);
       });
 
@@ -208,7 +215,7 @@ void main() {
           ),
           EnumTask(
             id: 'task2',
-            title: 'Task 2', 
+            title: 'Task 2',
             priority: Priority.high,
             status: TaskStatus.completed,
             createdAt: DateTime.now(),
@@ -240,15 +247,13 @@ void main() {
 
         // Expected order:
         // 1. high + completed ('completed' < 'pending' alphabetically)
-        // 2. high + pending  
+        // 2. high + pending
         // 3. low + in_progress ('in_progress' < 'pending' alphabetically)
         // 4. low + pending
-        expect(results.map((t) => '${t.priority.name}_${t.status.name}').toList(), [
-          'high_completed',
-          'high_pending',
-          'low_inProgress',
-          'low_pending',
-        ]);
+        expect(
+          results.map((t) => '${t.priority.name}_${t.status.name}').toList(),
+          ['high_completed', 'high_pending', 'low_inProgress', 'low_pending'],
+        );
       });
     });
 
@@ -264,7 +269,7 @@ void main() {
           ),
           EnumTask(
             id: 'urgent2',
-            title: 'Urgent Task 2', 
+            title: 'Urgent Task 2',
             priority: Priority.high,
             status: TaskStatus.pending,
             createdAt: DateTime.now(),
@@ -294,10 +299,14 @@ void main() {
             .where(($) => $.status.isEqualTo(TaskStatus.pending))
             .get();
         expect(pendingTasks.length, 2);
-        expect(pendingTasks.map((t) => t.title).toList(), 
-               contains('Urgent Task 1'));
-        expect(pendingTasks.map((t) => t.title).toList(), 
-               contains('Urgent Task 2'));
+        expect(
+          pendingTasks.map((t) => t.title).toList(),
+          contains('Urgent Task 1'),
+        );
+        expect(
+          pendingTasks.map((t) => t.title).toList(),
+          contains('Urgent Task 2'),
+        );
       });
 
       test('should use enum comparison operators', () async {
@@ -374,11 +383,15 @@ void main() {
         await odm.enumTasks(task.id).update(task);
 
         // Patch with different enum types
-        await odm.enumTasks(task.id).patch(($) => [
-              $.priority(Priority.critical), // Numeric enum: 4
-              $.status(TaskStatus.completed), // String enum: 'completed'
-              $.title('Updated Mixed Enum Task'),
-            ]);
+        await odm
+            .enumTasks(task.id)
+            .patch(
+              ($) => [
+                $.priority(Priority.critical), // Numeric enum: 4
+                $.status(TaskStatus.completed), // String enum: 'completed'
+                $.title('Updated Mixed Enum Task'),
+              ],
+            );
 
         final updated = await odm.enumTasks(task.id).get();
         expect(updated!.priority, Priority.critical);
@@ -393,13 +406,16 @@ void main() {
       });
 
       test('should handle complex queries with mixed enum types', () async {
-        final tasks = List.generate(6, (i) => EnumTask(
-          id: 'task_$i',
-          title: 'Task $i',
-          priority: Priority.values[i % Priority.values.length],
-          status: TaskStatus.values[i % TaskStatus.values.length],
-          createdAt: DateTime.now().add(Duration(hours: i)),
-        ));
+        final tasks = List.generate(
+          6,
+          (i) => EnumTask(
+            id: 'task_$i',
+            title: 'Task $i',
+            priority: Priority.values[i % Priority.values.length],
+            status: TaskStatus.values[i % TaskStatus.values.length],
+            createdAt: DateTime.now().add(Duration(hours: i)),
+          ),
+        );
 
         for (final task in tasks) {
           await odm.enumTasks(task.id).update(task);
@@ -407,19 +423,24 @@ void main() {
 
         // Complex query: high priority OR completed status, ordered by creation time
         final results = await odm.enumTasks
-            .where(($) => $.priority.isEqualTo(Priority.high).or(
-                  $.status.isEqualTo(TaskStatus.completed)))
+            .where(
+              ($) => $.priority
+                  .isEqualTo(Priority.high)
+                  .or($.status.isEqualTo(TaskStatus.completed)),
+            )
             .orderBy(($) => ($.createdAt(),))
             .get();
 
         expect(results.isNotEmpty, true);
-        
+
         // Verify each result matches criteria
         for (final task in results) {
           expect(
-            task.priority == Priority.high || task.status == TaskStatus.completed,
+            task.priority == Priority.high ||
+                task.status == TaskStatus.completed,
             true,
-            reason: 'Task ${task.id} should have high priority OR completed status'
+            reason:
+                'Task ${task.id} should have high priority OR completed status',
           );
         }
       });

@@ -202,10 +202,7 @@ void main() {
 
         // 1. Simple subcollection: "posts/*/comments"
         final mainPostComment = odm.posts('main_post').comments;
-        expect(
-          mainPostComment.query.path,
-          equals('posts/main_post/comments'),
-        );
+        expect(mainPostComment.query.path, equals('posts/main_post/comments'));
 
         // 2. Nested subcollection: "users/*/posts/*/comments"
         final userPostComment = odm.users('user').posts('post').comments;
@@ -216,17 +213,11 @@ void main() {
 
         // 3. User posts subcollection: "users/*/posts"
         final userPosts = odm.users('user').posts;
-        expect(
-          userPosts.query.path,
-          equals('users/user/posts'),
-        );
+        expect(userPosts.query.path, equals('users/user/posts'));
 
         // 4. User shared posts subcollection: "users/*/sharedPosts"
         final userSharedPosts = odm.users('user').sharedPosts;
-        expect(
-          userSharedPosts.query.path,
-          equals('users/user/sharedPosts'),
-        );
+        expect(userSharedPosts.query.path, equals('users/user/sharedPosts'));
       },
     );
 
@@ -249,14 +240,8 @@ void main() {
       );
 
       // Verify the collection structure follows Firestore conventions
-      expect(
-        userDoc.ref.path,
-        equals('users/user_id'),
-      );
-      expect(
-        postDoc.ref.path,
-        equals('users/user_id/posts/post_id'),
-      );
+      expect(userDoc.ref.path, equals('users/user_id'));
+      expect(postDoc.ref.path, equals('users/user_id/posts/post_id'));
     });
   });
 }

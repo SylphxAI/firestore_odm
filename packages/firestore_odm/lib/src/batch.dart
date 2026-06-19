@@ -54,8 +54,12 @@ class BatchContext<S extends FirestoreSchema> {
 }
 
 /// it is a convenience function to create a batch document
-BatchCollection<S, C, Path, P>
-getBatchCollection<S extends FirestoreSchema, C, Path extends Record, P extends PatchBuilder<C, Map<String, dynamic>?>>({
+BatchCollection<S, C, Path, P> getBatchCollection<
+  S extends FirestoreSchema,
+  C,
+  Path extends Record,
+  P extends PatchBuilder<C, Map<String, dynamic>?>
+>({
   required BatchDocument<S, dynamic, Record, dynamic> parent,
   required String name,
   required Map<String, dynamic> Function(C) toJson,
@@ -72,7 +76,12 @@ getBatchCollection<S extends FirestoreSchema, C, Path extends Record, P extends 
 );
 
 /// Batch document for handling document-level batch operations
-class BatchDocument<S extends FirestoreSchema, T, Path extends Record, P extends PatchBuilder<T, Map<String, dynamic>?>>
+class BatchDocument<
+  S extends FirestoreSchema,
+  T,
+  Path extends Record,
+  P extends PatchBuilder<T, Map<String, dynamic>?>
+>
     implements Deletable, Patchable<T> {
   final BatchContext<S> _context;
   final firestore.DocumentReference<Map<String, dynamic>?> _ref;
@@ -94,9 +103,7 @@ class BatchDocument<S extends FirestoreSchema, T, Path extends Record, P extends
   }
 
   @override
-  void patch(
-    List<UpdateOperation> Function(P patchBuilder) patchBuilder,
-  ) {
+  void patch(List<UpdateOperation> Function(P patchBuilder) patchBuilder) {
     final operations = patchBuilder(_patchBuilder);
     final updateMap = operationsToMap(operations);
 
@@ -109,11 +116,13 @@ class BatchDocument<S extends FirestoreSchema, T, Path extends Record, P extends
 }
 
 /// Batch collection for handling collection-level batch operations
-class BatchCollection<S extends FirestoreSchema, T, Path extends Record, P extends PatchBuilder<T, Map<String, dynamic>?>>
-    implements
-        Insertable<T>,
-        Updatable<T>,
-        Upsertable<T> {
+class BatchCollection<
+  S extends FirestoreSchema,
+  T,
+  Path extends Record,
+  P extends PatchBuilder<T, Map<String, dynamic>?>
+>
+    implements Insertable<T>, Updatable<T>, Upsertable<T> {
   final BatchContext<S> _context;
   final firestore.CollectionReference<Map<String, dynamic>> _collection;
   final Map<String, dynamic> Function(T) _toJson;

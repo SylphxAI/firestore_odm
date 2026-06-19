@@ -108,14 +108,12 @@ class FirestoreODM<T extends FirestoreSchema> {
   ///   batch.users('user3').delete();
   /// });
   /// ```
-  Future<void> runBatch(
-    void Function(BatchContext<T>) cb,
-  ) async {
+  Future<void> runBatch(void Function(BatchContext<T>) cb) async {
     final context = BatchContext<T>(_firestore);
-    
+
     // Execute the callback (queues all write operations)
     cb(context);
-    
+
     // Commit all queued operations
     await context.commit();
   }

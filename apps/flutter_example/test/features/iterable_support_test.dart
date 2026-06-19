@@ -40,24 +40,35 @@ void main() {
       print('🧪 Test: Using Set with addAll and removeAll');
 
       // Test addAll with Set
-      await odm.users('iterable_set_user').patch(($) => [
-        $.tags.addAll({'premium', 'verified', 'active'}), // Using Set
-        $.scores.addAll({40, 50, 60}), // Using Set
-      ]);
+      await odm
+          .users('iterable_set_user')
+          .patch(
+            ($) => [
+              $.tags.addAll({'premium', 'verified', 'active'}), // Using Set
+              $.scores.addAll({40, 50, 60}), // Using Set
+            ],
+          );
 
       var result = await odm.users('iterable_set_user').get();
       print('📊 After addAll with Set:');
       print('   Tags: ${result!.tags}');
       print('   Scores: ${result.scores}');
 
-      expect(result.tags, containsAll(['initial', 'existing', 'premium', 'verified', 'active']));
+      expect(
+        result.tags,
+        containsAll(['initial', 'existing', 'premium', 'verified', 'active']),
+      );
       expect(result.scores, containsAll([10, 20, 30, 40, 50, 60]));
 
       // Test removeAll with Set
-      await odm.users('iterable_set_user').patch(($) => [
-        $.tags.removeAll({'initial', 'existing'}), // Using Set
-        $.scores.removeAll({10, 20}), // Using Set
-      ]);
+      await odm
+          .users('iterable_set_user')
+          .patch(
+            ($) => [
+              $.tags.removeAll({'initial', 'existing'}), // Using Set
+              $.scores.removeAll({10, 20}), // Using Set
+            ],
+          );
 
       result = await odm.users('iterable_set_user').get();
       print('📊 After removeAll with Set:');
@@ -99,31 +110,52 @@ void main() {
       print('🧪 Test: Using custom Iterable with addAll and removeAll');
 
       // Create custom iterables
-      final customTagsIterable = ['custom1', 'custom2', 'custom3'].where((tag) => tag.startsWith('custom'));
+      final customTagsIterable = [
+        'custom1',
+        'custom2',
+        'custom3',
+      ].where((tag) => tag.startsWith('custom'));
       final customScoresIterable = [200, 300, 400].map((score) => score);
 
       // Test addAll with custom Iterable
-      await odm.users('iterable_custom_user').patch(($) => [
-        $.tags.addAll(customTagsIterable), // Using custom Iterable
-        $.scores.addAll(customScoresIterable), // Using custom Iterable
-      ]);
+      await odm
+          .users('iterable_custom_user')
+          .patch(
+            ($) => [
+              $.tags.addAll(customTagsIterable), // Using custom Iterable
+              $.scores.addAll(customScoresIterable), // Using custom Iterable
+            ],
+          );
 
       var result = await odm.users('iterable_custom_user').get();
       print('📊 After addAll with custom Iterable:');
       print('   Tags: ${result!.tags}');
       print('   Scores: ${result.scores}');
 
-      expect(result.tags, containsAll(['start', 'custom1', 'custom2', 'custom3']));
+      expect(
+        result.tags,
+        containsAll(['start', 'custom1', 'custom2', 'custom3']),
+      );
       expect(result.scores, containsAll([100, 200, 300, 400]));
 
       // Test removeAll with custom Iterable
-      final removeTagsIterable = ['custom1', 'custom3'].where((tag) => tag.contains('1') || tag.contains('3'));
-      final removeScoresIterable = [200, 400].where((score) => score % 200 == 0);
+      final removeTagsIterable = [
+        'custom1',
+        'custom3',
+      ].where((tag) => tag.contains('1') || tag.contains('3'));
+      final removeScoresIterable = [
+        200,
+        400,
+      ].where((score) => score % 200 == 0);
 
-      await odm.users('iterable_custom_user').patch(($) => [
-        $.tags.removeAll(removeTagsIterable), // Using custom Iterable
-        $.scores.removeAll(removeScoresIterable), // Using custom Iterable
-      ]);
+      await odm
+          .users('iterable_custom_user')
+          .patch(
+            ($) => [
+              $.tags.removeAll(removeTagsIterable), // Using custom Iterable
+              $.scores.removeAll(removeScoresIterable), // Using custom Iterable
+            ],
+          );
 
       result = await odm.users('iterable_custom_user').get();
       print('📊 After removeAll with custom Iterable:');
@@ -165,11 +197,17 @@ void main() {
       print('🧪 Test: Using mixed Iterable types in same operation');
 
       // Test with different Iterable types in same patch
-      await odm.users('iterable_mixed_user').patch(($) => [
-        $.tags.addAll(['list1', 'list2']), // List
-        $.scores.addAll({10, 20}), // Set
-        $.profile.interests.addAll(['music', 'sports'].where((i) => i.length > 4)), // Custom Iterable
-      ]);
+      await odm
+          .users('iterable_mixed_user')
+          .patch(
+            ($) => [
+              $.tags.addAll(['list1', 'list2']), // List
+              $.scores.addAll({10, 20}), // Set
+              $.profile.interests.addAll(
+                ['music', 'sports'].where((i) => i.length > 4),
+              ), // Custom Iterable
+            ],
+          );
 
       final result = await odm.users('iterable_mixed_user').get();
       print('📊 After mixed Iterable types:');
@@ -179,7 +217,10 @@ void main() {
 
       expect(result.tags, containsAll(['base', 'list1', 'list2']));
       expect(result.scores, containsAll([1, 10, 20]));
-      expect(result.profile.interests, containsAll(['tech', 'music', 'sports']));
+      expect(
+        result.profile.interests,
+        containsAll(['tech', 'music', 'sports']),
+      );
 
       print('✅ Mixed Iterable types work correctly in same operation');
     });

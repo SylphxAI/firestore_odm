@@ -5,7 +5,6 @@ part 'manual_user2.g.dart';
 
 @firestoreOdm
 class ManualUser2 with EquatableMixin {
-
   const ManualUser2({
     required this.id,
     required this.name,
@@ -28,5 +27,14 @@ class ManualUser2 with EquatableMixin {
   final Map<String, String> preferences;
 
   @override
-  List<Object?> get props => [id, name, email, age, isPremium, rating, tags, preferences];
+  List<Object?> get props => [
+    id,
+    name,
+    email,
+    age,
+    isPremium,
+    rating,
+    tags,
+    preferences,
+  ];
 }

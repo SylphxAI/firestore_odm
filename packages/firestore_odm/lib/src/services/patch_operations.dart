@@ -118,7 +118,9 @@ Map<PathFieldPath, dynamic> operationsToMap(List<UpdateOperation> operations) {
   // First pass: identify fields with set operations
   for (final operation in operations) {
     if (operation is SetOperation) {
-      print('Processing operation: value: ${operation.value}, type: ${operation.value.runtimeType}');
+      print(
+        'Processing operation: value: ${operation.value}, type: ${operation.value.runtimeType}',
+      );
     }
     if (operation is SetOperation ||
         operation is DeleteOperation ||
