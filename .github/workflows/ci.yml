@@ -142,10 +142,10 @@ jobs:
         # All tests live in flutter_example; `flutter test --coverage` writes
         # apps/flutter_example/coverage/lcov.info. (The old format_coverage step
         # relied on the removed `.packages` file and had no coverage input.)
-        # --concurrency=2: the self-hosted runners exhaust threads
+        # --concurrency=1: the self-hosted runners exhaust threads
         # (pthread_create failed) under coverage instrumentation at the default
         # concurrency. Lower it for a reliable (if slower) coverage run.
-        run: melos exec --scope="flutter_example" -- flutter test --coverage --concurrency=2
+        run: melos exec --scope="flutter_example" -- flutter test --coverage --concurrency=1
 
       - name: 📤 Upload Coverage
         uses: codecov/codecov-action@v3
@@ -195,7 +195,7 @@ jobs:
         run: melos run generate
 
       - name: ⚡ Performance Benchmarks
-        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true --concurrency=2
+        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true --concurrency=1
 
   # Security scanning
   security:

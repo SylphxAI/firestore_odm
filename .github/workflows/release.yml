@@ -25,17 +25,31 @@ jobs:
           fetch-depth: 0  # Need full git history for conventional commits
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: 🔧 Setup Melos
-        run: dart pub global activate melos
-
-      - name: 📦 Bootstrap
-        run: melos bootstrap
+      - name: 🐦 Setup Flutter & Bootstrap
+        run: |
+          # Mirror ci.yml: pin Flutter 3.32.8 (Dart 3.8.1) — newer stable breaks
+          # `melos bootstrap` against analyzer ^7.4.5 — and install via a
+          # retry-guarded git clone (subosito's archive install intermittently
+          # leaves an empty engine version on these self-hosted runners).
+          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
+          ok=0
+          for attempt in 1 2 3; do
+            rm -rf "$RUNNER_TEMP/flutter"
+            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
+            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
+              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
+            fi
+            flutter --version \
+              && flutter precache \
+              && dart pub global activate melos \
+              && melos bootstrap \
+              && { ok=1; break; }
+            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
+          done
+          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 📋 Dry Run Publish (annotation only)
         run: |
@@ -113,7 +127,9 @@ jobs:
           fi
 
       - name: 📊 Create Release
-        if: ${{ (inputs.run_publish || startsWith(github.ref, 'refs/tags/')) && success() }}
+        # Only on tag pushes — workflow_dispatch has github.ref_name=main (and a
+        # `main` tag already exists), which would make a bogus release.
+        if: ${{ startsWith(github.ref, 'refs/tags/') && success() }}
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

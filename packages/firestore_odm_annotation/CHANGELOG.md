@@ -1,3 +1,7 @@
+## 4.0.0-dev.3
+
+- Bump version to match other packages.
+
 ## 4.0.0-dev.2
 
 - Fix nullable type handling in code generation
