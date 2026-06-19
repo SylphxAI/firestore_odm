@@ -14,11 +14,13 @@ hero:
       link: https://github.com/SylphxAI/firestore_odm
 
 features:
-  - title: "⚡ Lightning Fast Code Generation (3.0 Enhanced)"
+  - title: "⚡ Lightning Fast Code Generation"
     details: Inline-first optimized code using callables and Dart extensions. 20% faster runtime, 15% less generated code.
-  - title: "🪶 Minimal Generated Code"
-    details: Smart code generation produces compact, efficient output without bloating your project size. Sub-second compilation.
-  - title: "🧬 Full Generic Support (New in 3.0)"
+  - title: "🔢 Enum Support (New in 4.0)"
+    details: "@JsonValue with string and numeric values, enums in orderBy, and default-value generation."
+  - title: "🧩 Automatic Nested Imports (New in 4.0)"
+    details: Filter, patch, aggregate, and orderBy selectors for nested types need no manual imports.
+  - title: "🧬 Full Generic Support"
     details: Complete generic model support with type-safe patch operations that respect generic constraints.
   - title: "🛡️ Runtime Error Prevention"
     details: Catch mistakes at compile-time, not in production. Say goodbye to string-based field names.
@@ -26,8 +28,8 @@ features:
     details: Write complex filters that read like natural language and are fully type-safe.
   - title: "🧠 Smart Pagination"
     details: Revolutionary pagination with zero inconsistency risk, thanks to our Smart Builder.
-  - title: "🔄 Powerful Updates (3.0 Improved)"
-    details: Two powerful update strategies (patch, modify) with enhanced atomic operation detection.
-  - title: "🧩 Flexible Modeling (3.0 Enhanced)"
+  - title: "🔄 Powerful Updates"
+    details: Two powerful update strategies (patch, modify) with atomic operation detection, plus batch & transaction patch builders.
+  - title: "🧩 Flexible Modeling"
     details: Supports freezed, plain Dart classes, fast_immutable_collections, JsonKey & JsonConverter.
 ---

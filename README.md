@@ -41,11 +41,21 @@ int age = user.profile.age;  // ✅ Type-safe nested access
 
 ---
 
-## 🎉 New in Version 3.0!
+## 🎉 New in Version 4.0
 
-**The most stable and feature-complete release yet** - over 90% of planned features complete!
+Building on 3.0's performance foundation, **4.0 expands type coverage and ergonomics** on top of a fully reworked code generator.
 
-### Performance Improvements
+> ℹ️ 4.0 is currently a **pre-release** (`4.0.0-dev`). The current stable line is 3.x.
+
+### New in 4.0
+- ✅ **Enum support** - `@JsonValue` with both string *and* numeric values, enums in `orderBy()`, and default-value generation
+- ✅ **Automatic nested-class imports** - filter, patch, aggregate, and `orderBy` selectors for nested types need no manual imports
+- ✅ **Stronger nullable handling** - nullable `Map` fields, and nested `fromJson` factories that accept nullable input no longer crash when a field is missing
+- ✅ **Server timestamps on insert** - not only on updates, and honored inside batches
+- ✅ **Batch & transaction patch builders** - atomic patch operations in `runBatch` / `runTransaction`
+- ✅ **Reworked code generator** - cleaner filter/patch/aggregate/orderBy builders and converters on a unified `FieldPath` model
+
+### Performance (established in 3.0, retained in 4.0)
 
 | Metric | Improvement | Impact |
 |--------|-------------|--------|
@@ -54,12 +64,11 @@ int age = user.profile.age;  // ✅ Type-safe nested access
 | **Compilation Speed** | **<1 second** | Complex schemas compile instantly |
 | **Runtime Overhead** | **Zero** | All magic at compile time |
 
-### New Features & Capabilities
+### Carried over from 3.0
 - ✅ **Full generic model support** - Generic classes with type-safe patch operations
 - ✅ **Complete JsonKey & JsonConverter support** - Full serialization control
 - ✅ **Automatic conversion fallbacks** - JsonConverter optional in most cases
 - ✅ **Enhanced map operations** - Comprehensive map field support with atomic ops
-- ✅ **100+ new test cases** - Rigorous testing for production stability
 
 ---
 
@@ -398,7 +407,7 @@ await db.users.insert(User(
 
 ## 📊 Performance & Technical Excellence
 
-### Optimized Code Generation (v3.0)
+### Optimized Code Generation
 
 | Metric | Value | Benefit |
 |--------|-------|---------|
@@ -453,19 +462,20 @@ void main() {
 
 ## 🗺️ Roadmap
 
-**✅ Completed (v3.0)**
+**✅ Completed (3.0 → 4.0)**
 - [x] Full generic model support
 - [x] Complete JsonKey & JsonConverter support
-- [x] 20% runtime performance improvement
-- [x] 15% reduction in generated code
-- [x] 100+ new test cases
+- [x] 20% runtime performance improvement & 15% smaller generated code
+- [x] Enum support — string & numeric `@JsonValue`, `orderBy`, defaults *(4.0)*
+- [x] Automatic nested-class imports *(4.0)*
+- [x] Batch & transaction patch builders *(4.0)*
+- [x] Server timestamps on insert *(4.0)*
 - [x] Production-ready stability
 
 **🚀 Next**
-- [ ] Batch collection operations
-- [ ] Map field filtering, ordering, and aggregation
+- [ ] [Firestore Pipelines support](https://github.com/SylphxAI/firestore_odm/issues/6)
+- [ ] Full map field filtering, ordering, and aggregation
 - [ ] Nested map support
-- [ ] Performance monitoring
 - [ ] Enhanced documentation
 
 ---
