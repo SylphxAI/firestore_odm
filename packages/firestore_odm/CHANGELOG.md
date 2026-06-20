@@ -1,3 +1,17 @@
+## 4.0.0
+
+Stable release of the 4.0 line. Highlights since 3.x:
+
+- **BREAKING**: requires `cloud_firestore ^6.4.0` / `firebase_core ^4.x` (was cloud_firestore 5.x). The ODM query/CRUD/update API is unchanged.
+- Enum support (`@JsonValue` string + numeric, enums in `orderBy`, defaults).
+- Automatic nested-class imports for filter/patch/aggregate/orderBy selectors.
+- Stronger nullable handling, incl. nested `fromJson` factories that accept nullable input (#5).
+- Server timestamps applied on insert (not only update); batch & transaction patch builders.
+- **Experimental**: `collection.pipeline()` for Firestore Pipelines (Enterprise edition only; see ADR-0001 / #6).
+- Reworked code generator; builder now targets the analyzer 8+ element model and current Flutter stable.
+
+See the `4.0.0-dev.*` entries below for the detailed history.
+
 ## 4.0.0-dev.6
 
 - **EXPERIMENTAL**: add `collection.pipeline()` → `TypedPipeline<T>`, a type-safe wrapper over Firestore Pipelines (`where`/`sort`/`limit`/`execute`, results mapped back to the model). Pipelines are **Enterprise edition only**, one-shot (no realtime/offline), and unsupported by the emulator / `fake_cloud_firestore` — so execution is not covered by the test suite and needs a real Enterprise database. Re-exports `Field`/`Expression`/`Ordering` for building expressions. Design: `docs/adr/0001-firestore-pipelines.md` (#6).

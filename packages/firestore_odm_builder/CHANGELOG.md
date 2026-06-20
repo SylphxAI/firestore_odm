@@ -1,3 +1,9 @@
+## 4.0.0
+
+Stable release of the 4.0 line. Key change since 3.x: migrated to the analyzer
+8+ "new element model" (`analyzer >=9 <14`, source_gen 4, build 4; min Dart
+3.9), enabling builds on current Flutter stable. See `4.0.0-dev.*` below.
+
 ## 4.0.0-dev.6
 
 - Bump to match firestore_odm 4.0.0-dev.6 (experimental pipeline API). No builder changes.

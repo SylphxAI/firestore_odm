@@ -4,10 +4,11 @@ Firestore ODM 4.0 builds on 3.0's performance foundation with a **fully reworked
 code generator**, broader type coverage, and ergonomic wins — while keeping the
 schema, model, query, and update API you already write unchanged.
 
-::: info Pre-release
-4.0 is currently published as a pre-release (`4.0.0-dev`). The current stable
-line is 3.x. There are no intentional breaking changes to the public API;
-4.0 is primarily new capabilities plus a large internal refactor.
+::: warning Breaking: cloud_firestore 6.x
+4.0 requires **`cloud_firestore` 6.x** and **`firebase_core` 4.x** (was
+cloud_firestore 5.x). The ODM's own query/CRUD/update API is unchanged — upgrade
+those two dependencies in your app and re-run the generator. See *Upgrading*
+below.
 :::
 
 ## 🎉 What's New in 4.0
@@ -73,6 +74,27 @@ rebuilt on a unified `FieldPath` model, with a consolidated `TypeDefinition`
 type. This is internal, but it produces cleaner generated code and a more
 consistent foundation for future features.
 
+### 🧪 Firestore Pipelines (experimental)
+
+`collection.pipeline()` returns a type-safe `TypedPipeline<T>` over Firestore's
+new Pipelines API:
+
+```dart
+final adults = await db.users
+    .pipeline()
+    .where(Field('age').greaterThanOrEqualValue(18))
+    .sort(Field('age').descending())
+    .limit(20)
+    .execute(); // -> List<User>
+```
+
+> Pipelines are a **Firestore Enterprise edition** feature: one-shot
+> `execute()` only (no realtime/offline), and **not supported by the emulator or
+> `fake_cloud_firestore`**. This API is **experimental** and must be validated
+> against a real Enterprise database. Design + roadmap:
+> [ADR&nbsp;0001](https://github.com/SylphxAI/firestore_odm/blob/main/docs/adr/0001-firestore-pipelines.md),
+> [#6](https://github.com/SylphxAI/firestore_odm/issues/6).
+
 ## ⚙️ Performance
 
 The performance characteristics established in 3.0 are retained:
@@ -86,22 +108,26 @@ The performance characteristics established in 3.0 are retained:
 
 ## ⬆️ Upgrading from 3.x
 
-The public API is unchanged for typical usage (schema definition, models,
-queries, `patch`/`modify`, transactions, batches). Upgrade by bumping the
-dependency and re-running the generator:
+The ODM's own API is unchanged for typical usage (schema definition, models,
+queries, `patch`/`modify`, transactions, batches). The one required change is
+the **cloud_firestore 6.x / firebase_core 4.x** bump in your app:
 
 ```bash
-dart pub add firestore_odm:^4.0.0-dev
-dart pub add dev:firestore_odm_builder:^4.0.0-dev
+dart pub add firestore_odm:^4.0.0
+dart pub add dev:firestore_odm_builder:^4.0.0
+dart pub add cloud_firestore:^6.4.0
+dart pub add firebase_core:^4.0.0
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-If you depended on internal-only classes (e.g. the removed `BatchField` /
-`BatchConfiguration` helpers, or referenced the internal `Node2` type), prefer
-the public collection/document/patch-builder APIs instead.
+cloud_firestore 6.0 removed the deprecated persistence `Settings` toggles — use
+`Settings.localCache` if you configured those. If you depended on ODM
+internal-only classes (e.g. the removed `BatchField` / `BatchConfiguration`
+helpers, or the internal `Node2` type), prefer the public
+collection/document/patch-builder APIs instead.
 
 ## 🔭 What's next
 
-- [Firestore Pipelines support](https://github.com/SylphxAI/firestore_odm/issues/6)
+- [Firestore Pipelines](https://github.com/SylphxAI/firestore_odm/issues/6): promote out of experimental once validated on Enterprise; add per-model typed selectors and the remaining stages
 - Full map field filtering, ordering, and aggregation
 - Nested map support
