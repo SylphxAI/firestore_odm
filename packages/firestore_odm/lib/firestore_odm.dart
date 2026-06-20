@@ -11,6 +11,7 @@ export 'src/filter_builder.dart';
 export 'src/model_converter.dart';
 export 'src/schema.dart';
 export 'src/query.dart';
+export 'src/pipeline.dart';
 export 'src/transaction.dart';
 export 'src/batch.dart';
 export 'src/aggregate.dart';

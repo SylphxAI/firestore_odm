@@ -1,3 +1,7 @@
+## 4.0.0-dev.6
+
+- **EXPERIMENTAL**: add `collection.pipeline()` → `TypedPipeline<T>`, a type-safe wrapper over Firestore Pipelines (`where`/`sort`/`limit`/`execute`, results mapped back to the model). Pipelines are **Enterprise edition only**, one-shot (no realtime/offline), and unsupported by the emulator / `fake_cloud_firestore` — so execution is not covered by the test suite and needs a real Enterprise database. Re-exports `Field`/`Expression`/`Ordering` for building expressions. Design: `docs/adr/0001-firestore-pipelines.md` (#6).
+
 ## 4.0.0-dev.5
 
 - **BREAKING**: require `cloud_firestore ^6.4.0` (was `^5.0.0`) and `cloud_firestore_platform_interface ^8.0.0` (was `^6.5.0`). No ODM API changes — the query/CRUD/snapshot surface is unchanged across cloud_firestore 5→6. Apps must upgrade to `cloud_firestore` 6.x and `firebase_core` 4.x (cloud_firestore 6.0 removed the deprecated persistence `Settings` toggles; use `Settings.localCache`).
