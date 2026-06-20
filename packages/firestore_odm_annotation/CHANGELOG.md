@@ -1,3 +1,7 @@
+## 4.0.0-dev.5
+
+- Bump version to match other packages.
+
 ## 4.0.0-dev.4
 
 - Bump version to match other packages.

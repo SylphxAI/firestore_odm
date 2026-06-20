@@ -1,3 +1,7 @@
+## 4.0.0-dev.5
+
+- Bump to match firestore_odm 4.0.0-dev.5 (cloud_firestore 6.x). No builder changes.
+
 ## 4.0.0-dev.4
 
 - Migrate to the analyzer 8+ "new element model": `analyzer` `>=9.0.0 <14.0.0` (was `^7.4.5`), `source_gen` `^4.2.3`, `build` `^4.0.0`. Replaces removed/renamed APIs (`element3`→`element`, `name3`→`name`, `typeParameters2`→`typeParameters`, `lookUpConstructor2`/`lookUpMethod3`→`lookUp*`, `TypeChecker.fromRuntime`→`typeNamed`, `metadata`→`metadata.annotations`, unnamed constructor name `''`→`'new'`).
