@@ -1,3 +1,7 @@
+## 4.0.0-dev.5
+
+- **BREAKING**: require `cloud_firestore ^6.4.0` (was `^5.0.0`) and `cloud_firestore_platform_interface ^8.0.0` (was `^6.5.0`). No ODM API changes — the query/CRUD/snapshot surface is unchanged across cloud_firestore 5→6. Apps must upgrade to `cloud_firestore` 6.x and `firebase_core` 4.x (cloud_firestore 6.0 removed the deprecated persistence `Settings` toggles; use `Settings.localCache`).
+
 ## 4.0.0-dev.4
 
 - Bump to match firestore_odm_builder 4.0.0-dev.4 (analyzer 8+ migration). No runtime API changes in this package.

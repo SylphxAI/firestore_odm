@@ -2,8 +2,11 @@ name: firestore_odm_workspace
 repository: https://github.com/SylphxAI/firestore_odm
 
 packages:
-  - apps/**
-  - packages/**
+  # Direct children only — `**` recurses into apps/flutter_example/build/, where
+  # cloud_firestore 6.6.0's bundled `pipeline_example` package appears twice
+  # (ios + macos SourcePackages) and trips melos' duplicate-name check.
+  - apps/*
+  - packages/*
 
 command:
   version:
