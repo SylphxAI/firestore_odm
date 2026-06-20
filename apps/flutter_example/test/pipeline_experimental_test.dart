@@ -1,11 +1,11 @@
-/// Experimental coverage for the type-safe Firestore Pipeline wrapper
-/// (`collection.pipeline()` → [TypedPipeline]).
+/// Experimental coverage for the **fully type-safe** Firestore Pipeline API
+/// (`collection.pipeline()` → generated `$.field` selector → [TypedPipeline]).
 ///
 /// Pipelines are an Enterprise-edition feature and are NOT supported by
 /// `fake_cloud_firestore` or the emulator, so end-to-end `execute()` cannot be
-/// exercised here — that requires a real Enterprise database. These tests only
-/// assert the **type-safe builder API compiles and chains**, and document the
-/// execute() limitation.
+/// exercised here — that requires a real Enterprise database. These tests assert
+/// the **type-safe `$.field` builder compiles and chains** (no string field
+/// paths), and document the execute() limitation.
 library;
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
@@ -23,31 +23,31 @@ void main() {
     db = FirestoreODM(testSchema, firestore: firestore);
   });
 
-  group('Experimental: pipeline() typed builder', () {
-    test('exposes a type-safe, chainable pipeline() (compile-time)', () {
-      // The verification here is at COMPILE time: this closure only type-checks
-      // if the collection exposes `pipeline()` returning a `TypedPipeline<User>`
-      // whose `where`/`sort`/`limit` stages chain and preserve the `User`
-      // element type. It is deliberately never invoked — fake_cloud_firestore
-      // has no pipeline engine (see the next test).
+  group('Experimental: fully-typed pipeline() builder', () {
+    test('builds where/sort/limit from the typed \$.field selector', () {
+      // Compile-time proof: this only type-checks if `pipeline()` returns a
+      // `TypedPipeline<User, UserPipelineSelector>` whose stages take the typed
+      // `$.field` selector (no string `Field('age')`), the comparison value is
+      // typed (`int` for age), nested fields work (`$.profile.followers`), and
+      // the element type stays `User` through the chain. Never invoked —
+      // fake_cloud_firestore has no pipeline engine (next test).
       Future<List<User>> Function() query = () => db.users
           .pipeline()
-          .where(Field('age').greaterThanOrEqualValue(18))
-          .sort(Field('age').descending())
+          .where(($) => $.age(isGreaterThanOrEqualTo: 18))
+          .where(($) => $.profile.followers(isGreaterThan: 100))
+          .sort(($) => $.age.descending(), ($) => $.name.ascending())
           .limit(20)
           .execute();
 
       expect(query, isA<Future<List<User>> Function()>());
     });
 
-    test(
-      'pipeline() is unsupported by fake_cloud_firestore (Enterprise-only)',
-      () {
-        // Documents the runtime constraint: Pipelines require a real Firestore
-        // Enterprise database; the fake (and the emulator) do not implement them.
-        // This is why pipeline execution cannot be covered by this suite.
-        expect(() => db.users.pipeline(), throwsA(anything));
-      },
-    );
+    test('pipeline() is unsupported by fake_cloud_firestore (Enterprise-only)',
+        () {
+      // Pipelines require a real Firestore Enterprise database; the fake (and
+      // the emulator) do not implement them. This is why pipeline execution
+      // cannot be covered by this suite.
+      expect(() => db.users.pipeline(), throwsA(anything));
+    });
   });
 }

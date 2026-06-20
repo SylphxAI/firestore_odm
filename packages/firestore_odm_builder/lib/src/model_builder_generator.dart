@@ -6,6 +6,7 @@ import 'package:firestore_odm_builder/src/generators/aggregate_generator.dart';
 import 'package:firestore_odm_builder/src/generators/converter_generator.dart';
 import 'package:firestore_odm_builder/src/generators/filter_generator.dart';
 import 'package:firestore_odm_builder/src/generators/order_by_generator.dart';
+import 'package:firestore_odm_builder/src/generators/pipeline_generator.dart';
 import 'package:firestore_odm_builder/src/generators/update_generator.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -34,6 +35,8 @@ class ModelBuilderGenerator extends GeneratorForAnnotation<FirestoreOdm> {
     specs.addAll(OrderByGenerator.generateOrderByClasses(element.thisType));
 
     specs.addAll(AggregateGenerator.generateClasses(element.thisType));
+
+    specs.addAll(PipelineGenerator.generate(type: element.thisType));
 
     specs.addAll(ConverterGenerator.generate(type: element.thisType));
 
