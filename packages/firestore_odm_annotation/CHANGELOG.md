@@ -1,3 +1,8 @@
+## 4.0.0
+
+Stable release of the 4.0 line (version kept in lockstep with the other
+packages). See `4.0.0-dev.*` below.
+
 ## 4.0.0-dev.6
 
 - Bump version to match other packages.

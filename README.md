@@ -45,10 +45,9 @@ int age = user.profile.age;  // ✅ Type-safe nested access
 
 Building on 3.0's performance foundation, **4.0 expands type coverage and ergonomics** on top of a fully reworked code generator.
 
-> ℹ️ 4.0 is currently a **pre-release** (`4.0.0-dev`). The current stable line is 3.x.
-
 ### New in 4.0
 - ✅ **Enum support** - `@JsonValue` with both string *and* numeric values, enums in `orderBy()`, and default-value generation
+- 🧪 **Firestore Pipelines** *(experimental)* - `collection.pipeline()` for Enterprise-edition pipeline queries (see the [release notes](https://SylphxAI.github.io/firestore_odm/guide/version-4.0-release-notes.html))
 - ✅ **Automatic nested-class imports** - filter, patch, aggregate, and `orderBy` selectors for nested types need no manual imports
 - ✅ **Stronger nullable handling** - nullable `Map` fields, and nested `fromJson` factories that accept nullable input no longer crash when a field is missing
 - ✅ **Server timestamps on insert** - not only on updates, and honored inside batches
