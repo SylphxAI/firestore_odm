@@ -50,6 +50,10 @@ jobs:
           [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+          # subosito used to export PUB_CACHE; the git-clone setup doesn't, so the
+          # later "Setup Pub Credentials" step's `mkdir -p $PUB_CACHE` failed on an
+          # empty var. Export it for the credentials + publish steps.
+          echo "PUB_CACHE=$HOME/.pub-cache" >> "$GITHUB_ENV"
 
       - name: 📋 Dry Run Publish (annotation only)
         run: |
@@ -64,13 +68,13 @@ jobs:
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
           # Setup credentials in both possible locations
-          mkdir -p $PUB_CACHE
-          mkdir -p ~/.config/dart
-          echo '${{ secrets.PUB_CREDENTIALS }}' > $PUB_CACHE/credentials.json
-          echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
+          PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+          mkdir -p "$PUB_CACHE" ~/.config/dart
+          printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > "$PUB_CACHE/credentials.json"
+          printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
           # Verify credentials were written
           echo "Credentials written to:"
-          ls -la $PUB_CACHE/credentials.json || true
+          ls -la "$PUB_CACHE/credentials.json" || true
           ls -la ~/.config/dart/pub-credentials.json || true
 
       - name: 🚀 Publish firestore_odm_annotation
