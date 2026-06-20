@@ -110,26 +110,9 @@ class FirestoreCollection<
   Stream<List<T>> get stream =>
       QueryHandler.stream(query, _fromJson, documentIdField);
 
-  /// **Experimental** — start a Firestore Pipeline over this collection, with
-  /// result rows mapped back to `T`.
-  ///
-  /// Pipelines are a Firestore **Enterprise edition** feature: one-shot
-  /// `execute()` only (no realtime/offline), and unsupported by the emulator or
-  /// `fake_cloud_firestore`. See [TypedPipeline].
-  ///
-  /// ```dart
-  /// final adults = await db.users
-  ///     .pipeline()
-  ///     .where(Field('age').greaterThanOrEqualValue(18))
-  ///     .sort(Field('age').descending())
-  ///     .limit(20)
-  ///     .execute();
-  /// ```
-  TypedPipeline<T> pipeline() => TypedPipeline(
-    query.firestore.pipeline().collection(query.path),
-    _fromJson,
-    documentIdField,
-  );
+  /// The model deserializer for this collection. Exposed so the generated,
+  /// per-model `pipeline()` extension can map pipeline rows back to `T`.
+  T Function(Map<String, dynamic>) get fromJson => _fromJson;
 
   @override
   OrderedQuery<S, T, O, P, F, OB, AB> orderBy<O extends Record>(

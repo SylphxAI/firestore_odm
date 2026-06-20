@@ -1,3 +1,10 @@
+## 4.1.0-dev.1
+
+- Generate a fully type-safe pipeline surface per (non-generic) model:
+  `<Model>PipelineSelector` (typed `$.field` leaves) + a covariant `pipeline()`
+  extension on the model's collection. Replaces the string-based experimental
+  pipeline API. See `docs/adr/0001-firestore-pipelines.md`.
+
 ## 4.0.0
 
 Stable release of the 4.0 line. Key change since 3.x: migrated to the analyzer
