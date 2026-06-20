@@ -78,11 +78,12 @@ class SchemaGenerator {
   /// Extract the assigned value from a variable element (e.g., "_$TestSchema" from "final testSchema = _$TestSchema;")
   static String _extractAssignedValue(TopLevelVariableElement variableElement) {
     try {
-      // Try to get the source location and extract the assigned value
-      final source = variableElement.source;
-      if (source != null) {
+      // Try to get the source location and extract the assigned value.
+      // analyzer's new element model exposes source via the library fragment.
+      final source = variableElement.library.firstFragment.source;
+      final name = variableElement.name;
+      if (name != null) {
         final contents = source.contents.data;
-        final name = variableElement.name;
 
         // Find the variable declaration line
         final lines = contents.split('\n');
@@ -111,7 +112,7 @@ class SchemaGenerator {
     }
 
     // Fallback: generate from variable name following the convention
-    return '_\$${variableElement.name.upperFirst()}';
+    return '_\$${variableElement.name!.upperFirst()}';
   }
 
   /// Generate document class name from collection path
@@ -204,7 +205,7 @@ class SchemaGenerator {
         );
       }
     }
-    const odmTypeChecker = TypeChecker.fromRuntime(FirestoreOdm);
+    const odmTypeChecker = TypeChecker.typeNamed(FirestoreOdm);
     final missingAnnotations = collections
         .expand((c) => scan(c.modelType))
         .where(isUserType)
@@ -230,7 +231,7 @@ class SchemaGenerator {
     specs.addAll(generateCollectionIdentifiers(collections));
 
     // Use variable name for clean class name (e.g., "schema" -> "Schema", "helloSchema" -> "HelloSchema")
-    final variableName = variableElement.name;
+    final variableName = variableElement.name!;
     final schemaClassName = variableName.upperFirst();
 
     // Extract the assigned value (e.g., "_$TestSchema") for the const name

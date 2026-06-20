@@ -1,5 +1,4 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/type.dart' hide FunctionType;
 import 'package:code_builder/code_builder.dart';
 import 'package:firestore_odm_builder/src/utils/reference_utils.dart';
@@ -21,11 +20,9 @@ class OrderByGenerator {
     };
     if (field.type is TypeParameterType) {
       return TypeDefinition(
-        type: TypeReference(
-          (b) => b..symbol = '\$${field.type.element3!.name3}',
-        ),
+        type: TypeReference((b) => b..symbol = '\$${field.type.element!.name}'),
         instance: refer(
-          '_orderByBuilderFunc${field.type.element3!.name3!.camelCase()}',
+          '_orderByBuilderFunc${field.type.element!.name!.camelCase()}',
         ),
         namedArguments: args,
       );
@@ -36,7 +33,7 @@ class OrderByGenerator {
       return TypeDefinition(
         type: TypeReference(
           (b) => b
-            ..symbol = '${field.type.element3!.name3}OrderByBuilder'
+            ..symbol = '${field.type.element!.name}OrderByBuilder'
             ..types.addAll(field.type.typeArguments.map((e) => e.reference)),
         ),
         namedArguments: args,
@@ -91,18 +88,18 @@ class OrderByGenerator {
     );
   }
 
-  static Map<TypeParameterElement2, InterfaceType> matchedBuilders({
+  static Map<TypeParameterElement, InterfaceType> matchedBuilders({
     required InterfaceType type,
   }) {
     final builders = computeNeededBuilders(type: type);
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
     return Map.fromEntries(
       map.entries
           .where((entry) => builders.contains(entry.key))
-          .whereType<MapEntry<TypeParameterElement2, InterfaceType>>(),
+          .whereType<MapEntry<TypeParameterElement, InterfaceType>>(),
     );
   }
 
@@ -110,17 +107,17 @@ class OrderByGenerator {
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
 
     return Map.fromEntries(
       map.entries
           .where((entry) => builders.contains(entry.key))
           .map(
             (entry) => MapEntry(
-              'orderByBuilderFunc${entry.key.name3!.camelCase()}',
+              'orderByBuilderFunc${entry.key.name!.camelCase()}',
               Method(
                 (b) => b
                   ..lambda = true
@@ -149,12 +146,12 @@ class OrderByGenerator {
     );
   }
 
-  static Set<TypeParameterElement2> computeNeededBuilders({
+  static Set<TypeParameterElement> computeNeededBuilders({
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
       type.typeArguments,
-      type.element3.typeParameters2,
+      type.element.typeParameters,
     );
     final fields = getFields(type);
     final fieldTypes = fields.values.map((field) => field.type).toSet();
@@ -176,13 +173,13 @@ class OrderByGenerator {
       (b) => b
         ..name = '${className}OrderByBuilder'
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = refer('OrderByFieldNode'),
                 ),
             ],
@@ -206,11 +203,11 @@ class OrderByGenerator {
                   Parameter(
                     (b) => b
                       ..name =
-                          'orderByBuilderFunc${typeParam.name3!.camelCase()}'
+                          'orderByBuilderFunc${typeParam.name!.camelCase()}'
                       ..type = TypeReference(
                         (b) => b
                           ..symbol = 'OrderByBuilderFunc'
-                          ..types.add(refer('\$${typeParam.name3}')),
+                          ..types.add(refer('\$${typeParam.name}')),
                       )
                       ..named = true
                       ..required = true,
@@ -224,10 +221,10 @@ class OrderByGenerator {
               ])
               ..initializers.addAll([
                 for (final typeParam in builders)
-                  refer('_orderByBuilderFunc${typeParam.name3!.camelCase()}')
+                  refer('_orderByBuilderFunc${typeParam.name!.camelCase()}')
                       .assign(
                         refer(
-                          'orderByBuilderFunc${typeParam.name3!.camelCase()}',
+                          'orderByBuilderFunc${typeParam.name!.camelCase()}',
                         ),
                       )
                       .code,
@@ -238,12 +235,12 @@ class OrderByGenerator {
           for (final typeParam in builders)
             Field(
               (b) => b
-                ..name = '_orderByBuilderFunc${typeParam.name3!.camelCase()}'
+                ..name = '_orderByBuilderFunc${typeParam.name!.camelCase()}'
                 ..modifier = FieldModifier.final$
                 ..type = TypeReference(
                   (b) => b
                     ..symbol = 'OrderByBuilderFunc'
-                    ..types.add(refer('\$${typeParam.name3}')),
+                    ..types.add(refer('\$${typeParam.name}')),
                 ),
             ),
           ...methods,
@@ -269,13 +266,13 @@ class OrderByGenerator {
       );
     }
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
     return TypeReference(
       (b) => b
-        ..symbol = '${type.element3.name3}OrderByBuilder'
+        ..symbol = '${type.element.name}OrderByBuilder'
         ..types.addAll(
           map.entries.expand(
             (t) => [

@@ -1,21 +1,20 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:code_builder/code_builder.dart';
 
 extension DartTypeExtension on DartType {
   TypeReference get reference {
-    final element = this.element3;
+    final element = this.element;
     if (element == null) {
       throw ArgumentError('DartType must have a valid element');
     }
-    final name = element.name3;
+    final name = element.name;
     if (name == 'dynamic') {
       return TypeReference((b) => b..symbol = 'dynamic');
     }
 
-    final uri = element.library2?.uri.toString();
+    final uri = element.library?.uri.toString();
     final typeArguments = switch (this) {
       InterfaceType type => type.typeArguments.map((t) => t.reference).toList(),
       _ => <TypeReference>[],
@@ -59,6 +58,7 @@ extension DartTypeExtension on DartType {
 
 extension ElementExtension on Element {
   TypeReference get reference {
+    final name = this.name;
     if (name == null) {
       throw ArgumentError('Element must have a valid name');
     }
@@ -66,35 +66,10 @@ extension ElementExtension on Element {
       return TypeReference((b) => b..symbol = 'dynamic');
     }
     final library = this.library;
-    final uri = library?.source.uri.toString();
-    final typeParameters = switch (this) {
-      ClassElement e => e.typeParameters.toList(),
-      TypeAliasElement e => e.typeParameters.toList(),
-      _ => <TypeParameterElement>[],
-    };
-    return TypeReference(
-      (b) => b
-        ..symbol = name
-        ..url = uri
-        ..types.addAll(typeParameters.map((t) => t.reference)),
-    );
-  }
-}
-
-extension Element3Extension on Element2 {
-  TypeReference get reference {
-    final name = this.name3;
-    if (name == null) {
-      throw ArgumentError('Element must have a valid name');
-    }
-    if (name == 'dynamic') {
-      return TypeReference((b) => b..symbol = 'dynamic');
-    }
-    final library = this.library2;
     final uri = library?.uri.toString();
     final typeParameters = switch (this) {
-      TypeParameterizedElement2 e => e.typeParameters2.toList(),
-      _ => <TypeParameterElement2>[],
+      TypeParameterizedElement e => e.typeParameters.toList(),
+      _ => <TypeParameterElement>[],
     };
     return TypeReference(
       (b) => b
@@ -222,7 +197,7 @@ extension ElementIterableX on Iterable<Element> {
   List<TypeReference> get references => map((e) => e.reference).toList();
 }
 
-extension Element2IterableX on Iterable<Element2> {
+extension Element2IterableX on Iterable<Element> {
   List<TypeReference> get references => map((e) => e.reference).toList();
 }
 

@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:firestore_odm_builder/src/utils/reference_utils.dart';
@@ -21,12 +21,8 @@ class AggregateGenerator {
     };
     if (field.type is TypeParameterType) {
       return TypeDefinition(
-        type: TypeReference(
-          (b) => b..symbol = '\$${field.type.element3!.name3}',
-        ),
-        instance: refer(
-          '_builderFunc${field.type.element3!.name3!.camelCase()}',
-        ),
+        type: TypeReference((b) => b..symbol = '\$${field.type.element!.name}'),
+        instance: refer('_builderFunc${field.type.element!.name!.camelCase()}'),
         namedArguments: args,
       );
     }
@@ -35,7 +31,7 @@ class AggregateGenerator {
       return TypeDefinition(
         type: TypeReference(
           (b) => b
-            ..symbol = '${field.type.element3!.name3}AggregateFieldSelector'
+            ..symbol = '${field.type.element!.name}AggregateFieldSelector'
             ..types.addAll(field.type.typeArguments.map((e) => e.reference)),
         ),
         namedArguments: args,
@@ -79,12 +75,12 @@ class AggregateGenerator {
     return specs;
   }
 
-  static Set<TypeParameterElement2> computeNeededBuilders({
+  static Set<TypeParameterElement> computeNeededBuilders({
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
       type.typeArguments,
-      type.element3.typeParameters2,
+      type.element.typeParameters,
     );
     final fields = getFields(type);
     final fieldTypes = fields.values.map((field) => field.type).toSet();
@@ -92,19 +88,19 @@ class AggregateGenerator {
   }
 
   static Class generateAggregateRootClass(InterfaceType type) {
-    final className = type.element3.name3;
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final className = type.element.name;
+    final builders = computeNeededBuilders(type: type.element.thisType);
     return Class(
       (b) => b
         ..name = '${className}AggregateBuilderRoot'
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = refer('AggregateFieldNode'),
                 ),
             ],
@@ -114,11 +110,11 @@ class AggregateGenerator {
           (b) => b
             ..symbol = '${className}AggregateFieldSelector'
             ..types.addAll(
-              type.element3.typeParameters2.expand(
+              type.element.typeParameters.expand(
                 (t) => [
                   t.reference,
                   if (builders.contains(t))
-                    TypeReference((b) => b..symbol = '\$${t.name3}'),
+                    TypeReference((b) => b..symbol = '\$${t.name}'),
                 ],
               ),
             ),
@@ -137,11 +133,11 @@ class AggregateGenerator {
                     ..named = true,
                 ),
                 for (final typeParam in computeNeededBuilders(
-                  type: type.element3.thisType,
+                  type: type.element.thisType,
                 ))
                   Parameter(
                     (b) => b
-                      ..name = 'builderFunc${typeParam.name3!.camelCase()}'
+                      ..name = 'builderFunc${typeParam.name!.camelCase()}'
                       ..toSuper = true
                       ..named = true
                       ..required = true,
@@ -160,7 +156,7 @@ class AggregateGenerator {
   }
 
   static Class generateAggregateClass(InterfaceType type) {
-    final className = type.element3.name3;
+    final className = type.element.name;
 
     final builders = computeNeededBuilders(type: type);
 
@@ -180,13 +176,13 @@ class AggregateGenerator {
       (b) => b
         ..name = '${className}AggregateFieldSelector'
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = refer('AggregateFieldNode'),
                 ),
             ],
@@ -209,11 +205,11 @@ class AggregateGenerator {
                 for (final typeParam in builders)
                   Parameter(
                     (b) => b
-                      ..name = 'builderFunc${typeParam.name3!.camelCase()}'
+                      ..name = 'builderFunc${typeParam.name!.camelCase()}'
                       ..type = TypeReference(
                         (b) => b
                           ..symbol = 'AggregateBuilderFunc'
-                          ..types.add(refer('\$${typeParam.name3}')),
+                          ..types.add(refer('\$${typeParam.name}')),
                       )
                       ..named = true
                       ..required = true,
@@ -226,9 +222,9 @@ class AggregateGenerator {
               ])
               ..initializers.addAll([
                 for (final typeParam in builders)
-                  refer('_builderFunc${typeParam.name3!.camelCase()}')
+                  refer('_builderFunc${typeParam.name!.camelCase()}')
                       .assign(
-                        refer('builderFunc${typeParam.name3!.camelCase()}'),
+                        refer('builderFunc${typeParam.name!.camelCase()}'),
                       )
                       .code,
               ]),
@@ -238,12 +234,12 @@ class AggregateGenerator {
           for (final typeParam in builders)
             Field(
               (b) => b
-                ..name = '_builderFunc${typeParam.name3!.camelCase()}'
+                ..name = '_builderFunc${typeParam.name!.camelCase()}'
                 ..modifier = FieldModifier.final$
                 ..type = TypeReference(
                   (b) => b
                     ..symbol = 'AggregateBuilderFunc'
-                    ..types.add(refer('\$${typeParam.name3}')),
+                    ..types.add(refer('\$${typeParam.name}')),
                 ),
             ),
         ])
@@ -256,7 +252,7 @@ class AggregateGenerator {
     bool isRoot = false,
   }) {
     if (type is! InterfaceType || !TypeAnalyzer.isCustomClass(type)) {
-      if (!TypeChecker.fromRuntime(num).isAssignableFromType(type)) {
+      if (!TypeChecker.typeNamed(num).isAssignableFromType(type)) {
         return TypeReference((b) => b..symbol = 'Never');
       }
       return TypeReference(
@@ -266,15 +262,15 @@ class AggregateGenerator {
       );
     }
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
     return TypeReference(
       (b) => b
         ..symbol = isRoot
-            ? '${type.element3.name3}AggregateBuilderRoot'
-            : '${type.element3.name3}AggregateFieldSelector'
+            ? '${type.element.name}AggregateBuilderRoot'
+            : '${type.element.name}AggregateFieldSelector'
         ..types.addAll(
           map.entries.expand(
             (t) => [
@@ -290,17 +286,17 @@ class AggregateGenerator {
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
 
     return Map.fromEntries(
       map.entries
           .where((entry) => builders.contains(entry.key))
           .map(
             (entry) => MapEntry(
-              'builderFunc${entry.key.name3!.camelCase()}',
+              'builderFunc${entry.key.name!.camelCase()}',
               Method(
                 (b) => b
                   ..lambda = true
@@ -336,7 +332,7 @@ class AggregateGenerator {
     bool isRoot = false,
   }) {
     if (!isUserType(type) &&
-        !TypeChecker.fromRuntime(num).isAssignableFromType(type)) {
+        !TypeChecker.typeNamed(num).isAssignableFromType(type)) {
       return refer(
         'throw UnsupportedError',
       ).call([literalString('Unsupported type for aggregation')]);

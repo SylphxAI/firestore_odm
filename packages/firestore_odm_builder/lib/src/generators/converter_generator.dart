@@ -35,7 +35,7 @@ class ConverterGenerator {
     var allInt = true;
 
     for (final c in constants) {
-      final ann = TypeChecker.fromRuntime(JsonValue).firstAnnotationOfExact(c);
+      final ann = TypeChecker.typeNamed(JsonValue).firstAnnotationOfExact(c);
       dynamic raw;
       if (ann != null) {
         final reader = ConstantReader(ann);
@@ -65,7 +65,7 @@ class ConverterGenerator {
         allInt = false;
       }
 
-      final keyEnum = refer('${type.element3.name3}.${c.name}');
+      final keyEnum = refer('${type.element.name}.${c.name}');
       entriesTo.add(MapEntry(keyEnum, jsonLit));
       entriesFrom.add(MapEntry(jsonLit, keyEnum));
     }
@@ -125,7 +125,7 @@ class ConverterGenerator {
       return value.asA(getJsonType(type: type));
     }
 
-    if (TypeChecker.fromRuntime(DateTime).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(DateTime).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -133,7 +133,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(Duration).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(Duration).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -141,7 +141,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(List).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(List).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -155,7 +155,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(Map).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(Map).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -176,7 +176,7 @@ class ConverterGenerator {
     if (type is InterfaceType) {
       final expectedType = getJsonType(type: type);
 
-      final toJson = type.lookUpMethod3('toJson', type.element3.library2);
+      final toJson = type.lookUpMethod('toJson', type.element.library);
       if (toJson != null) {
         final args = [
           for (final type in type.typeArguments)
@@ -196,15 +196,15 @@ class ConverterGenerator {
 
       return TypeReference(
         (b) => b
-          ..symbol = '\$${type.element3.name3}ToJson'.lowerFirst()
+          ..symbol = '\$${type.element.name}ToJson'.lowerFirst()
           ..types.addAll(type.typeArguments.map((t) => t.reference)),
       ).call([
         value,
-        for (final typeParam in type.element3.typeParameters2)
+        for (final typeParam in type.element.typeParameters)
           typeConverters[typeParam] ??
               getToJsonEnsured(
                 type:
-                    type.typeArguments[type.element3.typeParameters2.indexOf(
+                    type.typeArguments[type.element.typeParameters.indexOf(
                       typeParam,
                     )],
                 typeConverters: typeConverters,
@@ -249,7 +249,7 @@ class ConverterGenerator {
       return value.asA(type.reference);
     }
 
-    if (TypeChecker.fromRuntime(DateTime).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(DateTime).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -259,7 +259,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(Duration).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(Duration).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -269,7 +269,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(List).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(List).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -283,7 +283,7 @@ class ConverterGenerator {
       );
     }
 
-    if (TypeChecker.fromRuntime(Map).isAssignableFromType(type)) {
+    if (TypeChecker.typeNamed(Map).isAssignableFromType(type)) {
       return _handleNullalbe(
         type,
         value,
@@ -305,10 +305,7 @@ class ConverterGenerator {
 
     if (type is InterfaceType) {
       final expectedType = type.reference;
-      final fromJson = type.lookUpConstructor2(
-        'fromJson',
-        type.element3.library2,
-      );
+      final fromJson = type.lookUpConstructor('fromJson', type.element.library);
       if (fromJson != null) {
         final args = [
           for (final type in type.typeArguments)
@@ -338,17 +335,17 @@ class ConverterGenerator {
 
       return TypeReference(
         (b) => b
-          ..symbol = '\$${type.element3.name3}FromJson'.lowerFirst()
+          ..symbol = '\$${type.element.name}FromJson'.lowerFirst()
           ..types.addAll(type.typeArguments.map((t) => t.reference)),
       ).call([
         value.asA(
           TypeReferences.mapOf(TypeReferences.string, TypeReferences.dynamic),
         ),
-        for (final typeParam in type.element3.typeParameters2)
+        for (final typeParam in type.element.typeParameters)
           typeConverters[typeParam] ??
               getFromJsonEnsured(
                 type:
-                    type.typeArguments[type.element3.typeParameters2.indexOf(
+                    type.typeArguments[type.element.typeParameters.indexOf(
                       typeParam,
                     )],
                 typeConverters: typeConverters,
@@ -399,9 +396,9 @@ class ConverterGenerator {
     final fields = getFields(type);
     return Method(
       (b) => b
-        ..name = '\$${type.element3.name3}ToJson'.lowerFirst()
-        ..docs.addAll(['/// Converts ${type.name} to JSON map'])
-        ..types.addAll(type.element3.typeParameters2.map((t) => t.reference))
+        ..name = '\$${type.element.name}ToJson'.lowerFirst()
+        ..docs.addAll(['/// Converts ${type.element.name} to JSON map'])
+        ..types.addAll(type.element.typeParameters.map((t) => t.reference))
         ..returns = TypeReferences.mapOf(
           TypeReferences.string,
           TypeReferences.dynamic,
@@ -412,10 +409,10 @@ class ConverterGenerator {
               ..name = 'data'
               ..type = type.reference,
           ),
-          for (final typeParam in type.element3.typeParameters2)
+          for (final typeParam in type.element.typeParameters)
             Parameter(
               (b) => b
-                ..name = '${typeParam.name3}ToJson'.lowerFirst()
+                ..name = '${typeParam.name}ToJson'.lowerFirst()
                 ..type = FunctionType(
                   (b) => b
                     ..returnType = refer('dynamic')
@@ -432,8 +429,7 @@ class ConverterGenerator {
               typeConverters: {
                 for (final (i, typeParam) in type.typeArguments.indexed)
                   typeParam: refer(
-                    '${type.element3.typeParameters2[i].name3}ToJson'
-                        .lowerFirst(),
+                    '${type.element.typeParameters[i].name}ToJson'.lowerFirst(),
                   ),
               },
             ).code,
@@ -445,9 +441,9 @@ class ConverterGenerator {
     final fields = getFields(type);
     return Method(
       (b) => b
-        ..name = '\$${type.element3.name3}FromJson'.lowerFirst()
-        ..docs.addAll(['/// Converts JSON map to ${type.name}'])
-        ..types.addAll(type.element3.typeParameters2.map((t) => t.reference))
+        ..name = '\$${type.element.name}FromJson'.lowerFirst()
+        ..docs.addAll(['/// Converts JSON map to ${type.element.name}'])
+        ..types.addAll(type.element.typeParameters.map((t) => t.reference))
         ..returns = type.reference
         ..requiredParameters.addAll([
           Parameter(
@@ -458,10 +454,10 @@ class ConverterGenerator {
                 TypeReferences.dynamic,
               ),
           ),
-          for (final typeParam in type.element3.typeParameters2)
+          for (final typeParam in type.element.typeParameters)
             Parameter(
               (b) => b
-                ..name = '${typeParam.name3}FromJson'.lowerFirst()
+                ..name = '${typeParam.name}FromJson'.lowerFirst()
                 ..type = FunctionType(
                   (b) => b
                     ..returnType = typeParam.reference
@@ -479,7 +475,7 @@ class ConverterGenerator {
                   typeConverters: {
                     for (final (i, typeParam) in type.typeArguments.indexed)
                       typeParam: refer(
-                        '${type.element3.typeParameters2[i].name3}FromJson'
+                        '${type.element.typeParameters[i].name}FromJson'
                             .lowerFirst(),
                       ),
                   },
@@ -494,13 +490,13 @@ class ConverterGenerator {
     final specs = <Spec>[];
 
     // Generate toJson method
-    if (type.lookUpMethod3('toJson', type.element3.library2) == null) {
+    if (type.lookUpMethod('toJson', type.element.library) == null) {
       final toJsonMethod = generateToJsonMethod(type: type);
       specs.add(toJsonMethod);
     }
 
     // Generate fromJson method
-    if (type.lookUpConstructor2('fromJson', type.element3.library2) == null) {
+    if (type.lookUpConstructor('fromJson', type.element.library) == null) {
       final fromJsonMethod = generateFromJsonMethod(type: type);
       specs.add(fromJsonMethod);
     }

@@ -45,7 +45,7 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
   ) {
     final collections = <SchemaCollectionInfo>[];
 
-    for (final annotation in element.metadata) {
+    for (final annotation in element.metadata.annotations) {
       final annotationValue = annotation.computeConstantValue();
       if (annotationValue?.type?.element?.name == 'Collection') {
         // Extract path from @Collection("path")
@@ -71,7 +71,7 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
               modelTypeName: modelTypeName,
               path: path,
               isSubcollection: isSubcollection,
-              schemaTypeName: element.name.upperFirst(),
+              schemaTypeName: element.name!.upperFirst(),
               modelType: modelType, // Store the actual DartType
             ),
           );

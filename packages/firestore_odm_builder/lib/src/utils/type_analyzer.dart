@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
@@ -7,52 +7,51 @@ import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
 
 /// Utility class for analyzing Dart types in Firestore ODM generation
 class TypeAnalyzer {
-  static final TypeChecker documentIdChecker = TypeChecker.fromRuntime(
+  static final TypeChecker documentIdChecker = TypeChecker.typeNamed(
     DocumentIdField,
   );
 
   // TypeCheckers for robust primitive type checking
-  static const TypeChecker _stringChecker = TypeChecker.fromRuntime(String);
-  static const TypeChecker _intChecker = TypeChecker.fromRuntime(int);
-  static const TypeChecker _doubleChecker = TypeChecker.fromRuntime(double);
-  static const TypeChecker _boolChecker = TypeChecker.fromRuntime(bool);
-  static const TypeChecker _numChecker = TypeChecker.fromRuntime(num);
-  static const TypeChecker _dateTimeChecker = TypeChecker.fromRuntime(DateTime);
-  static const TypeChecker _durationChecker = TypeChecker.fromRuntime(Duration);
+  static const TypeChecker _stringChecker = TypeChecker.typeNamed(String);
+  static const TypeChecker _intChecker = TypeChecker.typeNamed(int);
+  static const TypeChecker _doubleChecker = TypeChecker.typeNamed(double);
+  static const TypeChecker _boolChecker = TypeChecker.typeNamed(bool);
+  static const TypeChecker _numChecker = TypeChecker.typeNamed(num);
+  static const TypeChecker _dateTimeChecker = TypeChecker.typeNamed(DateTime);
+  static const TypeChecker _durationChecker = TypeChecker.typeNamed(Duration);
 
   // TypeCheckers for collection types - use Iterable to support any iterable
-  static const TypeChecker _iterableChecker = TypeChecker.fromRuntime(Iterable);
-  static const TypeChecker _listChecker = TypeChecker.fromRuntime(List);
-  static const TypeChecker _mapChecker = TypeChecker.fromRuntime(Map);
+  static const TypeChecker _iterableChecker = TypeChecker.typeNamed(Iterable);
+  static const TypeChecker _listChecker = TypeChecker.typeNamed(List);
+  static const TypeChecker _mapChecker = TypeChecker.typeNamed(Map);
 
-  static const TypeChecker _immutableCollectionChecker =
-      TypeChecker.fromRuntime(ImmutableCollection);
-  static const TypeChecker _immutableMapChecker = TypeChecker.fromRuntime(IMap);
-  static const TypeChecker _immutableListChecker = TypeChecker.fromRuntime(
-    IList,
+  static const TypeChecker _immutableCollectionChecker = TypeChecker.typeNamed(
+    ImmutableCollection,
   );
-  static const TypeChecker _immutableSetChecker = TypeChecker.fromRuntime(ISet);
+  static const TypeChecker _immutableMapChecker = TypeChecker.typeNamed(IMap);
+  static const TypeChecker _immutableListChecker = TypeChecker.typeNamed(IList);
+  static const TypeChecker _immutableSetChecker = TypeChecker.typeNamed(ISet);
 
   /// Find the document ID field in a constructor
   /// First looks for fields with @DocumentIdField() annotation.
   /// If none found, defaults to a field named 'id' (must be String type).
-  static String? getDocumentIdField(ConstructorElement2 constructor) {
+  static String? getDocumentIdField(ConstructorElement constructor) {
     // First pass: Look for explicit @DocumentIdField() annotation
     for (final param in constructor.formalParameters) {
-      for (final metadata in param.metadata2.annotations) {
+      for (final metadata in param.metadata.annotations) {
         final metadataValue = metadata.computeConstantValue();
         if (metadataValue != null &&
             metadataValue.type != null &&
             documentIdChecker.isExactlyType(metadataValue.type!)) {
-          return param.name3!;
+          return param.name!;
         }
       }
     }
 
     // Second pass: Look for a field named 'id' as default
     for (final param in constructor.formalParameters) {
-      if (param.name3 == 'id' && isStringType(param.type)) {
-        return param.name3!;
+      if (param.name == 'id' && isStringType(param.type)) {
+        return param.name!;
       }
     }
 
@@ -130,7 +129,7 @@ class TypeAnalyzer {
         !_mapChecker.isAssignableFromType(nonNullableType) &&
         // exclude enums from being treated as custom classes
         !(nonNullableType is InterfaceType &&
-            nonNullableType.element3 is EnumElement2) &&
+            nonNullableType.element is EnumElement) &&
         !nonNullableType.isDartCoreType;
   }
 
@@ -213,7 +212,7 @@ class TypeAnalyzer {
   }
 
   static bool isAssignableFromType<T>(DartType type) =>
-      TypeChecker.fromRuntime(T).isAssignableFromType(type);
+      TypeChecker.typeNamed(T).isAssignableFromType(type);
 
   /// Check if a type is numeric (int, double, or num)
   static bool isNumericType(DartType type) =>

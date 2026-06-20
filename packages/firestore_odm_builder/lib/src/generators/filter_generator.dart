@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:firestore_odm_builder/src/generators/converter_generator.dart';
@@ -52,13 +52,13 @@ class FilterGenerator {
       (b) => b
         ..name = '${className}FilterBuilder'
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = refer('FilterBuilderNode'),
                 ),
             ],
@@ -74,11 +74,11 @@ class FilterGenerator {
                 for (final typeParam in builders)
                   Parameter(
                     (b) => b
-                      ..name = 'builderFunc${typeParam.name3!.camelCase()}'
+                      ..name = 'builderFunc${typeParam.name!.camelCase()}'
                       ..type = TypeReference(
                         (b) => b
                           ..symbol = 'FilterBuilderFunc'
-                          ..types.add(refer('\$${typeParam.name3}')),
+                          ..types.add(refer('\$${typeParam.name}')),
                       )
                       ..named = true
                       ..required = true,
@@ -92,9 +92,9 @@ class FilterGenerator {
               ])
               ..initializers.addAll([
                 for (final typeParam in builders)
-                  refer('_builderFunc${typeParam.name3!.camelCase()}')
+                  refer('_builderFunc${typeParam.name!.camelCase()}')
                       .assign(
-                        refer('builderFunc${typeParam.name3!.camelCase()}'),
+                        refer('builderFunc${typeParam.name!.camelCase()}'),
                       )
                       .code,
               ]),
@@ -104,12 +104,12 @@ class FilterGenerator {
           for (final typeParam in builders)
             Field(
               (b) => b
-                ..name = '_builderFunc${typeParam.name3!.camelCase()}'
+                ..name = '_builderFunc${typeParam.name!.camelCase()}'
                 ..modifier = FieldModifier.final$
                 ..type = TypeReference(
                   (b) => b
                     ..symbol = 'FilterBuilderFunc'
-                    ..types.add(refer('\$${typeParam.name3}')),
+                    ..types.add(refer('\$${typeParam.name}')),
                 ),
             ),
         ])
@@ -118,20 +118,20 @@ class FilterGenerator {
   }
 
   static Class generateRootFilterSelectorClass(InterfaceType type) {
-    final className = type.element3.name3;
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final className = type.element.name;
+    final builders = computeNeededBuilders(type: type.element.thisType);
     // Create extension
     return Class(
       (b) => b
         ..name = '${className}FilterBuilderRoot'
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = refer('FilterBuilderNode'),
                 ),
             ],
@@ -141,11 +141,11 @@ class FilterGenerator {
           (b) => b
             ..symbol = '${className}FilterBuilder'
             ..types.addAll(
-              type.element3.typeParameters2.expand(
+              type.element.typeParameters.expand(
                 (t) => [
                   t.reference,
                   if (builders.contains(t))
-                    TypeReference((b) => b..symbol = '\$${t.name3}'),
+                    TypeReference((b) => b..symbol = '\$${t.name}'),
                 ],
               ),
             ),
@@ -158,11 +158,11 @@ class FilterGenerator {
               ..docs.add('/// Creates a root filter selector for `$className`')
               ..optionalParameters.addAll([
                 for (final typeParam in computeNeededBuilders(
-                  type: type.element3.thisType,
+                  type: type.element.thisType,
                 ))
                   Parameter(
                     (b) => b
-                      ..name = 'builderFunc${typeParam.name3!.camelCase()}'
+                      ..name = 'builderFunc${typeParam.name!.camelCase()}'
                       ..toSuper = true
                       ..named = true
                       ..required = true,
@@ -173,12 +173,12 @@ class FilterGenerator {
     );
   }
 
-  static Set<TypeParameterElement2> computeNeededBuilders({
+  static Set<TypeParameterElement> computeNeededBuilders({
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
       type.typeArguments,
-      type.element3.typeParameters2,
+      type.element.typeParameters,
     );
     final fields = getFields(type);
     final fieldTypes = fields.values.map((field) => field.type).toSet();
@@ -216,8 +216,8 @@ class FilterGenerator {
   }) {
     if (type is TypeParameterType) {
       return TypeDefinition(
-        type: TypeReference((b) => b..symbol = '\$${type.element3.name3}'),
-        instance: refer('_builderFunc${type.element3.name3!.camelCase()}'),
+        type: TypeReference((b) => b..symbol = '\$${type.element.name}'),
+        instance: refer('_builderFunc${type.element.name!.camelCase()}'),
         // namedArguments: {
         //   'toJson': ConverterGenerator.getToJsonEnsured(
         //     type: field.type,
@@ -252,16 +252,16 @@ class FilterGenerator {
     if (jsonType.symbol == 'Map') {
       if (type is InterfaceType && TypeAnalyzer.isCustomClass(type)) {
         final map = Map.fromIterables(
-          type.element3.typeParameters2,
+          type.element.typeParameters,
           type.typeArguments,
         );
-        final builders = computeNeededBuilders(type: type.element3.thisType);
+        final builders = computeNeededBuilders(type: type.element.thisType);
         return TypeDefinition(
           type: TypeReference(
             (b) => b
               ..symbol = isRoot
-                  ? '${type.element3.name3}FilterBuilderRoot'
-                  : '${type.element3.name3}FilterBuilder'
+                  ? '${type.element.name}FilterBuilderRoot'
+                  : '${type.element.name}FilterBuilder'
               ..types.addAll(
                 map.entries.expand(
                   (t) => [
@@ -350,7 +350,7 @@ class FilterGenerator {
   static TypeReference getRootFilterBuilderType(InterfaceType type) {
     return TypeReference(
       (b) => b
-        ..symbol = type.element.name + 'FilterBuilderRoot'
+        ..symbol = type.element.name! + 'FilterBuilderRoot'
         ..types.addAll(type.typeArguments.map((t) => t.reference)),
     );
   }
@@ -359,17 +359,17 @@ class FilterGenerator {
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
 
     return Map.fromEntries(
       map.entries
           .where((entry) => builders.contains(entry.key))
           .map(
             (entry) => MapEntry(
-              'builderFunc${entry.key.name3!.camelCase()}',
+              'builderFunc${entry.key.name!.camelCase()}',
               Method(
                 (b) => b
                   ..lambda = true

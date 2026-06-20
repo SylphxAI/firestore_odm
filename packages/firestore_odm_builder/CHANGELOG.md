@@ -1,3 +1,8 @@
+## 4.0.0-dev.4
+
+- Migrate to the analyzer 8+ "new element model": `analyzer` `>=9.0.0 <14.0.0` (was `^7.4.5`), `source_gen` `^4.2.3`, `build` `^4.0.0`. Replaces removed/renamed APIs (`element3`→`element`, `name3`→`name`, `typeParameters2`→`typeParameters`, `lookUpConstructor2`/`lookUpMethod3`→`lookUp*`, `TypeChecker.fromRuntime`→`typeNamed`, `metadata`→`metadata.annotations`, unnamed constructor name `''`→`'new'`).
+- **Min SDK raised to Dart `^3.9.0`** (required by analyzer 8+). Lets the package build on current Flutter stable.
+
 ## 4.0.0-dev.3
 
 - Fix nested `fromJson` factories that accept a nullable map generating a non-nullable cast, which crashed (`type 'Null' is not a subtype of type 'Map<String, Object?>'`) when the field was absent from a document (closes #5)
