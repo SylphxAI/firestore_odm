@@ -44,7 +44,10 @@ class PipelineGenerator {
           ..symbol = '${field.type.element!.name}PipelineSelector'
           ..types.addAll(field.type.typeArguments.map((t) => t.reference)),
       );
-      instance = leafType.newInstance([], {'field': fieldPath});
+      instance = leafType.newInstance([], {
+        'field': fieldPath,
+        'context': refer('\$ctx'),
+      });
     } else {
       leafType = TypeReference(
         (b) => b
@@ -53,6 +56,7 @@ class PipelineGenerator {
       );
       instance = leafType.newInstance([], {
         'field': fieldPath,
+        'context': refer('\$ctx'),
         'toJson': ConverterGenerator.getToJsonEnsured(
           type: field.type,
           customConverter: field.customConverter,
@@ -81,14 +85,20 @@ class PipelineGenerator {
         ..constructors.add(
           Constructor(
             (b) => b
-              ..optionalParameters.add(
+              ..optionalParameters.addAll([
                 Parameter(
                   (b) => b
                     ..name = 'field'
                     ..toSuper = true
                     ..named = true,
                 ),
-              ),
+                Parameter(
+                  (b) => b
+                    ..name = 'context'
+                    ..toSuper = true
+                    ..named = true,
+                ),
+              ]),
           ),
         )
         ..fields.addAll([for (final f in fields.values) _leaf(f)]),
@@ -140,7 +150,15 @@ class PipelineGenerator {
       ).call([refer('query').property('path')]),
       refer('fromJson'),
       refer('documentIdField'),
-      selector.newInstance([]),
+      // Selector factory: `(context) => <Model>PipelineSelector(context: context)`.
+      Method(
+        (b) => b
+          ..lambda = true
+          ..requiredParameters.add(Parameter((b) => b..name = 'context'))
+          ..body = selector.newInstance([], {
+            'context': refer('context'),
+          }).code,
+      ).closure,
     ]);
 
     return Extension(

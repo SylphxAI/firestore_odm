@@ -76,21 +76,34 @@ consistent foundation for future features.
 
 ### 🧪 Firestore Pipelines (experimental)
 
-`collection.pipeline()` returns a type-safe `TypedPipeline<T>` over Firestore's
-new Pipelines API:
+`collection.pipeline()` returns a `TypedPipeline<T>` over Firestore's new
+Pipelines API — built from the **same type-safe `$.field` selector** as the rest
+of the ODM (no string field paths). Row-preserving and shape-changing stages are
+all typed:
 
 ```dart
+// where / sort / limit -> List<User>
 final adults = await db.users
     .pipeline()
-    .where(Field('age').greaterThanOrEqualValue(18))
-    .sort(Field('age').descending())
+    .where(($) => $.age(isGreaterThanOrEqualTo: 18))   // typed value; nested $.profile.x works
+    .sort(($) => $.age.descending())
     .limit(20)
-    .execute(); // -> List<User>
+    .execute();
+
+// select -> typed records
+final rows = await db.users.pipeline()
+    .select(($) => (name: $.name.value, years: $.age.value))
+    .execute(); // -> List<({String name, int years})>
+
+// aggregate -> a typed record
+final stats = await db.users.pipeline()
+    .aggregate(($) => (count: $.count(), avgAge: $.age.average())); // -> ({int count, double avgAge})
 ```
 
 > Pipelines are a **Firestore Enterprise edition** feature: one-shot
 > `execute()` only (no realtime/offline), and **not supported by the emulator or
-> `fake_cloud_firestore`**. This API is **experimental** and must be validated
+> `fake_cloud_firestore`**. This API is **experimental**: it is fully type-checked
+> at compile time, but `select`/`aggregate` runtime behaviour must be validated
 > against a real Enterprise database. Design + roadmap:
 > [ADR&nbsp;0001](https://github.com/SylphxAI/firestore_odm/blob/main/docs/adr/0001-firestore-pipelines.md),
 > [#6](https://github.com/SylphxAI/firestore_odm/issues/6).

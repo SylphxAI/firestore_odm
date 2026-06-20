@@ -1,91 +1,126 @@
-# ADR 0001 — Firestore Pipelines support
+# ADR 0001 — Firestore Pipelines support (type-safe)
 
-- **Status:** Accepted (minimal slice shipped; full design pending)
+- **Status:** Accepted — fully type-safe pipeline API implemented
+  (`where`/`sort`/`limit` + `select`/`aggregate`). Compile-time verified;
+  **runtime behaviour pending Enterprise-database validation** (uncoverable by
+  the fake suite).
 - **Issue:** [#6](https://github.com/SylphxAI/firestore_odm/issues/6)
-- **Depends on:** cloud_firestore ≥ 6.3.0 (shipped in 4.0.0-dev.5)
+- **Depends on:** cloud_firestore ≥ 6.3.0 (shipped in 4.0.0)
 
 ## Context
 
-Firestore **Pipelines** are a server-side query API (GA 2026-04, Firestore
-**Enterprise edition**) that runs documents through chained **stages**
-(`collection → where → sort → limit → offset → aggregate → select → addFields →
-distinct → unnest → union → findNearest → search → …`). They add JOINs,
-aggregation filtering, array unnesting, vector and full-text search, etc., far
-beyond the classic query engine.
+Firestore **Pipelines** (GA 2026-04, **Enterprise edition**) run documents
+through chained stages. `cloud_firestore` exposes a string-based,
+`Field('age')`-style API.
 
-`cloud_firestore` exposes them as:
+**Non-negotiable for this project:** firestore_odm exists to eliminate string
+field paths and `Map<String,dynamic>` — everything is type-safe via codegen
+(`$.profile.followers`, typed values, `User` results). A pipeline API built on
+`Field('age')` (as an earlier experimental slice was) **directly contradicts the
+library's reason to exist** and is rejected.
 
-```dart
-firestore.pipeline()              // -> PipelineSource
-  .collection('users')            // -> Pipeline
-  .where(Field('age').greaterThanValue(18))
-  .sort(Field('age').descending())
-  .limit(10)
-  .execute();                     // -> Future<PipelineSnapshot> { result: List<PipelineResult> }
-```
+### Hard constraints
 
-### Hard constraints (shape the design)
-
-1. **Enterprise edition only.** Running a pipeline against a Standard database
-   is a server error.
-2. **One-shot.** `execute()` only — no realtime listeners, no offline cache.
-3. **Not testable in our suite.** `fake_cloud_firestore` and the emulator do
-   **not** implement `pipeline()` (it throws). End-to-end behaviour can only be
-   validated against a real Enterprise database. Our 503-test suite is
-   fake-based, so pipeline *execution* is uncoverable in CI.
-4. **Result rows are not documents.** A `PipelineResult` is a map (`data()`)
-   plus an optional `document` ref — `select`/`aggregate` rows may have no
-   document at all.
+1. **Enterprise edition only**; running on Standard is a server error.
+2. **One-shot** `execute()` — no realtime/offline.
+3. **Not testable in our suite.** `fake_cloud_firestore` and the emulator do not
+   implement `pipeline()` (it throws). Pipeline **execution is uncoverable in
+   CI** — only compile-time type-safety is. Anything beyond that needs a real
+   Enterprise database.
+4. Result rows are maps (`PipelineResult.data()`) + an optional `document` ref.
 
 ## Decision
 
-Expose pipelines as a **separate, opt-in, execute-only surface** distinct from
-the reactive `.get()/.stream()` query API — never wired into streaming or cache.
+A separate, execute-only surface, **fully type-safe via the same `$.field`
+codegen used by `where`/`orderBy`/`aggregate`** — never string paths.
 
-### Minimal slice (shipped in this PR)
+### Implemented (this line)
 
-A runtime wrapper, `TypedPipeline<T>`, reached via `collection.pipeline()`:
+Per non-generic model the builder generates `<Model>PipelineSelector` (leaves =
+`PipelineField<T>` carrying their `FieldPath` + `toJson`; nested objects = nested
+selectors) and a covariant `pipeline()` extension on the model's
+`FirestoreCollection`. Runtime `TypedPipeline<T, S>`:
 
-- Stages: `where(BooleanExpression)`, `sort(Ordering...)`, `limit(int)`.
-- `execute()` → maps each `PipelineResult.data()` through the model's `fromJson`,
-  injecting the row's document id into the model's document-id field when present.
-- Expression building uses cloud_firestore's `Field('path')` API, re-exported
-  from `firestore_odm` for convenience.
-- Marked **experimental** in docs; covered by a compile-time type-safety test
-  and a test asserting the fake throws (documenting the Enterprise requirement).
+```dart
+final adults = await db.users
+    .pipeline()
+    .where(($) => $.age(isGreaterThanOrEqualTo: 18))   // typed value, no strings
+    .where(($) => $.profile.followers(isGreaterThan: 100))
+    .sort(($) => $.age.descending())
+    .limit(20)
+    .execute();                                         // -> List<User>
+```
 
-This is intentionally string-path (`Field('age')`) rather than fully
-ODM-type-safe — see below.
+These **preserve the row type `T`**, so they map straight back through the
+model's `fromJson`. This is the verified foundation (compile-time tests; full
+suite green).
 
-### Maximal design (follow-up)
+### Implemented — shape-changing stages (`select`, `aggregate`)
 
-1. **Generated per-model field selectors.** Reuse the existing field analysis
-   (the same source that powers filter/orderBy builders) to generate a typed
-   selector so callers write `($) => $.age.gte(18)` / `($) => $.age.descending()`
-   instead of `Field('age')...`. The selector emits the native
-   `BooleanExpression`/`Ordering`. This is the bulk of the work: a new generator
-   producing a `UserPipelineSelector` per model whose leaves know their field
-   paths and types.
-2. **Full stage coverage:** `offset`, `aggregate` (Count/Sum/Average/Min/Max…),
-   `select`/`addFields`/`removeFields`, `distinct`, `unnest`, `union`,
-   `findNearest` (vector), `search` (full-text). Aggregate/select rows return a
-   projected shape, not `T`; model these as `TypedPipeline<T>.aggregate(...)
-   → Future<List<Map>>` or generated projection types.
-3. **Edition guard / docs:** surface a clear error/oc when run against a
-   Standard database, and document the Enterprise + index requirements.
+These change the row shape, so the result is **not `T`** — they return **typed
+Dart records** via dual-phase replay, mirroring the existing `aggregate`
+subsystem (`AggregateBuilderContext` vs `AggregateResultContext`):
 
-### Testing strategy
+```dart
+// projection -> List of typed records
+final rows = await db.users.pipeline()
+    .select(($) => (name: $.name.value, years: $.age.value))   // -> List<({String name, int years})>
+    .execute();
 
-- **CI (fake):** compile-time type-safety of the builder + assert `pipeline()`
-  is unsupported by the fake. (Done.)
-- **Enterprise e2e:** a separate, opt-in integration lane against a real
-  Enterprise database, gated so it never runs in the fake suite. Required before
-  pipelines are promoted out of "experimental".
+// aggregation -> a typed record
+final stats = await db.users.pipeline()
+    .where(($) => $.isActive(isEqualTo: true))
+    .aggregate(($) => (count: $.count(), avgAge: $.age.average()));  // -> ({int count, double avgAge})
+```
+
+Mechanism:
+1. The selector becomes context-capable (a factory `S Function(PipelineContext?)`
+   passed to `TypedPipeline`, like the aggregate selector takes a context).
+2. **Capture pass:** run the record-builder with a capture context; leaves record
+   `AliasedExpression`/`AliasedAggregateFunction` under a deterministic alias and
+   return `defaultValue<T>()` dummies; the captured list builds the native
+   `select`/`aggregate` stage.
+3. **Result pass:** for each result row, re-run the same builder with a row
+   context where leaves return `row[alias]` (coerced to the static type); the
+   record literal in the lambda reassembles the typed record.
+
+Implementation notes / known limits (compile-verified; validate on Enterprise):
+- **Aliasing** is deterministic per (field, op) — `sum_age`, `avg_age`,
+  `count_all`, and the field path for projections. Projecting/aggregating the
+  **same field+op twice** would collide; revisit with order-based aliases if a
+  use case needs it.
+- **Numeric coercion**: Firestore returns `num`; values are coerced to the
+  static record-field type (`int`/`double`), mirroring `AggregateResultContext`.
+- **Native API mapping**: `Field.sum()/average()/minimum()/maximum()/count()` →
+  `PipelineAggregateFunction`; count-all via `CountAll`; `Field.alias()` for
+  projections; fanned out to the positional `aggregate()/select()` API (≤8 for
+  now).
+- `select` is currently terminal (`.execute()` → `List<record>`); chaining
+  further stages after a projection is a follow-up.
+
+### Runtime verification gap
+
+`where/sort/limit` are exercised by compile-time tests; `select/aggregate` are
+**compile-time type-checked only** — their replay/aliasing/coercion runtime
+behaviour cannot be exercised by `fake_cloud_firestore` (no pipeline engine) and
+**must be validated against a real Enterprise database** before this leaves
+"experimental".
+
+## Testing strategy
+
+- **CI (fake):** compile-time type-safety of the typed builder + a test asserting
+  the fake rejects `pipeline()`. (Done.)
+- **Enterprise e2e:** an opt-in lane against a real Enterprise database — required
+  before promoting pipelines (and before shipping the shape-changing stages) out
+  of "experimental".
 
 ## Consequences
 
-- Users on Standard edition are unaffected (the classic API is unchanged).
-- The feature ships **experimental** until validated on Enterprise.
-- cloud_firestore is now 6.x (4.0.0-dev.5), so the dependency is in place.
-- Promoting pipelines to stable is **blocked on an Enterprise test environment**,
-  not on code — tracked in #6.
+- Standard-edition users are unaffected; the classic typed API is unchanged.
+- The whole typed surface (`where/sort/limit/select/aggregate`) honours the
+  type-safety promise — no string field paths — and ships experimental.
+- `select`/`aggregate` are implemented (typed records) but compile-verified only;
+  promoting pipelines out of "experimental" is gated on Enterprise validation —
+  tracked in #6.
+- Generic models don't yet get a pipeline surface (the selector + collection
+  type would need the type parameters threaded through) — follow-up.

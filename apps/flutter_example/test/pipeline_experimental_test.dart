@@ -42,6 +42,30 @@ void main() {
       expect(query, isA<Future<List<User>> Function()>());
     });
 
+    test('select() projects into a typed record (compile-time)', () {
+      // Proves `select` returns a `ProjectedPipeline` whose `execute()` yields a
+      // typed record list — projected purely from `$.field`, no strings.
+      Future<List<({String who, int years})>> Function() projected = () => db
+          .users
+          .pipeline()
+          .where(($) => $.age(isGreaterThanOrEqualTo: 18))
+          .select(($) => (who: $.name.value, years: $.age.value))
+          .execute();
+
+      expect(projected, isA<Future<List<({String who, int years})>> Function()>());
+    });
+
+    test('aggregate() returns a typed record (compile-time)', () {
+      // Proves `aggregate` returns a typed record built from `$.field`
+      // aggregates (count-all + per-field average), no strings.
+      Future<({int count, double avgAge})> Function() stats = () => db.users
+          .pipeline()
+          .where(($) => $.age(isGreaterThan: 0))
+          .aggregate(($) => (count: $.count(), avgAge: $.age.average()));
+
+      expect(stats, isA<Future<({int count, double avgAge})> Function()>());
+    });
+
     test('pipeline() is unsupported by fake_cloud_firestore (Enterprise-only)',
         () {
       // Pipelines require a real Firestore Enterprise database; the fake (and
