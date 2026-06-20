@@ -1,3 +1,7 @@
+## 4.0.0-dev.6
+
+- Bump to match firestore_odm 4.0.0-dev.6 (experimental pipeline API). No builder changes.
+
 ## 4.0.0-dev.5
 
 - Bump to match firestore_odm 4.0.0-dev.5 (cloud_firestore 6.x). No builder changes.
