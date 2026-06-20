@@ -33,7 +33,9 @@ class PipelineGenerator {
   static Field _leaf(FieldInfo field) {
     final fieldPath = field.isDocumentId
         ? refer('FieldPath.documentId')
-        : refer('path').property('append').call([literalString(field.jsonName)]);
+        : refer(
+            'path',
+          ).property('append').call([literalString(field.jsonName)]);
 
     final TypeReference leafType;
     final Expression instance;
@@ -145,9 +147,12 @@ class PipelineGenerator {
     );
 
     final body = returnType.newInstance([
-      refer('query').property('firestore').property('pipeline').call([]).property(
-        'collection',
-      ).call([refer('query').property('path')]),
+      refer('query')
+          .property('firestore')
+          .property('pipeline')
+          .call([])
+          .property('collection')
+          .call([refer('query').property('path')]),
       refer('fromJson'),
       refer('documentIdField'),
       // Selector factory: `(context) => <Model>PipelineSelector(context: context)`.
@@ -155,9 +160,7 @@ class PipelineGenerator {
         (b) => b
           ..lambda = true
           ..requiredParameters.add(Parameter((b) => b..name = 'context'))
-          ..body = selector.newInstance([], {
-            'context': refer('context'),
-          }).code,
+          ..body = selector.newInstance([], {'context': refer('context')}).code,
       ).closure,
     ]);
 

@@ -52,7 +52,10 @@ void main() {
           .select(($) => (who: $.name.value, years: $.age.value))
           .execute();
 
-      expect(projected, isA<Future<List<({String who, int years})>> Function()>());
+      expect(
+        projected,
+        isA<Future<List<({String who, int years})>> Function()>(),
+      );
     });
 
     test('aggregate() returns a typed record (compile-time)', () {
@@ -66,12 +69,14 @@ void main() {
       expect(stats, isA<Future<({int count, double avgAge})> Function()>());
     });
 
-    test('pipeline() is unsupported by fake_cloud_firestore (Enterprise-only)',
-        () {
-      // Pipelines require a real Firestore Enterprise database; the fake (and
-      // the emulator) do not implement them. This is why pipeline execution
-      // cannot be covered by this suite.
-      expect(() => db.users.pipeline(), throwsA(anything));
-    });
+    test(
+      'pipeline() is unsupported by fake_cloud_firestore (Enterprise-only)',
+      () {
+        // Pipelines require a real Firestore Enterprise database; the fake (and
+        // the emulator) do not implement them. This is why pipeline execution
+        // cannot be covered by this suite.
+        expect(() => db.users.pipeline(), throwsA(anything));
+      },
+    );
   });
 }

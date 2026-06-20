@@ -29,7 +29,10 @@ export 'package:cloud_firestore/cloud_firestore.dart'
 /// stage. Implementations either capture the native pieces or resolve values
 /// from a result row.
 abstract class PipelineContext {
-  R aggregate<R>(String alias, firestore.PipelineAggregateFunction Function() fn);
+  R aggregate<R>(
+    String alias,
+    firestore.PipelineAggregateFunction Function() fn,
+  );
   R project<R>(String alias, firestore.Field Function() field);
 }
 
@@ -67,8 +70,10 @@ class _RowContext implements PipelineContext {
   }
 
   @override
-  R aggregate<R>(String alias, firestore.PipelineAggregateFunction Function() _) =>
-      _coerce<R>(row[alias]);
+  R aggregate<R>(
+    String alias,
+    firestore.PipelineAggregateFunction Function() _,
+  ) => _coerce<R>(row[alias]);
 
   @override
   R project<R>(String alias, firestore.Field Function() _) =>
@@ -85,8 +90,7 @@ class PipelineFieldNode extends Node {
     : $ctx = context;
 
   /// Count of all rows, for `aggregate(($) => (n: $.count()))`.
-  int count() =>
-      $ctx!.aggregate<int>('count_all', () => firestore.CountAll());
+  int count() => $ctx!.aggregate<int>('count_all', () => firestore.CountAll());
 }
 
 /// A type-safe leaf for a scalar field. Produces native pipeline
@@ -236,7 +240,10 @@ class TypedPipeline<T, S extends PipelineFieldNode> {
     final capture = _CaptureContext();
     build(_selector(capture)); // capture phase
     final p = _applySelect(_pipeline, capture.projections);
-    return ProjectedPipeline<R>._(p, (row) => build(_selector(_RowContext(row))));
+    return ProjectedPipeline<R>._(
+      p,
+      (row) => build(_selector(_RowContext(row))),
+    );
   }
 
   /// Aggregate the (filtered) pipeline into a single typed record, e.g.

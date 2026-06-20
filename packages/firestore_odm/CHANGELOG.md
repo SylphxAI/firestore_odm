@@ -1,3 +1,7 @@
+## 4.1.0-dev.1
+
+- **EXPERIMENTAL**: redesign `collection.pipeline()` to be **fully type-safe via the generated `$.field` selector** — no more string `Field('age')` paths (which contradicted the ODM's purpose). `where`/`sort`/`limit`/`offset` preserve the model type; `select` projects into typed Dart records (`select(($) => (name: $.name.value, years: $.age.value)) → List<({String name, int years})>`); `aggregate` returns a typed record (`aggregate(($) => (count: $.count(), avgAge: $.age.average()))`). Compile-time type-checked; `select`/`aggregate` runtime behaviour still requires an Enterprise database to validate (the fake has no pipeline engine). Generic models don't get a pipeline surface yet. See `docs/adr/0001-firestore-pipelines.md` (#6).
+
 ## 4.0.0
 
 Stable release of the 4.0 line. Highlights since 3.x:

@@ -1,3 +1,7 @@
+## 4.1.0-dev.1
+
+- Bump version to match other packages (typed pipeline API).
+
 ## 4.0.0
 
 Stable release of the 4.0 line (version kept in lockstep with the other
