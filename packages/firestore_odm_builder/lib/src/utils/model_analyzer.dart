@@ -49,11 +49,11 @@ class FieldInfo {
 /// - Enums (serialized via name or @JsonValue)
 bool isHandledType(DartType type) {
   return isPrimitive(type) ||
-      TypeChecker.fromRuntime(Iterable).isAssignableFromType(type) ||
-      TypeChecker.fromRuntime(Map).isAssignableFromType(type) ||
-      TypeChecker.fromRuntime(IMap).isAssignableFromType(type) ||
-      TypeChecker.fromRuntime(DateTime).isExactlyType(type) ||
-      TypeChecker.fromRuntime(Duration).isExactlyType(type) ||
+      TypeChecker.typeNamed(Iterable).isAssignableFromType(type) ||
+      TypeChecker.typeNamed(Map).isAssignableFromType(type) ||
+      TypeChecker.typeNamed(IMap).isAssignableFromType(type) ||
+      TypeChecker.typeNamed(DateTime).isExactlyType(type) ||
+      TypeChecker.typeNamed(Duration).isExactlyType(type) ||
       (type is InterfaceType && type.element is EnumElement);
 }
 
@@ -74,7 +74,7 @@ bool isPrimitive(DartType type) {
       type.isDartCoreDouble ||
       type.isDartCoreString ||
       type.isDartCoreNull ||
-      type.name == 'dynamic';
+      type is DynamicType;
 }
 
 Map<String, FieldInfo> getFields(InterfaceType type) {
@@ -90,20 +90,20 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
   final fields = Map<String, FieldInfo>();
 
   // Simplified field analysis
-  for (final parameter in constructor.parameters) {
+  for (final parameter in constructor.formalParameters) {
     if (parameter.isStatic) continue;
 
-    var jsonName = parameter.name;
+    final paramName = parameter.name!;
+    var jsonName = paramName;
     // check JsonKey annotation for custom names
-    if (parameter.metadata.isNotEmpty) {
-      final jsonKey = TypeChecker.fromRuntime(
+    if (parameter.metadata.annotations.isNotEmpty) {
+      final jsonKey = TypeChecker.typeNamed(
         JsonKey,
       ).firstAnnotationOfExact(parameter);
       if (jsonKey != null) {
         final reader = ConstantReader(jsonKey);
 
-        jsonName =
-            reader.read('name').literalValue as String? ?? parameter.name;
+        jsonName = reader.read('name').literalValue as String? ?? paramName;
 
         final includeFromJson =
             reader.read('includeFromJson').literalValue as bool? ?? true;
@@ -115,13 +115,13 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
       }
     }
     final customConverter =
-        TypeChecker.fromRuntime(
+        TypeChecker.typeNamed(
               JsonConverter,
             ).annotationsOf(parameter).firstOrNull?.type
             as InterfaceType?;
 
-    fields[parameter.name] = FieldInfo(
-      parameterName: parameter.name,
+    fields[paramName] = FieldInfo(
+      parameterName: paramName,
       jsonName: jsonName,
       type: parameter.type,
       element: parameter,
@@ -129,7 +129,7 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
           ? CustomConverter(
               type: customConverter,
               jsonType: customConverter
-                  .lookUpMethod3('toJson', customConverter.element3.library2)!
+                  .lookUpMethod('toJson', customConverter.element.library)!
                   .returnType,
             )
           : null,
@@ -143,8 +143,9 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
 }
 
 ConstructorElement? getDefaultConstructor(InterfaceType type) {
+  // analyzer's new element model names the unnamed constructor 'new' (not '').
   final constructor = type.constructors
-      .where((c) => c.name.isEmpty)
+      .where((c) => c.name == 'new' || (c.name ?? '').isEmpty)
       .firstOrNull;
 
   return constructor;
@@ -155,28 +156,28 @@ String getDocumentIdFieldName(InterfaceType type) {
 
   if (constructor == null) {
     throw ArgumentError(
-      'No default constructor found in ${type.getDisplayString(withNullability: false)}',
+      'No default constructor found in ${type.getDisplayString()}',
     );
   }
 
-  final params = constructor.parameters.where(
-    (p) => TypeChecker.fromRuntime(DocumentIdField).hasAnnotationOf(p),
+  final params = constructor.formalParameters.where(
+    (p) => TypeChecker.typeNamed(DocumentIdField).hasAnnotationOf(p),
   );
 
   if (params.length > 1) {
     throw ArgumentError(
-      'Multiple document ID fields found in ${type.getDisplayString(withNullability: false)}',
+      'Multiple document ID fields found in ${type.getDisplayString()}',
     );
   }
 
   final documentIdParam = params.length == 1
       ? params.single
-      : constructor.parameters.where((p) => p.name == 'id').firstOrNull;
+      : constructor.formalParameters.where((p) => p.name == 'id').firstOrNull;
 
   // Check type
   if (documentIdParam != null && !documentIdParam.type.isDartCoreString) {
     throw ArgumentError(
-      'Document ID field must be a String in ${type.getDisplayString(withNullability: false)}',
+      'Document ID field must be a String in ${type.getDisplayString()}',
     );
   }
 
@@ -197,7 +198,7 @@ TypeReference getJsonType({required DartType type}) {
     var allInt = true;
 
     for (final c in constants) {
-      final ann = TypeChecker.fromRuntime(JsonValue).firstAnnotationOfExact(c);
+      final ann = TypeChecker.typeNamed(JsonValue).firstAnnotationOfExact(c);
       if (ann == null) {
         // default = name -> String
         continue;
@@ -225,22 +226,22 @@ TypeReference getJsonType({required DartType type}) {
     return base.withNullability(type.isNullable);
   }
 
-  if (TypeChecker.fromRuntime(DateTime).isAssignableFromType(type)) {
+  if (TypeChecker.typeNamed(DateTime).isAssignableFromType(type)) {
     return TypeReferences.string.withNullability(type.isNullable);
   }
 
-  if (TypeChecker.fromRuntime(Duration).isAssignableFromType(type)) {
+  if (TypeChecker.typeNamed(Duration).isAssignableFromType(type)) {
     return TypeReferences.int.withNullability(type.isNullable);
   }
 
-  if (TypeChecker.fromRuntime(Iterable).isAssignableFromType(type)) {
+  if (TypeChecker.typeNamed(Iterable).isAssignableFromType(type)) {
     return TypeReferences.listOf(
       getJsonType(type: type.typeArguments.first),
     ).withNullability(type.isNullable);
   }
 
-  if (TypeChecker.fromRuntime(Map).isAssignableFromType(type) ||
-      TypeChecker.fromRuntime(IMap).isAssignableFromType(type)) {
+  if (TypeChecker.typeNamed(Map).isAssignableFromType(type) ||
+      TypeChecker.typeNamed(IMap).isAssignableFromType(type)) {
     return TypeReferences.mapOf(
       TypeReferences.string,
       getJsonType(type: type.typeArguments.last),

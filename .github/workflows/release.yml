@@ -27,15 +27,15 @@ jobs:
 
       - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          # Mirror ci.yml: pin Flutter 3.32.8 (Dart 3.8.1) — newer stable breaks
-          # `melos bootstrap` against analyzer ^7.4.5 — and install via a
-          # retry-guarded git clone (subosito's archive install intermittently
-          # leaves an empty engine version on these self-hosted runners).
+          # Mirror ci.yml: pin Flutter to current stable 3.44.2 (bump
+          # deliberately), installed via a retry-guarded git clone (subosito's
+          # archive install intermittently leaves an empty engine version on
+          # these self-hosted runners).
           export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue

@@ -9,9 +9,10 @@ on:
   merge_group:
     types: [checks_requested]
 
-# Flutter is pinned to 3.32.8 (Dart 3.8.1): newer stable (Dart >=3.12) pulls
-# test/analyzer >=8 and breaks `melos bootstrap` against this repo's
-# `analyzer ^7.4.5`. Revisit when the analyzer 8.x upgrade lands.
+# Flutter is pinned to the current stable, 3.44.2 (Dart 3.12.2), deliberately —
+# bump it on purpose, don't float `channel: stable` (silent drift previously
+# broke CI). The builder needs analyzer >=9 (Dart >=3.9), so 3.32.x no longer
+# works.
 #
 # Self-hosted jobs install Flutter via a shallow git clone instead of
 # subosito/flutter-action: the archive install intermittently produced a Flutter
@@ -39,7 +40,7 @@ jobs:
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
@@ -70,9 +71,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        # Pinned to a project-compatible version (Dart 3.8.x). The stable/beta
-        # channel matrix broke once stable moved to Dart >=3.12 (analyzer 8.x).
-        flutter-version: ['3.32.8']
+        # Pinned to current stable (bump deliberately, don't float a channel).
+        flutter-version: ['3.44.2']
       fail-fast: false
 
     steps:
@@ -119,7 +119,7 @@ jobs:
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
@@ -175,7 +175,7 @@ jobs:
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
@@ -215,7 +215,7 @@ jobs:
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
@@ -258,7 +258,7 @@ jobs:
           ok=0
           for attempt in 1 2 3; do
             rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.32.8 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
+            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
               || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
             if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
               echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue

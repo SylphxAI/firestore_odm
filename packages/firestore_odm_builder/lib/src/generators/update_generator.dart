@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart' hide FunctionType;
 import 'package:code_builder/code_builder.dart';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
@@ -54,10 +54,10 @@ class UpdateGenerator {
         : isTypeParameter
         ? Updater(
             type: TypeReference(
-              (b) => b..symbol = '\$${field.type.element3!.name3}',
+              (b) => b..symbol = '\$${field.type.element!.name}',
             ),
             initializerRef: refer(
-              '_builderFunc${field.type.element3!.name3!.camelCase()}',
+              '_builderFunc${field.type.element!.name!.camelCase()}',
             ),
             arguments: {
               'field': refer(
@@ -110,7 +110,7 @@ class UpdateGenerator {
               ).property('append').call([literalString(jsonFieldName)]),
             },
           )
-        : TypeChecker.fromRuntime(IMap).isAssignableFromType(fieldType)
+        : TypeChecker.typeNamed(IMap).isAssignableFromType(fieldType)
         ? Updater(
             type: TypeReference(
               (b) => b
@@ -140,7 +140,7 @@ class UpdateGenerator {
               ),
             },
           )
-        : TypeChecker.fromRuntime(Map).isAssignableFromType(fieldType)
+        : TypeChecker.typeNamed(Map).isAssignableFromType(fieldType)
         ? Updater(
             type: TypeReference(
               (b) => b
@@ -241,12 +241,12 @@ class UpdateGenerator {
     );
   }
 
-  static Set<TypeParameterElement2> computeNeededBuilders({
+  static Set<TypeParameterElement> computeNeededBuilders({
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
       type.typeArguments,
-      type.element3.typeParameters2,
+      type.element.typeParameters,
     );
     final fields = getFields(type);
     final fieldTypes = fields.values.map((field) => field.type).toSet();
@@ -262,12 +262,12 @@ class UpdateGenerator {
     }
   }
 
-  static Set<TypeParameterElement2> computeNeededToJsons({
+  static Set<TypeParameterElement> computeNeededToJsons({
     required InterfaceType type,
   }) {
     final map = Map.fromIterables(
       type.typeArguments,
-      type.element3.typeParameters2,
+      type.element.typeParameters,
     );
     final fields = getFields(type);
     final fieldTypes = fields.values
@@ -286,8 +286,8 @@ class UpdateGenerator {
     final toJsons = computeNeededToJsons(type: type);
     return Class(
       (b) => b
-        ..docs.add('/// Patch builder for `${type.name}` model')
-        ..name = '${type.name}PatchBuilder'
+        ..docs.add('/// Patch builder for `${type.element.name}` model')
+        ..name = '${type.element.name}PatchBuilder'
         ..types.add(
           TypeReference(
             (b) => b
@@ -296,13 +296,13 @@ class UpdateGenerator {
           ),
         )
         ..types.addAll(
-          type.element3.typeParameters2.expand(
+          type.element.typeParameters.expand(
             (t) => [
               t.reference,
               if (builders.contains(t))
                 TypeReference(
                   (b) => b
-                    ..symbol = '\$${t.name3}'
+                    ..symbol = '\$${t.name}'
                     ..bound = TypeReference(
                       (b) => b
                         ..symbol = 'PatchBuilder'
@@ -326,18 +326,20 @@ class UpdateGenerator {
         ..constructors.add(
           Constructor(
             (b) => b
-              ..docs.add('/// Creates a patch builder for `${type.name}`')
+              ..docs.add(
+                '/// Creates a patch builder for `${type.element.name}`',
+              )
               ..optionalParameters.addAll([
                 for (final typeParam in builders)
                   Parameter(
                     (b) => b
-                      ..name = 'builderFunc${typeParam.name3!.camelCase()}'
+                      ..name = 'builderFunc${typeParam.name!.camelCase()}'
                       ..type = TypeReference(
                         (b) => b
                           ..symbol = 'PatchBuilderFunc'
                           ..types.addAll([
-                            refer('${typeParam.name3}'),
-                            refer('\$${typeParam.name3}'),
+                            refer('${typeParam.name}'),
+                            refer('\$${typeParam.name}'),
                           ]),
                       )
                       ..named = true
@@ -346,7 +348,7 @@ class UpdateGenerator {
                 for (final typeParam in toJsons)
                   Parameter(
                     (b) => b
-                      ..name = 'toJson${typeParam.name3}'
+                      ..name = 'toJson${typeParam.name}'
                       ..type = FunctionType(
                         (b) => b
                           ..returnType = refer('dynamic')
@@ -371,15 +373,15 @@ class UpdateGenerator {
               ])
               ..initializers.addAll([
                 for (final typeParam in builders)
-                  refer('_builderFunc${typeParam.name3!.camelCase()}')
+                  refer('_builderFunc${typeParam.name!.camelCase()}')
                       .assign(
-                        refer('builderFunc${typeParam.name3!.camelCase()}'),
+                        refer('builderFunc${typeParam.name!.camelCase()}'),
                       )
                       .code,
                 for (final typeParam in toJsons)
                   refer(
-                    '_toJson${typeParam.name3}',
-                  ).assign(refer('toJson${typeParam.name3}')).code,
+                    '_toJson${typeParam.name}',
+                  ).assign(refer('toJson${typeParam.name}')).code,
               ]),
           ),
         )
@@ -387,7 +389,7 @@ class UpdateGenerator {
           for (final typeParam in toJsons)
             Field(
               (b) => b
-                ..name = '_toJson${typeParam.name3}'
+                ..name = '_toJson${typeParam.name}'
                 ..modifier = FieldModifier.final$
                 ..type = FunctionType(
                   (b) => b
@@ -398,14 +400,14 @@ class UpdateGenerator {
           for (final typeParam in builders)
             Field(
               (b) => b
-                ..name = '_builderFunc${typeParam.name3!.camelCase()}'
+                ..name = '_builderFunc${typeParam.name!.camelCase()}'
                 ..modifier = FieldModifier.final$
                 ..type = TypeReference(
                   (b) => b
                     ..symbol = 'PatchBuilderFunc'
                     ..types.addAll([
-                      refer('${typeParam.name3}'),
-                      refer('\$${typeParam.name3}'),
+                      refer('${typeParam.name}'),
+                      refer('\$${typeParam.name}'),
                     ]),
                 ),
             ),
@@ -415,7 +417,7 @@ class UpdateGenerator {
               typeConverters: {
                 for (var (i, typeParam) in type.typeArguments.indexed)
                   typeParam: refer(
-                    '_toJson${type.element3.typeParameters2[i].name3}',
+                    '_toJson${type.element.typeParameters[i].name}',
                   ),
               },
             ),
@@ -434,7 +436,7 @@ class UpdateGenerator {
 
   static TypeReference getBuilderType({required DartType type}) {
     if (type is! InterfaceType || !TypeAnalyzer.isCustomClass(type)) {
-      if (!TypeChecker.fromRuntime(num).isAssignableFromType(type)) {
+      if (!TypeChecker.typeNamed(num).isAssignableFromType(type)) {
         return TypeReference((b) => b..symbol = 'Never');
       }
       return TypeReference(
@@ -445,13 +447,13 @@ class UpdateGenerator {
       );
     }
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
     return TypeReference(
       (b) => b
-        ..symbol = '${type.element3.name3}PatchBuilder'
+        ..symbol = '${type.element.name}PatchBuilder'
         ..types.add(type.reference)
         ..types.addAll(
           map.entries.expand(
@@ -469,15 +471,15 @@ class UpdateGenerator {
     Map<DartType, Expression> typeConverters = const {},
   }) {
     final map = Map.fromIterables(
-      type.element3.typeParameters2,
+      type.element.typeParameters,
       type.typeArguments,
     );
-    final builders = computeNeededBuilders(type: type.element3.thisType);
-    final toJsons = computeNeededToJsons(type: type.element3.thisType);
+    final builders = computeNeededBuilders(type: type.element.thisType);
+    final toJsons = computeNeededToJsons(type: type.element.thisType);
 
     return {
       for (final typeParam in builders)
-        'builderFunc${typeParam.name3!.camelCase()}': Method(
+        'builderFunc${typeParam.name!.camelCase()}': Method(
           (b) => b
             ..lambda = true
             ..optionalParameters.addAll([
@@ -496,7 +498,7 @@ class UpdateGenerator {
         ).closure,
 
       for (final typeParam in toJsons)
-        'toJson${typeParam.name3}': ConverterGenerator.getToJsonEnsured(
+        'toJson${typeParam.name}': ConverterGenerator.getToJsonEnsured(
           type: map[typeParam]!,
           typeConverters: typeConverters,
         ),
@@ -509,7 +511,7 @@ class UpdateGenerator {
     Map<DartType, Expression> typeConverters = const {},
   }) {
     if (!isUserType(type) &&
-        !TypeChecker.fromRuntime(num).isAssignableFromType(type)) {
+        !TypeChecker.typeNamed(num).isAssignableFromType(type)) {
       return refer(
         'throw UnsupportedError',
       ).call([literalString('Unsupported type for aggregation')]);
