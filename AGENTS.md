@@ -1,27 +1,20 @@
-# Agent Instructions
+# firestore_odm — local agent notes only
 
-Engineering doctrine: https://github.com/SylphxAI/doctrine
+Doctrine and fleet delivery law live in the **host always-on constitution**
+(`~/.grok/AGENTS.md` / Doctrine template). This file must **not** restate,
+weaken, or fork that law (including PR-vs-direct-trunk delivery).
 
-Before changing behavior, read `PROJECT.md`, `.doctrine/project.json`, the
-central doctrine entry points, and triggered doctrine standards. This file is a
-thin runtime adapter; keep enterprise policy in doctrine.
+Local truth: `PROJECT.md`, `.doctrine/project.json` when present.
 
-## Local Commands
+## Boundary hazards
 
-- `melos bootstrap` - bootstrap workspace packages.
-- `melos run check --no-select` - format, analyze, and tests.
-- `melos run publish:dry-run --no-select` - validate pub.dev publishability.
-- `melos run generate` - generate code where needed.
+- Never commit secrets, tokens, `.env` files, or credentials.
 
-## Local Hazards
+## Local commands
 
-- Firestore ODM is a public Dart/Flutter code-generation package ecosystem.
-  Builder output, annotations, generated APIs, and Firestore write semantics are
-  public contracts.
-- pub.dev package publishes are forward-fix-only.
-- Example app and generated-code tests may need Flutter/Firebase context.
+- See `PROJECT.md` / `README.md` for repo validation commands.
 
-## Reporting
+## Validation notes
 
-Separate local diff, PR state, CI state, merge state, pub.dev publish state,
-docs publish state, and package readback proof.
+- Prefer the **narrowest** affected check before full workspace runs.
+- Report layers honestly: local diff · trunk FF · deploy · prod proof (do not collapse).
