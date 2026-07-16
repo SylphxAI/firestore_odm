@@ -2,6 +2,11 @@
 
 # Firestore ODM 🔥
 
+<p align="center">
+  <img src="docs/banner.png" alt="firestore_odm banner" width="100%" />
+</p>
+
+
 **Type-safe Firestore ODM for Dart/Flutter - zero reflection, code generation**
 
 [![pub package](https://img.shields.io/pub/v/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
