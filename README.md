@@ -3,9 +3,8 @@
 # Firestore ODM 🔥
 
 <p align="center">
-  <img src="docs/banner.png" alt="firestore_odm banner" width="100%" />
+  <img src="https://mark.sylphx.com/api/v1/banner?type=wave&theme=tokyonight&text=firestore+odm&desc=%F0%9F%94%A5+Type-safe+Firestore+ODM+for+Dart%2FFlutter+-+code-generation+with+zero+reflecti&height=200&animation=rise&credit=0" alt="firestore_odm — Sylphx Mark banner" width="100%" />
 </p>
-
 
 **Type-safe Firestore ODM for Dart/Flutter - zero reflection, code generation**
 
