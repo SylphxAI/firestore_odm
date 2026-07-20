@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    runs-on: [self-hosted, sylphx, linux, standard]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
