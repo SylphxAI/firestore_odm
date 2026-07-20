@@ -17,7 +17,7 @@ on:
 
 jobs:
   release:
-    runs-on: [self-hosted, sylphx, linux, standard]
+    runs-on: ubuntu-latest
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -177,7 +177,7 @@ jobs:
 
   # Verify publication success
   verify-publish:
-    runs-on: [self-hosted, sylphx, linux, standard]
+    runs-on: ubuntu-latest
     if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
     needs: release
     steps:
