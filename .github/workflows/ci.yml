@@ -20,6 +20,11 @@ on:
 # resolves the engine version correctly. The GitHub-hosted test matrix keeps the
 # action (it never showed the issue and its cache speeds up the 3-OS matrix).
 
+concurrency:
+  # Fast Trunk: supersede obsolete runs for the same PR or branch tip.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Code quality checks
   quality:
