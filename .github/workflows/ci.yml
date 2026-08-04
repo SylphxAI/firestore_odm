@@ -28,7 +28,7 @@ concurrency:
 jobs:
   # Code quality checks
   quality:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [sylphx-linux-standard, self-hosted-windows, self-hosted-macos]
         # Pinned to current stable (bump deliberately, don't float a channel).
         flutter-version: ['3.44.2']
       fail-fast: false
@@ -106,7 +106,7 @@ jobs:
 
   # Code coverage
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     needs: [quality, test]
     steps:
       - name: 📚 Git Checkout
@@ -161,7 +161,7 @@ jobs:
 
   # Performance testing
   performance:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     if: github.event_name == 'pull_request'
     needs: [quality]
     steps:
@@ -203,7 +203,7 @@ jobs:
 
   # Security scanning
   security:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -246,7 +246,7 @@ jobs:
 
   # Documentation generation test
   docs:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -284,7 +284,7 @@ jobs:
 
   # CI results summary
   ci-success:
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     needs: [quality, test, coverage, security, docs]
     if: always()
     steps:
