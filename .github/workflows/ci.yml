@@ -17,8 +17,8 @@ on:
 # subosito/flutter-action: the archive install intermittently produced a Flutter
 # SDK with an empty engine version on these runners, yielding a broken
 # `flutter//flutter_gpu.zip` URL and a failed bootstrap. A git checkout always
-# resolves the engine version correctly. The GitHub-hosted test matrix keeps the
-# action (it never showed the issue and its cache speeds up the 3-OS matrix).
+# resolves the engine version correctly. The cross-platform test matrix also runs on owned self-hosted runners;
+# the action is an install helper, not a hosted-compute dependency.
 
 concurrency:
   # Fast Trunk: supersede obsolete runs for the same PR or branch tip.
@@ -71,12 +71,19 @@ jobs:
 
   # Test matrix
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [sylphx-linux-standard, self-hosted-windows, self-hosted-macos]
-        # Pinned to current stable (bump deliberately, don't float a channel).
-        flutter-version: ['3.44.2']
+        include:
+          - profile: linux-standard
+            runner: sylphx-linux-standard
+            flutter-version: '3.44.2'
+          - profile: macos-standard
+            runner: [self-hosted, sylphx, macos, standard]
+            flutter-version: '3.44.2'
+          - profile: windows-standard
+            runner: [self-hosted, sylphx, windows, standard]
+            flutter-version: '3.44.2'
       fail-fast: false
 
     steps:
