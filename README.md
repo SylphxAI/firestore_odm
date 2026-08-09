@@ -72,7 +72,7 @@ measurements are not made.
 
 ### Carried over from 3.0
 - ✅ **Full generic model support** - Generic classes with type-safe patch operations
-- ✅ **Complete JsonKey & JsonConverter support** - Full serialization control
+- ✅ **JsonKey subset** (`name`, `ignore`, `includeFromJson`/`includeToJson`) and `@JsonConverter` — documented honestly, no silent partial support
 - ✅ **Automatic conversion fallbacks** - JsonConverter optional in most cases
 - ✅ **Enhanced map operations** - Comprehensive map field support with atomic ops
 
@@ -88,7 +88,7 @@ measurements are not made.
 | **Query Building** | ❌ String-based, error-prone | ✅ Type-safe with IDE support |
 | **Data Updates** | ❌ Manual map construction | ✅ Two powerful strategies |
 | **Generic Support** | ❌ No generic handling | ✅ Full generic models |
-| **Aggregations** | ❌ Basic count only | ✅ Comprehensive + streaming |
+| **Aggregations** | ❌ Basic count only | ✅ One-shot count/sum/average (server-side) |
 | **Pagination** | ❌ Manual, risky | ✅ Smart Builder, zero risk |
 | **Transactions** | ❌ Manual read-before-write | ✅ Automatic deferred writes |
 | **Runtime Errors** | ❌ Common | ✅ Eliminated at compile-time |
@@ -120,21 +120,20 @@ final page2 = await db.users
   .get();
 ```
 
-**Streaming Aggregations** - Real-time aggregation subscriptions:
+**One-shot Server-Side Aggregations** (ADR-0002 — no fake client-side
+streaming; server-side aggregate streams are added only when
+`cloud_firestore` exposes them):
 ```dart
-// Live statistics that update in real-time
-db.users
+final stats = await db.users
   .where(($) => $.isActive(isEqualTo: true))
   .aggregate(($) => (
     count: $.count(),
     averageAge: $.age.average(),
     totalFollowers: $.profile.followers.sum(),
   ))
-  .stream
-  .listen((stats) {
-    print('Live: ${stats.count} users, avg age ${stats.averageAge}');
-  });
-```
+  .get();
+print('${stats.count} users, avg ${stats.averageAge}');
+
 
 ---
 
@@ -407,7 +406,8 @@ await db.users.insert(User(
 ));
 ```
 
-**⚠️ Server Timestamp Warning:** `FirestoreODM.serverTimestamp` must be used exactly as-is. Any arithmetic operations (`+`, `.add()`, etc.) will create a regular `DateTime` instead of a server timestamp. See the [Server Timestamps Guide](https://SylphxAI.github.io/firestore_odm/guide/server-timestamps.html) for alternatives.
+Server-set times use the explicit patch op (ADR-0002 — no sentinels):
+`patch((p) => [p.updatedAt.serverTimestamp()])`.
 
 ---
 
@@ -415,12 +415,14 @@ await db.users.insert(User(
 
 ### Optimized Code Generation
 
-| Metric | Value | Benefit |
-|--------|-------|---------|
-| **Runtime Performance** | **+20%** | Optimized execution paths |
-| **Generated Code Size** | **-15%** | Smart generation without bloat |
-| **Compilation Time** | **<1 second** | Complex schemas compile instantly |
-| **Runtime Overhead** | **Zero** | All magic at compile time |
+| Metric | How it is measured |
+|--------|--------------------|
+| Serialization round-trip | recorded `BENCH serialization_roundtrip_us_per_op` |
+| Patch operation latency | recorded `BENCH patch_op_ms_per_op` |
+| Runtime overhead | zero reflection — all magic at compile time |
+
+Claims without measurements are not made; the harness runs in the
+`performance` CI lane (`apps/flutter_example/test/benchmarks_test.dart`).
 
 ### Advanced Capabilities
 - ✅ **Complex logical operations** - `and()` and `or()`
@@ -428,7 +430,7 @@ await db.users.insert(User(
 - ✅ **Range queries** - Proper ordering constraints
 - ✅ **Nested field access** - Full type safety
 - ✅ **Transaction support** - Automatic deferred writes
-- ✅ **Streaming subscriptions** - Real-time updates
+- ✅ **Query/document streams** - Real-time updates
 - ✅ **Error handling** - Meaningful compile-time messages
 - ✅ **Testing support** - `fake_cloud_firestore` integration
 
@@ -470,8 +472,8 @@ void main() {
 
 **✅ Completed (3.0 → 4.0)**
 - [x] Full generic model support
-- [x] Complete JsonKey & JsonConverter support
-- [x] 20% runtime performance improvement & 15% smaller generated code
+- [x] Honest JsonKey subset + @JsonConverter
+- [x] Recorded benchmark harness (no unmeasured perf claims)
 - [x] Enum support — string & numeric `@JsonValue`, `orderBy`, defaults *(4.0)*
 - [x] Automatic nested-class imports *(4.0)*
 - [x] Batch & transaction patch builders *(4.0)*

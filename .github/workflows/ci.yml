@@ -303,11 +303,11 @@ jobs:
   # cannot model Timestamp storage, index errors or real query semantics; this
   # lane is the deploy-layer behavior gate.
   e2e-emulator:
-    # Visibility lane only; the authoritative emulator gate runs in
-    # release.yml (e2e-gate) and blocks publishing. Hosted runners cannot
-    # foreground macOS GUI apps, so this lane is informational.
+    # Visibility lane; the authoritative emulator gate runs in release.yml
+    # (e2e-gate) and blocks publishing. Windows: cloud_firestore has Windows
+    # platform support and hosted Windows runners can run GUI apps.
     continue-on-error: true
-    runs-on: macos-latest
+    runs-on: windows-latest
     needs: [quality]
     steps:
       - name: 📚 Git Checkout
@@ -335,10 +335,11 @@ jobs:
 
       - name: 🔥 Run Emulator E2E
         working-directory: apps/flutter_example
+        shell: bash
         run: |
           npx --yes firebase-tools@latest emulators:exec \
             --only firestore --project demo-project \
-            "flutter test integration_test -d macos --timeout 5m"
+            "flutter test integration_test -d windows --timeout 5m"
 
   # CI results summary
   ci-success:

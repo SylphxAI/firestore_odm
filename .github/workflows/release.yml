@@ -18,9 +18,9 @@ on:
 jobs:
   e2e-gate:
     # Live semantics e2e against the Firestore emulator (ADR-0001/0002) —
-    # required before any publish. macOS: the only cloud_firestore desktop
-    # target available on hosted runners.
-    runs-on: macos-latest
+    # required before any publish. Windows: cloud_firestore has Windows
+    # platform support and hosted Windows runners can run GUI apps.
+    runs-on: windows-latest
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
@@ -47,10 +47,11 @@ jobs:
 
       - name: 🔥 Run Emulator E2E
         working-directory: apps/flutter_example
+        shell: bash
         run: |
           npx --yes firebase-tools@latest emulators:exec \
             --only firestore --project demo-project \
-            "flutter test integration_test -d macos --timeout 5m"
+            "flutter test integration_test -d windows --timeout 5m"
 
   release:
     runs-on: ubuntu-latest

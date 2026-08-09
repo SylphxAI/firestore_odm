@@ -98,11 +98,12 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
     if (jsonKey != null) {
       final reader = ConstantReader(jsonKey);
       jsonName = reader.read('name').literalValue as String? ?? paramName;
+      final ignore = reader.read('ignore').literalValue as bool? ?? false;
       final includeFromJson =
           reader.read('includeFromJson').literalValue as bool? ?? true;
       final includeToJson =
           reader.read('includeToJson').literalValue as bool? ?? true;
-      include = includeFromJson && includeToJson;
+      include = !ignore && includeFromJson && includeToJson;
       if (!include) continue;
     }
 

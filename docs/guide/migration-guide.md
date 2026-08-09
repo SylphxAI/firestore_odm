@@ -9,7 +9,7 @@ The standard `cloud_firestore` package has several fundamental limitations:
 - **Runtime errors** - Field name typos cause crashes in production
 - **Manual serialization** - Tedious and error-prone data conversion
 - **Complex queries** - Difficult to write and maintain
-- **Limited features** - No streaming aggregations, smart pagination, or atomic update helpers
+- **Limited features** - No type-safe one-shot aggregations, smart pagination, or atomic update helpers
 
 Firestore ODM solves all these problems while maintaining full compatibility with your existing Firestore database.
 
@@ -457,25 +457,23 @@ print('Count: ${stats.count}');
 print('Average age: ${stats.averageAge}');
 print('Total followers: ${stats.totalFollowers}');
 
-// Streaming aggregations (unique feature!)
-db.users
+// One-shot server-side aggregation (ADR-0002)
+final result = await db.users
   .where(($) => $.isActive(isEqualTo: true))
   .aggregate(($) => (count: $.count()))
-  .stream
-  .listen((result) {
-    print('Live count: ${result.count}');
-  });
+  .get();
+print('Count: ${result.count}');
 ```
 
 ### Migration Steps:
 1. **Replace basic `count()` calls** with ODM aggregate syntax
 2. **Combine multiple aggregations** in single requests for efficiency
-3. **Add streaming subscriptions** for real-time statistics
+3. **Use one-shot server-side aggregates** (no client-side streaming)
 4. **Use typed aggregate results** instead of manual calculations
 
 ### Benefits After Migration:
 - ✅ **Multiple aggregations** - count, sum, average in one request
-- ✅ **Streaming aggregations** - Real-time statistics (unique feature)
+- ✅ **One-shot aggregations** - server-side count/sum/average
 - ✅ **Type-safe results** - Strongly typed aggregate responses
 - ✅ **Efficient queries** - Server-side calculations
 
