@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Batch Operations
 
 Batch operations allow you to perform multiple write operations (insert, update, delete, patch) as a single atomic unit. All operations in a batch either succeed together or fail together, ensuring data consistency.

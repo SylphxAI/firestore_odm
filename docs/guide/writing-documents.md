@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Writing & Updating Documents
 
 This guide covers all the ways to create, update, and delete single documents. For information on updating multiple documents at once, see the [Bulk Operations](./bulk-operations) guide.

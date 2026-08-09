@@ -278,3 +278,16 @@ Stable release of the 4.0 line. Key change since 3.x: migrated to the analyzer
 - Real-time snapshot support generation
 - Transaction and batch operation support
 - Comprehensive error handling and validation
+## 5.0.0-dev.1
+
+- **BREAKING (clean break, ADR-0002):** exact Firestore semantics.
+- DateTime is a native Timestamp both directions; the ODM owns storage
+  serialization (model `toJson`/`fromJson` remain for JSON interchange).
+- Write verbs: `create` (returns the generated ID), `set`, `patch` (six
+  FieldValue-shaped ops), `delete`. Removed `insert`/`update`/`upsert`,
+  `modify()`, sentinels, fake aggregate streaming, `exists()`.
+- Typed bulk writes chunked to Firestore's 500-write limit.
+- Schema classes are user-declared; generated code lands in `<library>.g.dart`.
+- Root collections are getters with callable `doc(id)`; subcollections use
+  path-derived accessors (`users/*/posts` -> `usersPosts`).
+- Recorded benchmark harness and emulator e2e lane.

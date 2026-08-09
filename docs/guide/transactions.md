@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Transactions
 
 Transactions are essential for operations that need to read and write data atomically across multiple documents. A classic example is transferring funds between two accounts: you need to ensure that the debit from one account and the credit to another either both succeed or both fail, maintaining data consistency.

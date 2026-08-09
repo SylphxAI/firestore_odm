@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Subcollections
 
 The ODM provides a fluent, type-safe API for defining and accessing subcollections. One of the key advantages is that **the same model can be reused in both collections and subcollections without generating additional code**, keeping your build output minimal and efficient.

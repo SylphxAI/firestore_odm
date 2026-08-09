@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Server Timestamps
 
 In distributed systems, relying on the client's clock can lead to inconsistencies. Firestore provides a `FieldValue.serverTimestamp()` to ensure that timestamps are generated consistently on Google's servers. This ODM provides a convenient and type-safe way to use this feature.
