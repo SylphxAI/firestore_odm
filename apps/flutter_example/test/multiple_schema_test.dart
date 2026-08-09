@@ -3,9 +3,7 @@ library;
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firestore_odm/firestore_odm.dart';
-import 'package:flutter_example/models/user.dart';
 import 'package:flutter_example/secondary_schema.dart';
-import 'package:flutter_example/test_schema.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';

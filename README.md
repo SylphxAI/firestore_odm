@@ -11,7 +11,7 @@
 [![pub package](https://img.shields.io/pub/v/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
 [![license](https://img.shields.io/github/license/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
 
-**20% faster runtime** • **15% less code** • **Zero reflection** • **Full type safety**
+**Zero reflection** • **Full type safety** • **Native Timestamp** • **Measured performance**
 
 [Documentation](https://SylphxAI.github.io/firestore_odm/) • [Getting Started](https://SylphxAI.github.io/firestore_odm/guide/getting-started.html) • [Examples](#-quick-start)
 
@@ -41,7 +41,7 @@ String name = user.name;  // ✅ IDE autocomplete, compile-time checking
 int age = user.profile.age;  // ✅ Type-safe nested access
 ```
 
-**Result: Zero reflection, 20% faster runtime, eliminate runtime errors.**
+**Result: Zero reflection, exact Firestore semantics, eliminate runtime errors.**
 
 ---
 
@@ -58,14 +58,17 @@ Building on 3.0's performance foundation, **4.0 expands type coverage and ergono
 - ✅ **Batch & transaction patch builders** - atomic patch operations in `runBatch` / `runTransaction`
 - ✅ **Reworked code generator** - cleaner filter/patch/aggregate/orderBy builders and converters on a unified `FieldPath` model
 
-### Performance (established in 3.0, retained in 4.0)
+### Performance (measured, not asserted)
 
-| Metric | Improvement | Impact |
-|--------|-------------|--------|
-| **Runtime Performance** | **20% faster** | Optimized code generation |
-| **Generated Code** | **15% smaller** | Extension-based architecture |
-| **Compilation Speed** | **<1 second** | Complex schemas compile instantly |
-| **Runtime Overhead** | **Zero** | All magic at compile time |
+The repo ships a recorded benchmark harness (`apps/flutter_example/test/benchmarks_test.dart`,
+run by the `performance` CI lane). Numbers are recorded per run; claims without
+measurements are not made.
+
+| Metric | How it is measured |
+|--------|--------------------|
+| Serialization round-trip | `BENCH serialization_roundtrip_us_per_op` (Stopwatch, 10k iterations) |
+| Patch operation latency | `BENCH patch_op_ms_per_op` (1000 ops against the test double) |
+| Runtime overhead | Zero reflection — all magic happens at compile time |
 
 ### Carried over from 3.0
 - ✅ **Full generic model support** - Generic classes with type-safe patch operations
@@ -93,11 +96,11 @@ Building on 3.0's performance foundation, **4.0 expands type coverage and ergono
 ### Lightning Fast Code Generation
 
 - 🚀 **Inline-first optimized** - Callables and Dart extensions for maximum performance
-- 📦 **15% less generated code** - Smart generation without bloating your project
-- ⚡ **20% performance improvement** - Optimized runtime execution
+- 📦 **Small generated surface** - one unified codegen pipeline per model
+- ⚡ **Measured performance** - recorded benchmark harness in CI
 - 🔄 **Model reusability** - Same model works in collections and subcollections
 - ⏱️ **Sub-second generation** - Complex schemas compile in under 1 second
-- 🎯 **Zero runtime overhead** - All magic happens at compile time
+- 🎯 **Zero runtime overhead** - All magic happens at compile time (no reflection)
 
 ### Revolutionary Features
 

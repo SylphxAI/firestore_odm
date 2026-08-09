@@ -1,7 +1,6 @@
 /// Document and query streams.
 library;
 
-import 'package:flutter_example/models/user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';

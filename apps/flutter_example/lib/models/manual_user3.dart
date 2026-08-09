@@ -4,7 +4,7 @@ import 'package:firestore_odm/firestore_odm.dart';
 part 'manual_user3.g.dart';
 
 @firestoreOdm
-class ManualUser3<T> with EquatableMixin {
+class ManualUser3<T> with Equatable {
   // Generic field for additional flexibility
 
   const ManualUser3({
@@ -31,7 +31,7 @@ class ManualUser3<T> with EquatableMixin {
 }
 
 @firestoreOdm
-class ManualUser3Profile<T> with EquatableMixin {
+class ManualUser3Profile<T> with Equatable {
   // Generic list for additional flexibility
 
   const ManualUser3Profile({
@@ -88,7 +88,7 @@ class ManualUser3Profile<T> with EquatableMixin {
 }
 
 @firestoreOdm
-class Book with EquatableMixin {
+class Book with Equatable {
   const Book({required this.title, required this.author});
   final String title;
   final String author;

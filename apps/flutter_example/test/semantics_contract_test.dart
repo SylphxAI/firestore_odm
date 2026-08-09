@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:flutter_example/models/enum_models.dart';
 import 'package:flutter_example/models/task.dart';
-import 'package:flutter_example/models/user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';

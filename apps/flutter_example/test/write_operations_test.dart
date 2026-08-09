@@ -3,7 +3,6 @@
 library;
 
 import 'package:firestore_odm/firestore_odm.dart';
-import 'package:flutter_example/models/user.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';

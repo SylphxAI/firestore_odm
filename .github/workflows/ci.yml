@@ -199,7 +199,14 @@ jobs:
         run: melos run generate
 
       - name: ⚡ Performance Benchmarks
-        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true --concurrency=1
+        run: melos exec --scope="flutter_example" -- flutter test test/benchmarks_test.dart --concurrency=1 2>&1 | tee /tmp/benchmarks.txt
+
+      - name: 📦 Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: /tmp/benchmarks.txt
+          retention-days: 30
 
   # Security scanning
   security:
@@ -237,10 +244,13 @@ jobs:
 
       - name: 🔒 Security Audit
         run: |
-          # Check outdated dependencies
+          # Known-vulnerability scan (fails on findings).
+          melos exec -- "dart pub audit"
+
+          # Check outdated dependencies (informational).
           melos run deps:outdated --no-select || true
 
-          # Check for known security vulnerabilities
+          # Package scoring (informational).
           dart pub global activate pana
           melos exec -- "dart pub global run pana --no-warning ."
 
@@ -282,10 +292,45 @@ jobs:
         run: |
           melos exec --scope="firestore_odm*" -- "dart doc --validate-links"
 
+  # Live semantics e2e against the Firestore emulator (ADR-0002). The fake
+  # cannot model Timestamp storage, index errors or real query semantics; this
+  # lane is the deploy-layer behavior gate.
+  e2e-emulator:
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java (emulator runtime)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          cache: true
+
+      - name: 🔧 Setup Melos & Bootstrap
+        run: |
+          dart pub global activate melos
+          melos bootstrap
+
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
+      - name: 🔥 Run Emulator E2E
+        working-directory: apps/flutter_example
+        run: |
+          npx --yes firebase-tools@latest emulators:exec             --only firestore --project demo-project             "flutter test integration_test --timeout 5m"
+
   # CI results summary
   ci-success:
     runs-on: ubuntu-latest
-    needs: [quality, test, coverage, security, docs]
+    needs: [quality, test, coverage, security, docs, performance, e2e-emulator]
     if: always()
     steps:
       - name: 📊 CI Results Summary
@@ -327,7 +372,7 @@ jobs:
           echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Fail if any job failed
-        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' }}
+        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.coverage.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' || needs.performance.result != 'success' || needs.e2e-emulator.result != 'success' }}
         run: exit 1
 
       - name: ✅ All CI Checks Passed

@@ -2,7 +2,6 @@
 /// caching, and all four write verbs (ADR-0002).
 library;
 
-import 'package:firestore_odm/firestore_odm.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'helpers.dart';
@@ -18,7 +17,7 @@ void main() {
       final txUsers = odm.users.inTransaction(tx);
       // Reads first...
       final a = await txUsers('a').get();
-      final b = await txUsers('b').get();
+      await txUsers('b').get();
       expect(a?.age, 10);
       // ...then writes (deferred until the callback finishes).
       txUsers('a').patch((p) => [p.age.increment(1)]);

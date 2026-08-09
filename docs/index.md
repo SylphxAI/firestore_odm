@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: "⚡ Lightning Fast Code Generation"
-    details: Inline-first optimized code using callables and Dart extensions. 20% faster runtime, 15% less generated code.
+    details: Inline-first optimized code generation. Measured performance (recorded benchmark harness), zero reflection, exact Firestore semantics.
   - title: "🔢 Enum Support (New in 4.0)"
     details: "@JsonValue with string and numeric values, enums in orderBy, and default-value generation."
   - title: "🧩 Automatic Nested Imports (New in 4.0)"
