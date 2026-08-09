@@ -385,7 +385,8 @@ jobs:
           echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Fail if any job failed
-        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.coverage.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' || needs.performance.result != 'success' }}
+        # performance only runs on pull requests; a skipped result is OK.
+        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.coverage.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' || (needs.performance.result != 'success' && needs.performance.result != 'skipped') }}
         run: exit 1
 
       - name: ✅ All CI Checks Passed
