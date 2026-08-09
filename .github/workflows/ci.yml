@@ -243,7 +243,7 @@ jobs:
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       - name: 🔒 Known-Vulnerability Scan
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@v2.5.0
         with:
           scan-args: |-
             --lockfile=apps/flutter_example/pubspec.lock
@@ -331,7 +331,10 @@ jobs:
       - name: 🔥 Run Emulator E2E
         working-directory: apps/flutter_example
         run: |
-          npx --yes firebase-tools@latest emulators:exec             --only firestore --project demo-project             "flutter test integration_test --timeout 5m"
+          flutter config --enable-linux-desktop
+          npx --yes firebase-tools@latest emulators:exec \
+            --only firestore --project demo-project \
+            "xvfb-run -a flutter test integration_test -d linux --timeout 5m"
 
   # CI results summary
   ci-success:
