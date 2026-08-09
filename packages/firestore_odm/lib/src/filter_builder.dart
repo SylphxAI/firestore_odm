@@ -49,13 +49,23 @@ final class _FieldFilterOperation implements FilterOperation {
 }
 
 /// A typed filter selector for a single field.
-class FilterField<T> {
-  const FilterField({required FieldNode field, required FieldToJson<T> toJson})
-    : _field = field,
-      _toJson = toJson;
+///
+/// [T] is the field type; [E] is the element type for array operators
+/// (identical to [T] for scalar fields).
+class FilterField<T, E> {
+  const FilterField({
+    required FieldNode field,
+    required FieldToJson<T> toJson,
+    FieldToJson<E>? elementToJson,
+  }) : _field = field,
+       _toJson = toJson,
+       _elementToJson = elementToJson;
 
   final FieldNode _field;
   final FieldToJson<T> _toJson;
+  final FieldToJson<E>? _elementToJson;
+
+  E _convertElement(E value) => _elementToJson?.call(value) ?? value;
 
   FilterOperation call({
     T? isEqualTo,
@@ -64,13 +74,15 @@ class FilterField<T> {
     T? isLessThanOrEqualTo,
     T? isGreaterThan,
     T? isGreaterThanOrEqualTo,
-    T? arrayContains,
-    List<T>? arrayContainsAny,
+    E? arrayContains,
+    List<E>? arrayContainsAny,
     List<T>? whereIn,
     List<T>? whereNotIn,
     bool? isNull,
   }) {
-    final field = _field.fieldPath;
+    final field = _field.isDocumentId
+        ? firestore.FieldPath.documentId
+        : _field.components.join('.');
     final conditions = [
       isEqualTo,
       isNotEqualTo,
@@ -101,10 +113,11 @@ class FilterField<T> {
         isGreaterThanOrEqualTo: isGreaterThanOrEqualTo == null
             ? null
             : _toJson(isGreaterThanOrEqualTo),
-        arrayContains: arrayContains == null ? null : _toJson(arrayContains),
+        arrayContains:
+            arrayContains == null ? null : _convertElement(arrayContains),
         arrayContainsAny: arrayContainsAny == null
             ? null
-            : arrayContainsAny.map(_toJson).toList(),
+            : arrayContainsAny.map(_convertElement).toList(),
         whereIn: whereIn == null ? null : whereIn.map(_toJson).toList(),
         whereNotIn: whereNotIn == null ? null : whereNotIn.map(_toJson).toList(),
         isNull: isNull,

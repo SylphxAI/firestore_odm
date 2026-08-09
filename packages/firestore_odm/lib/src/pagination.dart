@@ -29,6 +29,9 @@ abstract final class QueryPaginationHandler {
     Object? cursor,
   ) => query.endBefore(_toList(cursor));
 
-  static List<Object?> _toList(Object? cursor) =>
-      cursor is Record ? cursor.toList() : [cursor];
+  static List<Object?> _toList(Object? cursor) {
+    if (cursor is Record) return cursor.toList();
+    if (cursor is List) return cursor.cast<Object?>();
+    return [cursor];
+  }
 }

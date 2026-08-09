@@ -84,7 +84,9 @@ abstract final class QueryOrderbyHandler {
     var newQuery = query;
     for (final info in fields) {
       newQuery = newQuery.orderBy(
-        info.field.fieldPath,
+        info.field.isDocumentId
+            ? firestore.FieldPath.documentId
+            : info.field.components.join('.'),
         descending: info.descending,
       );
     }

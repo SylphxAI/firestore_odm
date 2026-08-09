@@ -106,12 +106,8 @@ class ModelBuilderGenerator extends Generator {
     return [selector, extension];
   }
 
-  Expression _fromJsonRef(InterfaceType type) {
-    if (hasOwnFromJson(type)) {
-      return refer('${type.element.name}.fromJson');
-    }
-    return refer('${type.element.name}FromJson');
-  }
+  Expression _fromJsonRef(InterfaceType type) =>
+      refer('${type.element.name}FromJson');
 
   Expression _documentIdFieldLiteral(InterfaceType type) {
     final field = getDocumentIdFieldName(type);

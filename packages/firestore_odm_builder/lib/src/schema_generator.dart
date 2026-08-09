@@ -16,6 +16,7 @@ import 'package:code_builder/code_builder.dart';
 import 'package:source_gen/source_gen.dart';
 
 import 'utils/model_analyzer.dart';
+import 'utils/type_analyzer.dart';
 import 'utils/reference_utils.dart';
 import 'utils/string_utils.dart';
 
@@ -191,22 +192,12 @@ class SchemaGenerator2 extends Generator {
   }
 
   Expression _toJsonRef(InterfaceType modelType) {
-    if (hasOwnToJson(modelType)) {
-      return Method(
-        (m) => m
-          ..requiredParameters.add(
-            Parameter(
-              (p) => p
-                ..name = 'value'
-                ..type = modelType.reference,
-            ),
-          )
-          ..body = refer('value').property('toJson').call(const []).code,
-      ).closure;
-    }
-    // Generated converters are null-tolerant (nullable instance + nullable
-    // result); the ODM always has a full model, so unwrap the null case.
+    // The ODM always owns storage serialization (native Timestamp, ADR-0002).
+    // Generated converters are null-tolerant; the ODM always has a full model.
     final name = '${modelType.element.name}ToJson';
+    final args = modelType.typeArguments.isEmpty
+        ? ''
+        : ', toT: ${_toJsonArgConverter(modelType.typeArguments.first)}';
     return Method(
       (m) => m
         ..requiredParameters.add(
@@ -216,16 +207,91 @@ class SchemaGenerator2 extends Generator {
               ..type = modelType.reference,
           ),
         )
-        ..body = Code('return $name(value) ?? const <String, dynamic>{};'),
+        ..body = Code('return $name(value$args) ?? const <String, dynamic>{};'),
     ).closure;
   }
 
   Expression _fromJsonRef(InterfaceType modelType) {
-    if (hasOwnFromJson(modelType)) {
-      return refer('${modelType.element.name}.fromJson');
-    }
-    return refer('${modelType.element.name}FromJson');
+    final name = '${modelType.element.name}FromJson';
+    if (modelType.typeArguments.isEmpty) return refer(name);
+    final args = _fromJsonArgConverter(modelType.typeArguments.first);
+    final typeArgs = modelType.typeArguments
+        .map((t) => t.getDisplayString())
+        .join(', ');
+    return Method(
+      (m) => m
+        ..requiredParameters.add(
+          Parameter(
+            (p) => p
+              ..name = 'json'
+              ..type = refer('Map<String, dynamic>'),
+          ),
+        )
+        ..body = Code('return $name<$typeArgs>(json, fromT: $args);'),
+    ).closure;
   }
+
+  /// A converter expression for a concrete type argument (toJson side).
+  String _toJsonArgConverter(DartType arg) {
+    if (arg.isDartCoreString ||
+        arg.isDartCoreInt ||
+        arg.isDartCoreDouble ||
+        arg.isDartCoreBool ||
+        TypeAnalyzer.isDateTime(arg)) {
+      return 'identity';
+    }
+    if (TypeAnalyzer.isDuration(arg)) return 'durationToJson';
+    if (arg is InterfaceType) {
+      final name = arg.element.name;
+      if (TypeAnalyzer.isEnum(arg)) {
+        throw InvalidGenerationSourceError(
+          'Enum-typed generic type arguments are not supported by the ODM '
+          'storage converter: $name',
+        );
+      }
+      if (arg.typeArguments.isNotEmpty) {
+        return '(value) => $name'
+            'ToJson<${_typeArgList(arg)}>('
+            'value, toT: ${_toJsonArgConverter(arg.typeArguments.first)})';
+      }
+      return '$name'
+          'ToJson';
+    }
+    return 'identity';
+  }
+
+  /// A converter expression for a concrete type argument (fromJson side).
+  String _fromJsonArgConverter(DartType arg) {
+    if (arg.isDartCoreString) return '(value) => value as String';
+    if (arg.isDartCoreInt) return '(value) => value as int';
+    if (arg.isDartCoreDouble) return '(value) => value as double';
+    if (arg.isDartCoreBool) return '(value) => value as bool';
+    if (TypeAnalyzer.isDateTime(arg)) return 'dateTimeFromJson';
+    if (TypeAnalyzer.isDuration(arg)) return 'durationFromJson';
+    if (arg is InterfaceType) {
+      final name = arg.element.name;
+      if (TypeAnalyzer.isEnum(arg)) {
+        throw InvalidGenerationSourceError(
+          'Enum-typed generic type arguments are not supported by the ODM '
+          'storage converter: $name',
+        );
+      }
+      if (arg.typeArguments.isNotEmpty) {
+        return '(value) => $name'
+            'FromJson<${_typeArgList(arg)}>('
+            'value as Map<String, dynamic>, '
+            'fromT: ${_fromJsonArgConverter(arg.typeArguments.first)})';
+      }
+      // Wrap in a cast closure: `Book Function(Map)` is not assignable to
+      // `Book Function(dynamic)`.
+      return '(value) => $name'
+          'FromJson(value as Map<String, dynamic>)';
+    }
+    return '(value) => value';
+  }
+
+  String _typeArgList(InterfaceType type) =>
+      type.typeArguments.map((t) => t.getDisplayString()).join(', ');
 
   TypeReference _collectionType(
     InterfaceType schemaType,

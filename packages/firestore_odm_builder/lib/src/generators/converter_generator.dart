@@ -15,9 +15,11 @@ import '../utils/model_analyzer.dart';
 import '../utils/reference_utils.dart';
 import '../utils/type_analyzer.dart';
 
-/// Whether generated `XToJson`/`XFromJson` functions are needed for [type].
-bool needsGeneratedConverters(InterfaceType type) =>
-    !hasOwnToJson(type) || !hasOwnFromJson(type);
+/// The ODM always generates its own converters. The model's own
+/// `toJson`/`fromJson` (freezed/json_serializable) serialize DateTime as ISO
+/// strings for JSON interchange; Firestore storage must use native Timestamp
+/// (ADR-0002), so storage serialization is always ODM-owned.
+bool needsGeneratedConverters(InterfaceType type) => true;
 
 /// A function expression converting a model instance to a document map:
 /// `(value) => value.toJson()` when the model provides one, else `XToJson`.
@@ -57,8 +59,14 @@ Expression toJsonValue(
   Expression value, {
   CustomConverter? customConverter,
   String? modelName,
+  Expression? typeParamConverter,
 }) {
-  if (type is TypeParameterType) return value;
+  if (type is TypeParameterType) {
+    if (typeParamConverter == null) return value;
+    return typeParamConverter
+        .equalTo(literalNull)
+        .conditional(value, typeParamConverter.call([value]));
+  }
 
   if (customConverter != null) {
     return value
@@ -82,7 +90,10 @@ Expression toJsonValue(
   }
   if (TypeAnalyzer.isMap(type)) {
     final (_, valueType) = TypeAnalyzer.mapTypes(type);
-    if (valueType == null || !_needsConversion(valueType)) return value;
+    if (valueType == null ||
+        (!_needsConversion(valueType) && valueType is! TypeParameterType)) {
+      return value;
+    }
     final v = refer('v');
     final mapped = value.property('map').call([
       Method(
@@ -107,7 +118,14 @@ Expression toJsonValue(
             ])
             ..body = refer('MapEntry').call([
               refer('k'),
-              toJsonValue(valueType, v, modelName: modelName),
+              toJsonValue(
+                valueType,
+                v,
+                modelName: modelName,
+                typeParamConverter: valueType is TypeParameterType
+                    ? typeParamConverter
+                    : null,
+              ),
             ]).code,
         ).closure,
       ]);
@@ -116,7 +134,9 @@ Expression toJsonValue(
   }
   if (TypeAnalyzer.isIterable(type)) {
     final elementType = TypeAnalyzer.iterableElementType(type);
-    if (!_needsConversion(elementType)) return value;
+    if (!_needsConversion(elementType) && elementType is! TypeParameterType) {
+      return value;
+    }
     final e = refer('e');
     final mapped = value
         .property('map')
@@ -124,7 +144,14 @@ Expression toJsonValue(
           Method(
             (m) => m
               ..requiredParameters.add(Parameter((p) => p..name = 'e'))
-              ..body = toJsonValue(elementType, e, modelName: modelName).code,
+              ..body = toJsonValue(
+                elementType,
+                e,
+                modelName: modelName,
+                typeParamConverter: elementType is TypeParameterType
+                    ? typeParamConverter
+                    : null,
+              ).code,
           ).closure,
         ])
         .property('toList')
@@ -135,7 +162,14 @@ Expression toJsonValue(
             Method(
               (m) => m
                 ..requiredParameters.add(Parameter((p) => p..name = 'e'))
-                ..body = toJsonValue(elementType, e, modelName: modelName).code,
+                ..body = toJsonValue(
+                  elementType,
+                  e,
+                  modelName: modelName,
+                  typeParamConverter: elementType is TypeParameterType
+                      ? typeParamConverter
+                      : null,
+                ).code,
             ).closure,
           ])
           .property('toList')
@@ -144,13 +178,7 @@ Expression toJsonValue(
     return mapped;
   }
   if (isUserType(type)) {
-    if (hasOwnToJson(type as InterfaceType)) {
-      if (type.isNullable) {
-        return _nullAware(value, 'toJson').call(const []);
-      }
-      return value.property('toJson').call(const []);
-    }
-    return refer('${type.element.name!}ToJson').call([value]);
+    return refer('${type.element!.name!}ToJson').call([value]);
   }
   return value;
 }
@@ -161,10 +189,16 @@ Expression fromJsonValue(
   Expression source, {
   CustomConverter? customConverter,
   String? modelName,
+  Expression? typeParamConverter,
 }) {
   Expression convert(Expression value) {
     if (customConverter != null) return customConverter.fromJson.call([value]);
-    if (type is TypeParameterType) return value.asA(type.reference);
+    if (type is TypeParameterType) {
+      if (typeParamConverter == null) return value.asA(type.reference);
+      return typeParamConverter
+          .equalTo(literalNull)
+          .conditional(value, typeParamConverter.call([value]));
+    }
 
     if (TypeAnalyzer.isDateTime(type)) {
       return refer('dateTimeFromJson').call([value]);
@@ -185,7 +219,8 @@ Expression fromJsonValue(
       final casted = value.asA(refer('Map<String, dynamic>'));
       final keyRef = keyType?.reference ?? refer('String');
       final valueRef = valueType?.reference ?? refer('dynamic');
-      if (valueType == null || !_needsConversion(valueType)) {
+      if (valueType == null ||
+          (!_needsConversion(valueType) && valueType is! TypeParameterType)) {
         return casted.property('cast').call(const [], const {}, [
           keyRef,
           valueRef,
@@ -213,15 +248,27 @@ Expression fromJsonValue(
       final elementType = TypeAnalyzer.iterableElementType(type);
       final casted = value.asA(refer('List<dynamic>'));
       Expression inner;
-      if (_needsConversion(elementType)) {
+      if (_needsConversion(elementType) || elementType is TypeParameterType) {
         final e = refer('e');
-        inner = casted.property('map').call([
-          Method(
-            (m) => m
-              ..requiredParameters.add(Parameter((p) => p..name = 'e'))
-              ..body = _body(fromJsonValue(elementType, e)).code,
-          ).closure,
-        ]);
+        inner = casted
+            .property('map')
+            .call([
+              Method(
+                (m) => m
+                  ..requiredParameters.add(Parameter((p) => p..name = 'e'))
+                  ..body = _body(
+                    fromJsonValue(
+                      elementType,
+                      e,
+                      typeParamConverter: elementType is TypeParameterType
+                          ? typeParamConverter
+                          : null,
+                    ),
+                  ).code,
+              ).closure,
+            ])
+            .property('toList')
+            .call(const []);
       } else {
         inner = casted;
       }
@@ -266,15 +313,20 @@ List<Spec> generateConverters(InterfaceType type) {
   final specs = <Spec>[];
   final fields = getFields(type);
 
-  if (!hasOwnToJson(type)) {
+  {
     final entries = <Expression, Expression>{};
     for (final field in fields.values) {
-      if (field.isDocumentId) continue;
+      // The document ID is INCLUDED in the serialized map: write paths strip
+      // it before storage, and `set(model)` reads it back to locate the
+      // document (ADR-0002).
       entries[literalString(field.jsonName)] = toJsonValue(
         field.type,
         refer('instance').property(field.parameterName),
         customConverter: field.customConverter,
         modelName: type.element.name,
+        typeParamConverter: type.element.typeParameters.isEmpty
+            ? null
+            : refer('toT'),
       );
     }
     specs.add(
@@ -290,6 +342,7 @@ List<Spec> generateConverters(InterfaceType type) {
                 ..type = _nullableReference(type),
             ),
           )
+          ..optionalParameters.addAll(_typeParamToJsonParams(type))
           ..body = refer('instance')
               .equalTo(literalNull)
               .conditional(literalNull, literalMap(entries))
@@ -298,7 +351,7 @@ List<Spec> generateConverters(InterfaceType type) {
     );
   }
 
-  if (!hasOwnFromJson(type)) {
+  {
     final args = <String, Expression>{};
     for (final field in fields.values) {
       args[field.parameterName] = fromJsonValue(
@@ -306,6 +359,9 @@ List<Spec> generateConverters(InterfaceType type) {
         refer('json').index(literalString(field.jsonName)),
         customConverter: field.customConverter,
         modelName: type.element.name,
+        typeParamConverter: type.element.typeParameters.isEmpty
+            ? null
+            : refer('fromT'),
       );
     }
     specs.add(
@@ -321,6 +377,7 @@ List<Spec> generateConverters(InterfaceType type) {
                 ..type = refer('Map<String, dynamic>'),
             ),
           )
+          ..optionalParameters.addAll(_typeParamFromJsonParams(type))
           ..body = refer(type.element.name!).newInstance([], args).code,
       ),
     );
@@ -473,3 +530,25 @@ TypeReference _nullableReference(InterfaceType type) => TypeReference(
     ..types.addAll(type.typeArguments.map((t) => t.reference))
     ..isNullable = true,
 );
+
+/// Optional `dynamic Function(T)? toT` per type parameter (freezed-style
+/// genericArgumentFactories pattern for storage serialization).
+List<Parameter> _typeParamToJsonParams(InterfaceType type) => [
+  for (final t in type.element.typeParameters)
+    Parameter(
+      (b) => b
+        ..name = 'toT'
+        ..type = refer('dynamic Function(${t.name})?')
+        ..named = true,
+    ),
+];
+
+List<Parameter> _typeParamFromJsonParams(InterfaceType type) => [
+  for (final t in type.element.typeParameters)
+    Parameter(
+      (b) => b
+        ..name = 'fromT'
+        ..type = refer('${t.name} Function(dynamic)?')
+        ..named = true,
+    ),
+];

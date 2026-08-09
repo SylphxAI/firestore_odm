@@ -64,7 +64,7 @@ class ServerTimestampOperation extends UpdateOperation {
 Map<Object, Object?> operationsToMap(List<UpdateOperation> operations) {
   final result = <Object, Object?>{};
   for (final op in operations) {
-    result[op.field.fieldPath] = switch (op) {
+    result[op.field.components.join('.')] = switch (op) {
       SetOperation(:final value) => value,
       DeleteOperation() => firestore.FieldValue.delete(),
       IncrementOperation(:final delta) => firestore.FieldValue.increment(delta),

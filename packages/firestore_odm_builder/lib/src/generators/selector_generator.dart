@@ -71,12 +71,25 @@ Class generateSelector(InterfaceType type, SelectorKind kind) {
     _ => null,
   };
 
+  final countMethod = kind == SelectorKind.aggregate
+      ? Method(
+          (m) => m
+            ..name = 'count'
+            ..annotations.add(refer('override'))
+            ..returns = refer('int')
+            ..body = refer('_context').property('resolve').call([
+              refer('CountOperation').constInstance([literalString('count')]),
+            ]).code,
+        )
+      : null;
+
   return Class(
     (b) => b
       ..name = className
       ..types.addAll(typeParams.map((t) => t.reference))
       ..extend = refer(_superName(kind))
       ..constructors.add(_constructor(kind, typeParams))
+      ..methods.addAll([if (countMethod != null) countMethod])
       ..fields.addAll([if (contextField != null) contextField, ...fields]),
   );
 }
@@ -162,13 +175,19 @@ Constructor _constructor(
   );
 }
 
-TypeReference _leafType(SelectorKind kind, Reference dartType) =>
-    switch (kind) {
-      SelectorKind.filter => generic('FilterField', [dartType]),
-      SelectorKind.orderBy => generic('OrderByField', [dartType]),
-      SelectorKind.aggregate => generic('AggregateField', [dartType]),
-      SelectorKind.pipeline => generic('PipelineField', [dartType]),
-    };
+TypeReference _leafType(
+  SelectorKind kind,
+  Reference dartType, {
+  Reference? elementType,
+}) => switch (kind) {
+  SelectorKind.filter => generic('FilterField', [
+    dartType,
+    elementType ?? dartType,
+  ]),
+  SelectorKind.orderBy => generic('OrderByField', [dartType]),
+  SelectorKind.aggregate => generic('AggregateField', [dartType]),
+  SelectorKind.pipeline => generic('PipelineField', [dartType]),
+};
 
 /// A String DartType for the documentId pseudo-field.
 DartType stringType(InterfaceType model) =>
@@ -180,16 +199,23 @@ Expression _leafInstance(
   required String fieldName,
   required DartType dartType,
   bool isDocumentId = false,
+  DartType? elementType,
   CustomConverter? customConverter,
 }) {
   final pathExpr = isDocumentId
       ? refer('DocumentIdNode').constInstance([])
       : refer('append').call([literalString(fieldName)]);
   return switch (kind) {
-    SelectorKind.filter => refer('FilterField').newInstance([], {
-      'field': pathExpr,
-      'toJson': _fieldToJson(modelName, dartType, customConverter),
-    }),
+    SelectorKind.filter =>
+      generic('FilterField', [
+        dartType.reference,
+        elementType?.reference ?? dartType.reference,
+      ]).newInstance([], {
+        'field': pathExpr,
+        'toJson': _fieldToJson(modelName, dartType, customConverter),
+        if (elementType != null)
+          'elementToJson': _fieldToJson(modelName, elementType, null),
+      }),
     SelectorKind.orderBy => refer('OrderByField').newInstance([], {
       'field': pathExpr,
       'context': refer('_context'),
@@ -278,12 +304,23 @@ Field _generateField(InterfaceType model, SelectorKind kind, FieldInfo field) {
       ..name = field.parameterName
       ..modifier = FieldModifier.final$
       ..late = true
-      ..type = _leafType(kind, dartType.reference)
+      ..type = _leafType(
+        kind,
+        dartType.reference,
+        elementType:
+            TypeAnalyzer.isIterable(dartType) && !TypeAnalyzer.isMap(dartType)
+            ? TypeAnalyzer.iterableElementType(dartType).reference
+            : null,
+      )
       ..assignment = _leafInstance(
         kind,
         model.element.name!,
         fieldName: field.jsonName,
         dartType: dartType,
+        elementType:
+            TypeAnalyzer.isIterable(dartType) && !TypeAnalyzer.isMap(dartType)
+            ? TypeAnalyzer.iterableElementType(dartType)
+            : null,
         customConverter: field.customConverter,
       ).code,
   );
