@@ -1,13 +1,18 @@
+/// Model analysis: constructor-driven field discovery, document-ID detection,
+/// JsonKey/JsonConverter support, and converter-capability detection.
+library;
+
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:code_builder/code_builder.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:firestore_odm_builder/src/utils/reference_utils.dart';
-import 'package:source_gen/source_gen.dart';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:source_gen/source_gen.dart';
 
+import 'reference_utils.dart';
+
+/// A custom `@JsonConverter` attached to a field.
 class CustomConverter {
   final InterfaceType type;
   final DartType jsonType;
@@ -20,11 +25,11 @@ class CustomConverter {
   CustomConverter({required this.type, required this.jsonType});
 }
 
+/// A discovered model field (constructor parameter).
 class FieldInfo {
   final String parameterName;
   final String jsonName;
   final DartType type;
-  final Element element;
   final bool isDocumentId;
   final CustomConverter? customConverter;
   final bool isNullable;
@@ -33,41 +38,28 @@ class FieldInfo {
     required this.parameterName,
     required this.jsonName,
     required this.type,
-    required this.element,
     required this.isDocumentId,
     required this.customConverter,
     required this.isNullable,
   });
 }
 
-/// Checks if a type is handled natively by Firestore ODM.
-///
-/// Handled types include:
-/// - Primitives (bool, int, double, String, null, dynamic)
-/// - Collections (Iterable, List, Set, Map, IMap)
-/// - DateTime and Duration
-/// - Enums (serialized via name or @JsonValue)
+/// Types the ODM handles natively (no generated converter needed).
 bool isHandledType(DartType type) {
   return isPrimitive(type) ||
       TypeChecker.typeNamed(Iterable).isAssignableFromType(type) ||
       TypeChecker.typeNamed(Map).isAssignableFromType(type) ||
-      TypeChecker.typeNamed(IMap).isAssignableFromType(type) ||
       TypeChecker.typeNamed(DateTime).isExactlyType(type) ||
       TypeChecker.typeNamed(Duration).isExactlyType(type) ||
       (type is InterfaceType && type.element is EnumElement);
 }
 
-/// Checks if a type is a user-defined model type requiring custom serialization.
-///
-/// Returns `true` for types not natively handled by Firestore ODM,
-/// indicating they need generated fromJson/toJson converters.
+/// A user-defined model type requiring a converter.
 bool isUserType(DartType type) {
+  if (type is TypeParameterType) return false;
   return !isHandledType(type);
 }
 
-/// Checks if a type is a Dart primitive type.
-///
-/// Primitive types: bool, int, double, String, null, dynamic.
 bool isPrimitive(DartType type) {
   return type.isDartCoreBool ||
       type.isDartCoreInt ||
@@ -77,43 +69,43 @@ bool isPrimitive(DartType type) {
       type is DynamicType;
 }
 
+/// Discovers fields from the default constructor.
+///
+/// Throws when the model has no default constructor so misgeneration is
+/// impossible (a silent empty field set was a v4 defect).
 Map<String, FieldInfo> getFields(InterfaceType type) {
   final constructor = getDefaultConstructor(type);
-
   if (constructor == null) {
-    return {};
+    throw InvalidGenerationSourceError(
+      'Model ${type.getDisplayString()} must declare a default (unnamed) '
+      'constructor so the ODM can map document fields to it.',
+      element: type.element,
+    );
   }
 
   final documentIdParamName = getDocumentIdFieldName(type);
+  final fields = <String, FieldInfo>{};
 
-  // Second pass: analyze all parameters
-  final fields = Map<String, FieldInfo>();
-
-  // Simplified field analysis
   for (final parameter in constructor.formalParameters) {
     if (parameter.isStatic) continue;
-
     final paramName = parameter.name!;
     var jsonName = paramName;
-    // check JsonKey annotation for custom names
-    if (parameter.metadata.annotations.isNotEmpty) {
-      final jsonKey = TypeChecker.typeNamed(
-        JsonKey,
-      ).firstAnnotationOfExact(parameter);
-      if (jsonKey != null) {
-        final reader = ConstantReader(jsonKey);
+    var include = true;
 
-        jsonName = reader.read('name').literalValue as String? ?? paramName;
-
-        final includeFromJson =
-            reader.read('includeFromJson').literalValue as bool? ?? true;
-        final includeToJson =
-            reader.read('includeToJson').literalValue as bool? ?? true;
-        if (!includeFromJson || !includeToJson) {
-          continue;
-        }
-      }
+    final jsonKey = TypeChecker.typeNamed(
+      JsonKey,
+    ).firstAnnotationOfExact(parameter);
+    if (jsonKey != null) {
+      final reader = ConstantReader(jsonKey);
+      jsonName = reader.read('name').literalValue as String? ?? paramName;
+      final includeFromJson =
+          reader.read('includeFromJson').literalValue as bool? ?? true;
+      final includeToJson =
+          reader.read('includeToJson').literalValue as bool? ?? true;
+      include = includeFromJson && includeToJson;
+      if (!include) continue;
     }
+
     final customConverter =
         TypeChecker.typeNamed(
               JsonConverter,
@@ -124,7 +116,7 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
       parameterName: paramName,
       jsonName: jsonName,
       type: parameter.type,
-      element: parameter,
+      isDocumentId: paramName == documentIdParamName,
       customConverter: customConverter != null
           ? CustomConverter(
               type: customConverter,
@@ -133,7 +125,6 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
                   .returnType,
             )
           : null,
-      isDocumentId: parameter.name == documentIdParamName,
       isNullable:
           parameter.type.nullabilitySuffix == NullabilitySuffix.question,
     );
@@ -143,117 +134,54 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
 }
 
 ConstructorElement? getDefaultConstructor(InterfaceType type) {
-  // analyzer's new element model names the unnamed constructor 'new' (not '').
-  final constructor = type.constructors
+  return type.constructors
       .where((c) => c.name == 'new' || (c.name ?? '').isEmpty)
       .firstOrNull;
-
-  return constructor;
 }
 
-String getDocumentIdFieldName(InterfaceType type) {
+/// The constructor parameter that holds the document ID: the one annotated
+/// with `@DocumentIdField`, else a String parameter named `id`, else null.
+String? getDocumentIdFieldName(InterfaceType type) {
   final constructor = getDefaultConstructor(type);
+  if (constructor == null) return null;
 
-  if (constructor == null) {
-    throw ArgumentError(
-      'No default constructor found in ${type.getDisplayString()}',
-    );
-  }
-
-  final params = constructor.formalParameters.where(
+  final annotated = constructor.formalParameters.where(
     (p) => TypeChecker.typeNamed(DocumentIdField).hasAnnotationOf(p),
   );
-
-  if (params.length > 1) {
-    throw ArgumentError(
-      'Multiple document ID fields found in ${type.getDisplayString()}',
+  if (annotated.length > 1) {
+    throw InvalidGenerationSourceError(
+      'Multiple @DocumentIdField parameters found in ${type.getDisplayString()}',
+      element: type.element,
     );
   }
-
-  final documentIdParam = params.length == 1
-      ? params.single
-      : constructor.formalParameters.where((p) => p.name == 'id').firstOrNull;
-
-  // Check type
-  if (documentIdParam != null && !documentIdParam.type.isDartCoreString) {
-    throw ArgumentError(
-      'Document ID field must be a String in ${type.getDisplayString()}',
-    );
+  if (annotated.length == 1) {
+    final param = annotated.single;
+    if (!param.type.isDartCoreString) {
+      throw InvalidGenerationSourceError(
+        '@DocumentIdField must be a String in ${type.getDisplayString()}',
+        element: type.element,
+      );
+    }
+    return param.name;
   }
 
-  return documentIdParam?.name ?? 'id';
+  final idParam = constructor.formalParameters
+      .where((p) => p.name == 'id' && p.type.isDartCoreString)
+      .firstOrNull;
+  return idParam?.name;
 }
 
-TypeReference getJsonType({required DartType type}) {
-  if (isPrimitive(type)) {
-    return type.reference;
-  }
+/// Whether the model provides its own `toJson()` instance method.
+bool hasOwnToJson(InterfaceType type) {
+  return type.methods.any(
+    (m) => m.name == 'toJson' && !m.isStatic && m.returnType.isDartCoreMap,
+  );
+}
 
-  // Enum -> underlying JSON primitive type (String by default, or @JsonValue type)
-  final el = (type is InterfaceType) ? type.element : null;
-  if (el is EnumElement) {
-    // Inspect @JsonValue types across constants
-    final constants = el.fields.where((f) => f.isEnumConstant).toList();
-    var allString = true;
-    var allInt = true;
-
-    for (final c in constants) {
-      final ann = TypeChecker.typeNamed(JsonValue).firstAnnotationOfExact(c);
-      if (ann == null) {
-        // default = name -> String
-        continue;
-      }
-      final reader = ConstantReader(ann);
-      final raw = reader.read('value').literalValue;
-      if (raw is String) {
-        // ok
-      } else if (raw is int) {
-        allString = false;
-      } else if (raw is double || raw is bool) {
-        allString = false;
-        allInt = false;
-      } else {
-        allString = false;
-        allInt = false;
-      }
-    }
-
-    final base = allString
-        ? TypeReferences.string
-        : allInt
-        ? TypeReferences.int
-        : TypeReferences.dynamic;
-    return base.withNullability(type.isNullable);
-  }
-
-  if (TypeChecker.typeNamed(DateTime).isAssignableFromType(type)) {
-    return TypeReferences.string.withNullability(type.isNullable);
-  }
-
-  if (TypeChecker.typeNamed(Duration).isAssignableFromType(type)) {
-    return TypeReferences.int.withNullability(type.isNullable);
-  }
-
-  if (TypeChecker.typeNamed(Iterable).isAssignableFromType(type)) {
-    return TypeReferences.listOf(
-      getJsonType(type: type.typeArguments.first),
-    ).withNullability(type.isNullable);
-  }
-
-  if (TypeChecker.typeNamed(Map).isAssignableFromType(type) ||
-      TypeChecker.typeNamed(IMap).isAssignableFromType(type)) {
-    return TypeReferences.mapOf(
-      TypeReferences.string,
-      getJsonType(type: type.typeArguments.last),
-    ).withNullability(type.isNullable);
-  }
-
-  if (type is InterfaceType) {
-    return TypeReferences.mapOf(
-      TypeReferences.string,
-      TypeReferences.dynamic,
-    ).withNullability(type.isNullable);
-  }
-
-  return TypeReferences.dynamic;
+/// Whether the model provides its own `fromJson` factory or static method.
+bool hasOwnFromJson(InterfaceType type) {
+  if (type.constructors.any((c) => c.name == 'fromJson')) return true;
+  return type.methods.any(
+    (m) => m.name == 'fromJson' && m.isStatic && m.formalParameters.length == 1,
+  );
 }

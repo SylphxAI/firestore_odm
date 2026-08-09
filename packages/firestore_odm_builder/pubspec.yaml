@@ -1,6 +1,6 @@
 name: firestore_odm_builder
-description: Code generator for Firestore ODM annotations. Generates type-safe Firestore operations from annotated classes.
-version: 4.1.0-dev.1
+description: "Code generator for Firestore ODM annotations (v5). Generates type-safe converters, selectors, patch builders and collection accessors with exact Firestore semantics."
+version: 5.0.0-dev.1
 homepage: https://github.com/SylphxAI/firestore_odm
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
@@ -23,9 +23,8 @@ dependencies:
   # Kept open to <14 so downstreams can use current analyzer; consumers that also
   # use freezed (which currently caps <11) will resolve to analyzer 10.x.
   analyzer: '>=9.0.0 <14.0.0'
-  fast_immutable_collections: ^11.0.4
   json_annotation: ^4.9.0
-  firestore_odm_annotation: ^4.0.0
+  firestore_odm_annotation: ^5.0.0-dev.1
   code_builder: ^4.11.1
 
 dev_dependencies:

@@ -43,15 +43,20 @@ class OrderByField<T> {
   const OrderByField({
     required FieldNode field,
     required OrderByContext context,
+    T? defaultValue,
   }) : _field = field,
-       _context = context;
+       _context = context,
+       _defaultValue = defaultValue;
 
   final FieldNode _field;
   final OrderByContext _context;
 
+  /// Optional dummy value for capture contexts (enums cannot be synthesized).
+  final T? _defaultValue;
+
   T call({bool descending = false}) {
     _context.record(_field, descending);
-    return defaultValue<T>();
+    return _defaultValue ?? defaultValue<T>();
   }
 }
 

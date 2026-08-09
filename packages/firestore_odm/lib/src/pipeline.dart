@@ -28,9 +28,12 @@ export 'package:cloud_firestore/cloud_firestore.dart'
 abstract class PipelineContext {
   R aggregate<R>(
     String alias,
-    firestore.PipelineAggregateFunction Function() fn,
-  );
-  R project<R>(String alias, firestore.Field Function() field);
+    firestore.PipelineAggregateFunction Function() fn, {
+    R Function()? defaultValue,
+  });
+  R project<R>(String alias, firestore.Field Function() field, {
+    R Function()? defaultValue,
+  });
 }
 
 class _CaptureContext implements PipelineContext {
@@ -40,16 +43,19 @@ class _CaptureContext implements PipelineContext {
   @override
   R aggregate<R>(
     String alias,
-    firestore.PipelineAggregateFunction Function() fn,
-  ) {
+    firestore.PipelineAggregateFunction Function() fn, {
+    R Function()? defaultValue,
+  }) {
     aggregates.add(fn().as(alias));
-    return _defaultValue<R>();
+    return defaultValue != null ? defaultValue() : _defaultValue<R>();
   }
 
   @override
-  R project<R>(String alias, firestore.Field Function() field) {
+  R project<R>(String alias, firestore.Field Function() field, {
+    R Function()? defaultValue,
+  }) {
     projections.add(field().alias(alias));
-    return _defaultValue<R>();
+    return defaultValue != null ? defaultValue() : _defaultValue<R>();
   }
 }
 
@@ -70,12 +76,14 @@ class _RowContext implements PipelineContext {
   @override
   R aggregate<R>(
     String alias,
-    firestore.PipelineAggregateFunction Function() _,
-  ) => _coerce<R>(row[alias]);
+    firestore.PipelineAggregateFunction Function() _, {
+    R Function()? defaultValue,
+  }) => _coerce<R>(row[alias]);
 
   @override
-  R project<R>(String alias, firestore.Field Function() _) =>
-      _coerce<R>(row[alias]);
+  R project<R>(String alias, firestore.Field Function() _, {
+    R Function()? defaultValue,
+  }) => _coerce<R>(row[alias]);
 }
 
 /// Base class for generated pipeline selectors; carries the path prefix and an
@@ -97,9 +105,14 @@ class PipelineField<T> extends PipelineFieldNode {
     super.components,
     super.context,
     Object? Function(T)? toJson,
-  }) : _toJson = toJson;
+    T Function()? defaultValue,
+  }) : _toJson = toJson,
+       _defaultValue = defaultValue;
 
   final Object? Function(T)? _toJson;
+
+  /// Optional dummy value for capture contexts (enums cannot be synthesized).
+  final T Function()? _defaultValue;
 
   String get _path => components.join('.');
 
@@ -146,16 +159,33 @@ class PipelineField<T> extends PipelineFieldNode {
   firestore.Ordering descending() => expression.descending();
 
   /// Project this field's value, inside `select(...)`.
-  T get value => $ctx!.project<T>(_alias, () => expression);
+  T get value =>
+      $ctx!.project<T>(_alias, () => expression, defaultValue: _defaultValue);
 
   /// Aggregates, inside `aggregate(...)`.
-  T sum() => $ctx!.aggregate<T>('sum_$_alias', () => expression.sum());
-  double average() =>
-      $ctx!.aggregate<double>('avg_$_alias', () => expression.average());
-  T minimum() => $ctx!.aggregate<T>('min_$_alias', () => expression.minimum());
-  T maximum() => $ctx!.aggregate<T>('max_$_alias', () => expression.maximum());
-  int countField() =>
-      $ctx!.aggregate<int>('count_$_alias', () => expression.count());
+  T sum() => $ctx!.aggregate<T>(
+    'sum_$_alias',
+    () => expression.sum(),
+    defaultValue: _defaultValue,
+  );
+  double average() => $ctx!.aggregate<double>(
+    'avg_$_alias',
+    () => expression.average(),
+  );
+  T minimum() => $ctx!.aggregate<T>(
+    'min_$_alias',
+    () => expression.minimum(),
+    defaultValue: _defaultValue,
+  );
+  T maximum() => $ctx!.aggregate<T>(
+    'max_$_alias',
+    () => expression.maximum(),
+    defaultValue: _defaultValue,
+  );
+  int countField() => $ctx!.aggregate<int>(
+    'count_$_alias',
+    () => expression.count(),
+  );
 }
 
 const Object _sentinel = Object();

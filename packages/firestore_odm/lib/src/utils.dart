@@ -139,3 +139,18 @@ T defaultValue<T>() {
     'List, Set, Map.',
   );
 }
+
+/// Identity value converter (primitives, DateTime, Timestamp, GeoPoint, Blob,
+/// DocumentReference — everything Firestore stores natively).
+T identity<T>(T value) => value;
+
+/// Converts a stored Timestamp (or DateTime, as returned by test doubles)
+/// back to DateTime.
+DateTime dateTimeFromJson(Object? value) =>
+    value is firestore.Timestamp ? value.toDate() : value as DateTime;
+
+/// Converts a Duration to Firestore microseconds (int).
+Object? durationToJson(Duration value) => value.inMicroseconds;
+
+/// Converts a stored microseconds int back to Duration.
+Duration durationFromJson(Object? value) => Duration(microseconds: value as int);
