@@ -1,233 +1,148 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/src/filter_builder.dart';
-import 'package:firestore_odm/src/firestore_odm.dart';
-import 'package:firestore_odm/src/interfaces/deletable.dart';
-import 'package:firestore_odm/src/interfaces/insertable.dart';
-import 'package:firestore_odm/src/interfaces/patchable.dart';
-import 'package:firestore_odm/src/interfaces/updatable.dart';
-import 'package:firestore_odm/src/interfaces/upsertable.dart';
-import 'package:firestore_odm/src/schema.dart';
-import 'package:firestore_odm/src/services/patch_operations.dart';
-import 'package:firestore_odm/src/services/update_helpers.dart';
-import 'package:firestore_odm/src/utils.dart';
+/// Typed batch writes (WriteBatch): create/set/patch/delete. Batches cannot
+/// read; all queued operations commit atomically with [BatchContext.commit].
+library;
 
-/// Base class for batch operations
-abstract class BatchOperation {
-  final dynamic fieldPath;
+import 'package:cloud_firestore/cloud_firestore.dart'
+    show
+        CollectionReference,
+        DocumentReference,
+        FirebaseFirestore,
+        WriteBatch;
 
-  const BatchOperation({required this.fieldPath});
-}
+import 'exceptions.dart';
+import 'patch.dart';
+import 'schema.dart';
+import 'types.dart';
+import 'utils.dart';
 
-/// Insert operation
-class BatchInsertOperation extends BatchOperation {
-  final dynamic value;
-
-  const BatchInsertOperation({required super.fieldPath, required this.value});
-}
-
-/// Update operation
-class BatchUpdateOperation extends BatchOperation {
-  final dynamic value;
-
-  const BatchUpdateOperation({required super.fieldPath, required this.value});
-}
-
-/// Delete operation
-class BatchDeleteOperation extends BatchOperation {
-  const BatchDeleteOperation({required super.fieldPath});
-}
-
-/// Context for managing batch operations
+/// A batch write context. Writes are queued and committed together.
 class BatchContext<S extends FirestoreSchema> {
-  final firestore.FirebaseFirestore _firestore;
-  final firestore.WriteBatch _batch;
+  /// The Firestore instance this batch writes to.
+  final FirebaseFirestore firestore;
 
-  BatchContext(this._firestore) : _batch = _firestore.batch();
+  final WriteBatch _batch;
 
-  /// Access to the Firestore instance
-  firestore.FirebaseFirestore get firestoreInstance => _firestore;
+  BatchContext(this.firestore) : _batch = firestore.batch();
 
-  /// Commits the batch
-  Future<void> commit() async {
-    await _batch.commit();
-  }
+  /// Commits all queued operations atomically.
+  Future<void> commit() => _batch.commit();
 }
 
-/// it is a convenience function to create a batch document
-BatchCollection<S, C, Path, P> getBatchCollection<
-  S extends FirestoreSchema,
-  C,
-  Path extends Record,
-  P extends PatchBuilder<C, Map<String, dynamic>?>
->({
-  required BatchDocument<S, dynamic, Record, dynamic> parent,
-  required String name,
-  required Map<String, dynamic> Function(C) toJson,
-  required C Function(Map<String, dynamic>) fromJson,
-  required String documentIdField,
-  required P patchBuilder,
-}) => BatchCollection(
-  collection: parent._ref.collection(name),
-  toJson: toJson,
-  fromJson: fromJson,
-  context: parent._context,
-  documentIdField: documentIdField,
-  patchBuilder: patchBuilder,
-);
-
-/// Batch document for handling document-level batch operations
-class BatchDocument<
-  S extends FirestoreSchema,
-  T,
-  Path extends Record,
-  P extends PatchBuilder<T, Map<String, dynamic>?>
->
-    implements Deletable, Patchable<T> {
-  final BatchContext<S> _context;
-  final firestore.DocumentReference<Map<String, dynamic>?> _ref;
-  final P _patchBuilder;
-
-  const BatchDocument({
+/// Typed batch writes for one collection.
+class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
+  BatchCollection({
     required BatchContext<S> context,
-    required firestore.DocumentReference<Map<String, dynamic>> ref,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
-    required P patchBuilder,
+    required this.ref,
+    required JsonSerializer<T> toJson,
+    required this.documentIdField,
+    required P Function() patchBuilderFactory,
   }) : _context = context,
-       _ref = ref,
-       _patchBuilder = patchBuilder;
-
-  @override
-  void delete() {
-    _context._batch.delete(_ref);
-  }
-
-  @override
-  void patch(List<UpdateOperation> Function(P patchBuilder) patchBuilder) {
-    final operations = patchBuilder(_patchBuilder);
-    final updateMap = operationsToMap(operations);
-
-    if (updateMap.isEmpty) {
-      return; // No updates to apply
-    }
-
-    _context._batch.update(_ref, processKeysTo(updateMap));
-  }
-}
-
-/// Batch collection for handling collection-level batch operations
-class BatchCollection<
-  S extends FirestoreSchema,
-  T,
-  Path extends Record,
-  P extends PatchBuilder<T, Map<String, dynamic>?>
->
-    implements Insertable<T>, Updatable<T>, Upsertable<T> {
-  final BatchContext<S> _context;
-  final firestore.CollectionReference<Map<String, dynamic>> _collection;
-  final Map<String, dynamic> Function(T) _toJson;
-  final T Function(Map<String, dynamic>) _fromJson;
-  final String _documentIdField;
-  final P _patchBuilder;
-
-  const BatchCollection({
-    required firestore.CollectionReference<Map<String, dynamic>> collection,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
-    required BatchContext<S> context,
-    required String documentIdField,
-    required P patchBuilder,
-  }) : _collection = collection,
        _toJson = toJson,
-       _fromJson = fromJson,
-       _context = context,
-       _documentIdField = documentIdField,
-       _patchBuilder = patchBuilder;
+       _patchBuilderFactory = patchBuilderFactory;
 
-  /// Gets a document reference for batch operations
-  BatchDocument<S, T, Path, P> call(String id) => doc(id);
+  final BatchContext<S> _context;
+  final CollectionReference<Map<String, dynamic>> ref;
+  final JsonSerializer<T> _toJson;
+  final String? documentIdField;
+  final P Function() _patchBuilderFactory;
 
-  BatchDocument<S, T, Path, P> doc(String id) => BatchDocument(
+  BatchDocument<S, T, P> doc(String id) => BatchDocument<S, T, P>(
     context: _context,
-    ref: _collection.doc(id),
+    ref: ref.doc(id),
     toJson: _toJson,
-    fromJson: _fromJson,
-    patchBuilder: _patchBuilder,
+    documentIdField: documentIdField,
+    patchBuilderFactory: _patchBuilderFactory,
   );
 
-  @override
-  void insert(T value) {
-    final (data, documentId) = processObject(
-      _toJson,
-      value,
-      documentIdField: _documentIdField,
+  /// Queues a create with a generated ID and returns that ID.
+  String create(T value) {
+    final docRef = ref.doc();
+    _context._batch.set(
+      docRef,
+      toFirestoreData(_toJson, value, documentIdField: documentIdField),
     );
+    return docRef.id;
+  }
 
-    // If ID is the auto-generated constant, let Firestore generate a unique ID
-    if (documentId == kAutoGeneratedIdValue) {
-      final docRef = _collection.doc();
-      _context._batch.set(docRef, data);
-    } else if (documentId.isEmpty) {
-      throw ArgumentError(
-        'Document ID field \'$_documentIdField\' must not be empty. Use FirestoreODM.autoGeneratedId for auto-generated IDs.',
+  /// Queues a full replace. When [id] is null the document ID is read from
+  /// the model's document ID field.
+  void set(T value, {String? id}) {
+    if (id != null) {
+      validateDocumentId(id);
+      _context._batch.set(
+        ref.doc(id),
+        toFirestoreData(_toJson, value, documentIdField: documentIdField),
       );
     } else {
-      final docRef = _collection.doc(documentId);
-      _context._batch.set(docRef, data);
+      final result = _serializeWithId(value);
+      _context._batch.set(ref.doc(result.documentId!), result.data);
     }
   }
 
-  @override
-  void update(T value) {
-    final (data, documentId) = processObject(
-      _toJson,
-      value,
-      documentIdField: _documentIdField,
+  /// Queues typed patch operations on the document at [id].
+  void patch(String id, List<UpdateOperation> Function(P builder) patches) {
+    validateDocumentId(id);
+    final operations = patches(_patchBuilderFactory());
+    final updateMap = operationsToMap(operations);
+    if (updateMap.isEmpty) return;
+    _context._batch.update(ref.doc(id), updateMap);
+  }
+
+  /// Queues a delete of the document at [id].
+  void delete(String id) {
+    validateDocumentId(id);
+    _context._batch.delete(ref.doc(id));
+  }
+
+  ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
+    final result = processObject(_toJson, value, documentIdField: documentIdField);
+    final id = result.documentId;
+    if (id == null || id.isEmpty) {
+      throw FirestoreODMValidationException(
+        'Model document ID field "${documentIdField ?? '(none)'}" must be set for set() without an explicit ID',
+        code: 'invalid_document_id',
+        field: documentIdField,
+      );
+    }
+    validateDocumentId(id);
+    return result;
+  }
+}
+
+/// Typed batch writes for one document.
+class BatchDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
+  BatchDocument({
+    required BatchContext<S> context,
+    required this.ref,
+    required JsonSerializer<T> toJson,
+    required this.documentIdField,
+    required P Function() patchBuilderFactory,
+  }) : _context = context,
+       _toJson = toJson,
+       _patchBuilderFactory = patchBuilderFactory;
+
+  final BatchContext<S> _context;
+  final DocumentReference<Map<String, dynamic>> ref;
+  final JsonSerializer<T> _toJson;
+  final String? documentIdField;
+  final P Function() _patchBuilderFactory;
+
+  /// Queues a full replace.
+  void set(T value) {
+    _context._batch.set(
+      ref,
+      toFirestoreData(_toJson, value, documentIdField: documentIdField),
     );
-
-    // Auto-generated IDs don't make sense for update operations
-    if (documentId == kAutoGeneratedIdValue) {
-      throw ArgumentError(
-        'Auto-generated IDs cannot be used with update operations. '
-        'Update requires a specific document ID to identify the document to update. '
-        'Use insert() for auto-generated IDs or provide a specific ID for update.',
-      );
-    }
-
-    if (documentId.isEmpty) {
-      throw ArgumentError(
-        'Document ID field \'$_documentIdField\' must not be empty for batch update operation.',
-      );
-    }
-
-    final docRef = _collection.doc(documentId);
-    _context._batch.set(docRef, data);
   }
 
-  @override
-  void upsert(T value) {
-    final (data, documentId) = processObject(
-      _toJson,
-      value,
-      documentIdField: _documentIdField,
-    );
-
-    // Auto-generated IDs don't make sense for upsert operations
-    if (documentId == kAutoGeneratedIdValue) {
-      throw ArgumentError(
-        'Auto-generated IDs cannot be used with upsert operations. '
-        'Upsert requires a specific document ID to check for existing documents. '
-        'Use insert() for auto-generated IDs or provide a specific ID for upsert.',
-      );
-    }
-
-    if (documentId.isEmpty) {
-      throw ArgumentError(
-        'Document ID field \'$_documentIdField\' must not be empty for batch upsert operation.',
-      );
-    }
-
-    final docRef = _collection.doc(documentId);
-    _context._batch.set(docRef, data, firestore.SetOptions(merge: true));
+  /// Queues typed patch operations.
+  void patch(List<UpdateOperation> Function(P builder) patches) {
+    final operations = patches(_patchBuilderFactory());
+    final updateMap = operationsToMap(operations);
+    if (updateMap.isEmpty) return;
+    _context._batch.update(ref, updateMap);
   }
+
+  /// Queues a delete.
+  void delete() => _context._batch.delete(ref);
 }

@@ -1,64 +1,34 @@
+/// Cursor application for ordered queries.
+///
+/// Value cursors are Dart records matching the orderBy record shape; object
+/// cursors extract the orderBy values from a model instance.
+library;
+
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/src/orderby.dart';
-import 'package:firestore_odm/src/record_helper.dart';
 
-abstract class QueryPaginationHandler {
-  static List<dynamic> build<R extends Record>(R cursorValues) {
-    return cursorValues.toList();
-  }
+import 'record_utils.dart';
 
-  /// Smart value extraction using the SAME builder function as orderBy
-  /// This ensures perfect consistency and type safety
-  static List<dynamic>
-  buildValuesFromObject<T, O extends Record, OB extends OrderByFieldNode>({
-    required T object,
-    required Map<String, dynamic> Function(T) toJson,
-    required O Function(OB selector) orderByFunc,
-    required OB Function(OrderByContext context) orderBuilderFunc,
-    required String documentIdFieldName,
-  }) {
-    // Convert object to Map for extraction
-    final objectMap = toJson(object);
+abstract final class QueryPaginationHandler {
+  static firestore.Query<Map<String, dynamic>> applyStartAt(
+    firestore.Query<Map<String, dynamic>> query,
+    Object? cursor,
+  ) => query.startAt(_toList(cursor));
 
-    final context = OrderByExtractorContext(
-      id: objectMap[documentIdFieldName],
-      data: objectMap,
-    );
+  static firestore.Query<Map<String, dynamic>> applyStartAfter(
+    firestore.Query<Map<String, dynamic>> query,
+    Object? cursor,
+  ) => query.startAfter(_toList(cursor));
 
-    final builder = orderBuilderFunc(context);
+  static firestore.Query<Map<String, dynamic>> applyEndAt(
+    firestore.Query<Map<String, dynamic>> query,
+    Object? cursor,
+  ) => query.endAt(_toList(cursor));
 
-    // Reuse the SAME builder function to extract values!
-    // This guarantees perfect consistency with orderBy
-    orderByFunc(builder);
+  static firestore.Query<Map<String, dynamic>> applyEndBefore(
+    firestore.Query<Map<String, dynamic>> query,
+    Object? cursor,
+  ) => query.endBefore(_toList(cursor));
 
-    return context.extractedValues;
-  }
-
-  static firestore.Query<R> applyStartAt<R>(
-    firestore.Query<R> query,
-    Iterable<dynamic> cursorValues,
-  ) {
-    return query.startAt(cursorValues);
-  }
-
-  static firestore.Query<R> applyStartAfter<R>(
-    firestore.Query<R> query,
-    Iterable<dynamic> cursorValues,
-  ) {
-    return query.startAfter(cursorValues);
-  }
-
-  static firestore.Query<R> applyEndAt<R>(
-    firestore.Query<R> query,
-    Iterable<dynamic> cursorValues,
-  ) {
-    return query.endAt(cursorValues);
-  }
-
-  static firestore.Query<R> applyEndBefore<R>(
-    firestore.Query<R> query,
-    Iterable<dynamic> cursorValues,
-  ) {
-    return query.endBefore(cursorValues);
-  }
+  static List<Object?> _toList(Object? cursor) =>
+      cursor is Record ? cursor.toList() : [cursor];
 }

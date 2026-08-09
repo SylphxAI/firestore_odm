@@ -1,212 +1,292 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/src/aggregate.dart';
-import 'package:firestore_odm/src/filter_builder.dart';
-import 'package:firestore_odm/src/interfaces/aggregatable.dart';
-import 'package:firestore_odm/src/interfaces/filterable.dart';
-import 'package:firestore_odm/src/interfaces/gettable.dart';
-import 'package:firestore_odm/src/interfaces/limitable.dart';
-import 'package:firestore_odm/src/interfaces/deletable.dart';
-import 'package:firestore_odm/src/interfaces/modifiable.dart';
-import 'package:firestore_odm/src/interfaces/orderable.dart';
-import 'package:firestore_odm/src/interfaces/patchable.dart';
-import 'package:firestore_odm/src/interfaces/streamable.dart';
-import 'package:firestore_odm/src/orderby.dart';
-import 'package:firestore_odm/src/schema.dart';
-import 'package:firestore_odm/src/services/patch_operations.dart';
-import 'package:firestore_odm/src/services/update_operations_service.dart';
+/// Typed query surface: where / orderBy / limit / aggregate / count / bulk
+/// patch+delete. Bulk operations are chunked to Firestore's 500-write batch
+/// limit (never one unbounded batch).
+library;
 
-class Query<
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+
+import 'aggregate.dart';
+import 'filter_builder.dart';
+import 'orderby.dart';
+import 'patch.dart';
+import 'pagination.dart';
+import 'schema.dart';
+import 'types.dart';
+import 'utils.dart';
+
+/// Firestore's maximum number of writes per batch/transaction.
+const int kFirestoreMaxWritesPerBatch = 500;
+
+abstract class _QueryOperations<
   S extends FirestoreSchema,
   T,
-  P extends PatchBuilder<T, Map<String, dynamic>?>,
+  P extends PatchBuilder<T>,
   F extends FilterBuilderRoot,
-  OB extends OrderByFieldNode,
+  OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
->
-    implements
-        Gettable<List<T>>,
-        Streamable<List<T>>,
-        Filterable<T>,
-        Orderable<T>,
-        Patchable<T>,
-        Modifiable<T>,
-        Aggregatable<T>,
-        Limitable,
-        Deletable {
-  final Map<String, dynamic> Function(T) _toJson;
-  final T Function(Map<String, dynamic>) _fromJson;
-  final String _documentIdFieldName;
+> {
+  _QueryOperations(
+    this._query,
+    this._toJson,
+    this._fromJson,
+    this._documentIdField,
+    this._patchBuilderFactory,
+    this._filterBuilder,
+    this._orderByBuilderFunc,
+    this._aggregateBuilderFunc,
+  );
 
-  /// The underlying Firestore query
   final firestore.Query<Map<String, dynamic>> _query;
-
-  final P _patchBuilder;
-
+  final JsonSerializer<T> _toJson;
+  final JsonDeserializer<T> _fromJson;
+  final String? _documentIdField;
+  final P Function() _patchBuilderFactory;
   final F _filterBuilder;
+  final OB Function(OrderByContext context) _orderByBuilderFunc;
+  final AB Function(AggregateContext context) _aggregateBuilderFunc;
 
-  final OB Function(OrderByContext) _orderByBuilderFunc;
+  firestore.Query<Map<String, dynamic>> get nativeQuery => _query;
 
-  final AB Function(AggregateContext) _aggregateBuilderFunc;
+  Future<List<T>> get() async {
+    final snapshot = await _query.get();
+    return processQuerySnapshot(snapshot, _fromJson, _documentIdField);
+  }
 
-  const Query({
-    required firestore.Query<Map<String, dynamic>> query,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
-    required String documentIdField,
-    required P patchBuilder,
-    required F filterBuilder,
-    required OB Function(OrderByContext) orderByBuilderFunc,
-    required AB Function(AggregateContext) aggregateBuilderFunc,
-  }) : _query = query,
-       _toJson = toJson,
-       _fromJson = fromJson,
-       _documentIdFieldName = documentIdField,
-       _patchBuilder = patchBuilder,
-       _filterBuilder = filterBuilder,
-       _orderByBuilderFunc = orderByBuilderFunc,
-       _aggregateBuilderFunc = aggregateBuilderFunc;
+  Stream<List<T>> get stream => _query.snapshots().map(
+    (snapshot) => processQuerySnapshot(snapshot, _fromJson, _documentIdField),
+  );
 
-  @override
-  Future<List<T>> get() =>
-      QueryHandler.get(_query, _fromJson, _documentIdFieldName);
+  /// Server-side document count (native AggregateQuery; one-shot).
+  Future<int> count() async {
+    final snapshot = await _query.count().get();
+    return snapshot.count ?? 0;
+  }
 
-  @override
-  Stream<List<T>> get stream =>
-      QueryHandler.stream(_query, _fromJson, _documentIdFieldName);
-
-  Query<S, T, P, F, OB, AB> _newQuery(
-    firestore.Query<Map<String, dynamic>> newQuery,
+  /// Typed server-side aggregate (one-shot). Result is a Dart record, e.g.
+  /// `(count: c, avgAge: a)`.
+  AggregateQuery<R, AB> aggregate<R extends Record>(
+    R Function(AB selector) aggregateFunc,
   ) {
-    return Query<S, T, P, F, OB, AB>(
-      query: newQuery,
-      toJson: _toJson,
-      fromJson: _fromJson,
-      documentIdField: _documentIdFieldName,
-      patchBuilder: _patchBuilder,
-      filterBuilder: _filterBuilder,
-      orderByBuilderFunc: _orderByBuilderFunc,
+    final operations = QueryAggregatableHandler.build(
+      aggregateFunc: aggregateFunc,
       aggregateBuilderFunc: _aggregateBuilderFunc,
+    );
+    return AggregateQuery<R, AB>(
+      QueryAggregatableHandler.applyAggregate(_query, operations),
+      _aggregateBuilderFunc,
+      aggregateFunc,
+      operations,
     );
   }
 
-  @override
+  /// Applies the same patch operations to every document matching this query.
+  /// Chunked into batches of at most 500 writes.
+  Future<void> patchAll(List<UpdateOperation> operations) async {
+    final updateMap = operationsToMap(operations);
+    if (updateMap.isEmpty) return;
+    final snapshot = await _query.get();
+    await _runChunked(
+      snapshot.docs.map((d) => d.reference).toList(),
+      (batch, ref) => batch.update(ref, updateMap),
+    );
+  }
+
+  /// Deletes every document matching this query. Chunked into batches of at
+  /// most 500 writes.
+  Future<void> deleteAll() async {
+    final snapshot = await _query.get();
+    await _runChunked(
+      snapshot.docs.map((d) => d.reference).toList(),
+      (batch, ref) => batch.delete(ref),
+    );
+  }
+
+  Future<void> _runChunked(
+    List<firestore.DocumentReference<Map<String, dynamic>>> refs,
+    void Function(firestore.WriteBatch batch, firestore.DocumentReference<Map<String, dynamic>> ref) op,
+  ) async {
+    for (var i = 0; i < refs.length; i += kFirestoreMaxWritesPerBatch) {
+      final batch = _query.firestore.batch();
+      for (final ref in refs.skip(i).take(kFirestoreMaxWritesPerBatch)) {
+        op(batch, ref);
+      }
+      await batch.commit();
+    }
+  }
+}
+
+/// A typed Firestore query.
+class Query<
+  S extends FirestoreSchema,
+  T,
+  P extends PatchBuilder<T>,
+  F extends FilterBuilderRoot,
+  OB extends OrderByBuilderRoot,
+  AB extends AggregateBuilderRoot
+> extends _QueryOperations<S, T, P, F, OB, AB> {
+  Query({
+    required firestore.Query<Map<String, dynamic>> query,
+    required JsonSerializer<T> toJson,
+    required JsonDeserializer<T> fromJson,
+    required String? documentIdField,
+    required P Function() patchBuilderFactory,
+    required F filterBuilder,
+    required OB Function(OrderByContext context) orderByBuilderFunc,
+    required AB Function(AggregateContext context) aggregateBuilderFunc,
+  }) : super(
+         query,
+         toJson,
+         fromJson,
+         documentIdField,
+         patchBuilderFactory,
+         filterBuilder,
+         orderByBuilderFunc,
+         aggregateBuilderFunc,
+       );
+
   Query<S, T, P, F, OB, AB> where(
     FilterOperation Function(F builder) filterFunc,
   ) {
     final filter = filterFunc(_filterBuilder);
-    final newQuery = QueryFilterHandler.applyFilter(_query, filter);
-    // Handle different types of query objects
-    return _newQuery(newQuery);
+    return _newQuery(QueryFilterHandler.applyFilter(_query, filter));
   }
 
-  @override
   OrderedQuery<S, T, O, P, F, OB, AB> orderBy<O extends Record>(
     O Function(OB selector) orderByFunc,
   ) {
-    final config = QueryOrderbyHandler.buildOrderBy<T, O, OB>(
+    final fields = QueryOrderbyHandler.build(
       orderByFunc: orderByFunc,
       orderByBuilderFunc: _orderByBuilderFunc,
-      documentIdFieldName: _documentIdFieldName,
     );
-    final newQuery = QueryOrderbyHandler.applyOrderBy(_query, config);
     return OrderedQuery<S, T, O, P, F, OB, AB>(
-      query: newQuery,
+      query: QueryOrderbyHandler.applyOrderBy(_query, fields),
+      orderByFields: fields,
       toJson: _toJson,
       fromJson: _fromJson,
-      documentIdField: _documentIdFieldName,
-      orderByConfig: config,
-      patchBuilder: _patchBuilder,
+      documentIdField: _documentIdField,
+      patchBuilderFactory: _patchBuilderFactory,
       filterBuilder: _filterBuilder,
       orderByBuilderFunc: _orderByBuilderFunc,
       aggregateBuilderFunc: _aggregateBuilderFunc,
     );
   }
 
-  @override
-  Query<S, T, P, F, OB, AB> limit(int limit) {
-    final newQuery = QueryLimitHandler.applyLimit(_query, limit);
-    return _newQuery(newQuery);
-  }
+  Query<S, T, P, F, OB, AB> limit(int limit) =>
+      _newQuery(_query.limit(limit));
 
-  @override
-  Query<S, T, P, F, OB, AB> limitToLast(int limit) {
-    final newQuery = QueryLimitHandler.applyLimitToLast(_query, limit);
-    return _newQuery(newQuery);
-  }
+  Query<S, T, P, F, OB, AB> limitToLast(int limit) =>
+      _newQuery(_query.limitToLast(limit));
 
-  @override
-  Future<void> patch(List<UpdateOperation> Function(P patchBuilder) patches) {
-    final operations = patches(_patchBuilder);
-    return QueryHandler.patch(_query, operations);
-  }
+  Query<S, T, P, F, OB, AB> _newQuery(
+    firestore.Query<Map<String, dynamic>> query,
+  ) => Query<S, T, P, F, OB, AB>(
+    query: query,
+    toJson: _toJson,
+    fromJson: _fromJson,
+    documentIdField: _documentIdField,
+    patchBuilderFactory: _patchBuilderFactory,
+    filterBuilder: _filterBuilder,
+    orderByBuilderFunc: _orderByBuilderFunc,
+    aggregateBuilderFunc: _aggregateBuilderFunc,
+  );
+}
 
-  /// Modify multiple documents using diff-based updates.
-  ///
-  /// This method performs a read operation followed by batch update operations.
-  /// Performance is slightly worse than [patch] due to the additional read,
-  /// but convenient when you need to read the current state before writing.
-  ///
-  /// **Important Notes:**
-  /// - **Performance**: This method has an additional read operation, making it slower than [patch]
-  /// - **Concurrency**: Firestore uses last-write-wins semantics. This read-modify-write
-  ///   operation is NOT transactional and may be subject to race conditions
-  /// - **Transactions**: For transactional updates, use transactions instead
-  ///
-  /// [atomic] - When true (default), automatically detects and uses atomic
-  /// operations like FieldValue.increment() and FieldValue.arrayUnion() where possible.
-  /// When false, performs simple field updates without atomic operations.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// // Update all premium users with atomic operations (default)
-  /// await db.users
-  ///   .where(($) => $.isPremium(isEqualTo: true))
-  ///   .modify((user) => user.copyWith(points: user.points + 100));
-  ///
-  /// // Update without atomic operations
-  /// await db.users
-  ///   .where(($) => $.status(isEqualTo: 'inactive'))
-  ///   .modify((user) => user.copyWith(status: 'archived'), atomic: false);
-  /// ```
-  @override
-  Future<void> modify(ModifierBuilder<T> modifier, {bool atomic = true}) =>
-      QueryHandler.modify(
-        _query,
-        _documentIdFieldName,
-        _toJson,
-        _fromJson,
-        modifier,
-        atomic: atomic,
+/// A typed ordered query with pagination.
+class OrderedQuery<
+  S extends FirestoreSchema,
+  T,
+  O extends Record,
+  P extends PatchBuilder<T>,
+  F extends FilterBuilderRoot,
+  OB extends OrderByBuilderRoot,
+  AB extends AggregateBuilderRoot
+> extends _QueryOperations<S, T, P, F, OB, AB> {
+  OrderedQuery({
+    required firestore.Query<Map<String, dynamic>> query,
+    required this.orderByFields,
+    required JsonSerializer<T> toJson,
+    required JsonDeserializer<T> fromJson,
+    required String? documentIdField,
+    required P Function() patchBuilderFactory,
+    required F filterBuilder,
+    required OB Function(OrderByContext context) orderByBuilderFunc,
+    required AB Function(AggregateContext context) aggregateBuilderFunc,
+  }) : super(
+         query,
+         toJson,
+         fromJson,
+         documentIdField,
+         patchBuilderFactory,
+         filterBuilder,
+         orderByBuilderFunc,
+         aggregateBuilderFunc,
+       );
+
+  /// The orderBy terms this query was built with (single source of truth for
+  /// pagination).
+  final List<OrderByFieldInfo> orderByFields;
+
+  OrderedQuery<S, T, O, P, F, OB, AB> startAt(O cursor) =>
+      _newQuery(QueryPaginationHandler.applyStartAt(_query, cursor));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> startAfter(O cursor) =>
+      _newQuery(QueryPaginationHandler.applyStartAfter(_query, cursor));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> endAt(O cursor) =>
+      _newQuery(QueryPaginationHandler.applyEndAt(_query, cursor));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> endBefore(O cursor) =>
+      _newQuery(QueryPaginationHandler.applyEndBefore(_query, cursor));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> startAtObject(T object) =>
+      _newQuery(
+        QueryPaginationHandler.applyStartAt(_query, _extract(object)),
       );
 
-  @override
-  AggregateQuery<T, R, AB> aggregate<R extends Record>(
-    R Function(AB selector) builder,
+  OrderedQuery<S, T, O, P, F, OB, AB> startAfterObject(T object) =>
+      _newQuery(
+        QueryPaginationHandler.applyStartAfter(_query, _extract(object)),
+      );
+
+  OrderedQuery<S, T, O, P, F, OB, AB> endAtObject(T object) =>
+      _newQuery(QueryPaginationHandler.applyEndAt(_query, _extract(object)));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> endBeforeObject(T object) =>
+      _newQuery(
+        QueryPaginationHandler.applyEndBefore(_query, _extract(object)),
+      );
+
+  List<Object?> _extract(T object) => OrderByExtractor.extractValues(
+    object: object,
+    toJson: _toJson,
+    fields: orderByFields,
+    documentIdFieldName: _documentIdField,
+  );
+
+  OrderedQuery<S, T, O, P, F, OB, AB> where(
+    FilterOperation Function(F builder) filterFunc,
   ) {
-    final config = QueryAggregatableHandler.buildAggregate(
-      builder,
-      _aggregateBuilderFunc,
-    );
-    final newQuery = QueryAggregatableHandler.applyAggregate(
-      _query,
-      config.operations,
-    );
-    return AggregateQuery(
-      newQuery,
-      _toJson,
-      _fromJson,
-      _documentIdFieldName,
-      config,
-      _aggregateBuilderFunc,
-    );
+    final filter = filterFunc(_filterBuilder);
+    return _newQuery(QueryFilterHandler.applyFilter(_query, filter));
   }
 
-  @override
-  AggregateCountQuery count() {
-    final newQuery = QueryAggregatableHandler.applyCount(_query);
-    return AggregateCountQuery(newQuery);
-  }
+  OrderedQuery<S, T, O, P, F, OB, AB> limit(int limit) =>
+      _newQuery(_query.limit(limit));
 
-  @override
-  Future<void> delete() => QueryHandler.delete(_query);
+  OrderedQuery<S, T, O, P, F, OB, AB> limitToLast(int limit) =>
+      _newQuery(_query.limitToLast(limit));
+
+  OrderedQuery<S, T, O, P, F, OB, AB> _newQuery(
+    firestore.Query<Map<String, dynamic>> query,
+  ) => OrderedQuery<S, T, O, P, F, OB, AB>(
+    query: query,
+    orderByFields: orderByFields,
+    toJson: _toJson,
+    fromJson: _fromJson,
+    documentIdField: _documentIdField,
+    patchBuilderFactory: _patchBuilderFactory,
+    filterBuilder: _filterBuilder,
+    orderByBuilderFunc: _orderByBuilderFunc,
+    aggregateBuilderFunc: _aggregateBuilderFunc,
+  );
 }

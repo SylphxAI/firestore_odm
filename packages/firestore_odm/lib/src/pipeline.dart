@@ -1,11 +1,18 @@
+/// **Experimental** — typed Firestore Pipelines (Enterprise edition, GA 2026).
+///
+/// One-shot `execute()` (no realtime/offline); unsupported by the emulator and
+/// `fake_cloud_firestore`. The `select`/`aggregate` projections are
+/// compile-time type-checked but their runtime behaviour is unverified pending
+/// an Enterprise test database (ADR-0001). Stage building uses the generated
+/// `$.field` selectors — never string paths.
+library;
+
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
 import 'field_selector.dart';
-import 'utils.dart' show defaultValue;
 
-// Re-export only the stage/result *types*. Note we do NOT re-export `Field` —
-// the whole point is that callers use the generated `$.field` selector, never
-// string field paths.
+// Re-export only the stage/result *types*; `Field` is intentionally NOT
+// re-exported — callers use the generated selectors.
 export 'package:cloud_firestore/cloud_firestore.dart'
     show
         Pipeline,
@@ -15,19 +22,9 @@ export 'package:cloud_firestore/cloud_firestore.dart'
         Ordering,
         ExecuteOptions;
 
-// ---------------------------------------------------------------------------
-// Dual-phase context for shape-changing stages (select / aggregate).
-//
-// Mirrors the classic aggregate subsystem: a *capture* pass records the
-// native expressions (under deterministic aliases) to build the stage, and a
-// *result* pass replays the same record-builder against each result row to
-// reassemble a typed Dart record. Each projected/aggregated leaf is keyed by a
-// deterministic alias derived from its field path + operation.
-// ---------------------------------------------------------------------------
-
-/// Context handed to a pipeline selector when building a `select` / `aggregate`
-/// stage. Implementations either capture the native pieces or resolve values
-/// from a result row.
+/// Dual-phase context for shape-changing stages (select/aggregate): a capture
+/// pass records the native expressions under deterministic aliases, a result
+/// pass replays the same record builder against each result row.
 abstract class PipelineContext {
   R aggregate<R>(
     String alias,
@@ -46,19 +43,20 @@ class _CaptureContext implements PipelineContext {
     firestore.PipelineAggregateFunction Function() fn,
   ) {
     aggregates.add(fn().as(alias));
-    return defaultValue<R>();
+    return _defaultValue<R>();
   }
 
   @override
   R project<R>(String alias, firestore.Field Function() field) {
     projections.add(field().alias(alias));
-    return defaultValue<R>();
+    return _defaultValue<R>();
   }
 }
 
 class _RowContext implements PipelineContext {
-  final Map<String, dynamic> row;
   _RowContext(this.row);
+
+  final Map<String, dynamic> row;
 
   R _coerce<R>(Object? value) {
     if (value is R) return value;
@@ -80,42 +78,38 @@ class _RowContext implements PipelineContext {
       _coerce<R>(row[alias]);
 }
 
-/// Base class for generated per-model pipeline selectors. Mirrors
-/// `FilterBuilderNode` / `OrderByFieldNode`: each node carries its [FieldPath];
-/// nested objects are nested selectors. The optional [$ctx] is present only when
-/// the selector is used inside a `select` / `aggregate` builder.
-class PipelineFieldNode extends Node {
-  final PipelineContext? $ctx;
-  const PipelineFieldNode({super.field, PipelineContext? context})
+/// Base class for generated pipeline selectors; carries the path prefix and an
+/// optional capture context (present inside `select`/`aggregate`).
+class PipelineFieldNode extends FieldNode {
+  const PipelineFieldNode({super.components, PipelineContext? context})
     : $ctx = context;
+
+  final PipelineContext? $ctx;
 
   /// Count of all rows, for `aggregate(($) => (n: $.count()))`.
   int count() => $ctx!.aggregate<int>('count_all', () => firestore.CountAll());
 }
 
-/// A type-safe leaf for a scalar field. Produces native pipeline
-/// expressions/orderings/aggregates **from the field's path** — never a string.
-///
-/// Ergonomics mirror the classic ODM API:
-/// ```dart
-/// $.age(isGreaterThanOrEqualTo: 18)   // where   -> BooleanExpression
-/// $.age.descending()                  // sort    -> Ordering
-/// $.age.sum()                         // aggregate (inside aggregate(...))
-/// $.name.value                        // project  (inside select(...))
-/// ```
+/// A type-safe leaf for a scalar field; produces native pipeline
+/// expressions/orderings/aggregates from the field path — never a string.
 class PipelineField<T> extends PipelineFieldNode {
-  const PipelineField({super.field, super.context, Object? Function(T)? toJson})
-    : _toJson = toJson;
+  const PipelineField({
+    super.components,
+    super.context,
+    Object? Function(T)? toJson,
+  }) : _toJson = toJson;
 
   final Object? Function(T)? _toJson;
 
-  firestore.Field get expression => firestore.Field(path.path);
+  String get _path => components.join('.');
 
-  String get _alias => path.path;
+  firestore.Field get expression => firestore.Field(_path);
+
+  String get _alias => _path;
 
   Object? _json(T value) => _toJson != null ? _toJson(value) : value;
 
-  /// `where` predicate (exactly one comparison), mirroring the classic filter.
+  /// `where` predicate (exactly one comparison).
   firestore.BooleanExpression call({
     Object? isEqualTo = _sentinel,
     Object? isNotEqualTo = _sentinel,
@@ -147,14 +141,14 @@ class PipelineField<T> extends PipelineFieldNode {
     throw ArgumentError('Provide exactly one comparison to a pipeline where()');
   }
 
-  /// Ascending / descending sort on this field.
+  /// Ascending/descending sort on this field.
   firestore.Ordering ascending() => expression.ascending();
   firestore.Ordering descending() => expression.descending();
 
-  /// Project this field's value, for use inside `select(...)`.
+  /// Project this field's value, inside `select(...)`.
   T get value => $ctx!.project<T>(_alias, () => expression);
 
-  /// Aggregates, for use inside `aggregate(...)`.
+  /// Aggregates, inside `aggregate(...)`.
   T sum() => $ctx!.aggregate<T>('sum_$_alias', () => expression.sum());
   double average() =>
       $ctx!.aggregate<double>('avg_$_alias', () => expression.average());
@@ -166,25 +160,9 @@ class PipelineField<T> extends PipelineFieldNode {
 
 const Object _sentinel = Object();
 
-/// A type-safe wrapper over a Firestore [firestore.Pipeline] that keeps the
-/// model element type `T` and exposes the generated selector `S` so stages are
-/// built with `$.field`, never string paths.
-///
-/// **Experimental** — Pipelines are a Firestore **Enterprise edition** feature:
-/// one-shot `execute()` (no realtime/offline), unsupported by the emulator or
-/// `fake_cloud_firestore`. The `select` / `aggregate` projections are
-/// **compile-time type-checked but their runtime behaviour is unverified**
-/// pending an Enterprise test database. See
-/// `docs/adr/0001-firestore-pipelines.md`.
+/// Type-safe wrapper over a Firestore [firestore.Pipeline] preserving the
+/// model element type.
 class TypedPipeline<T, S extends PipelineFieldNode> {
-  final firestore.Pipeline _pipeline;
-  final T Function(Map<String, dynamic>) _fromJson;
-  final String _documentIdField;
-
-  /// Builds the generated selector, optionally bound to a [PipelineContext]
-  /// (used by `select`/`aggregate`).
-  final S Function(PipelineContext? context) _selector;
-
   const TypedPipeline(
     this._pipeline,
     this._fromJson,
@@ -192,10 +170,13 @@ class TypedPipeline<T, S extends PipelineFieldNode> {
     this._selector,
   );
 
+  final firestore.Pipeline _pipeline;
+  final T Function(Map<String, dynamic>) _fromJson;
+  final String? _documentIdField;
+  final S Function(PipelineContext? context) _selector;
+
   TypedPipeline<T, S> _next(firestore.Pipeline p) =>
       TypedPipeline(p, _fromJson, _documentIdField, _selector);
-
-  // --- row-type-preserving stages -----------------------------------------
 
   TypedPipeline<T, S> where(
     firestore.BooleanExpression Function(S selector) build,
@@ -214,10 +195,11 @@ class TypedPipeline<T, S extends PipelineFieldNode> {
   }
 
   TypedPipeline<T, S> limit(int limit) => _next(_pipeline.limit(limit));
+
   TypedPipeline<T, S> offset(int offset) => _next(_pipeline.offset(offset));
 
-  /// Executes the pipeline (Enterprise edition; one-shot) and maps each result
-  /// row through the model's `fromJson`, injecting the document id when present.
+  /// Executes the pipeline (Enterprise, one-shot) and maps rows through the
+  /// model's `fromJson`, injecting the document ID when present.
   Future<List<T>> execute({firestore.ExecuteOptions? options}) async {
     final snapshot = await _pipeline.execute(options: options);
     return [for (final row in snapshot.result) _fromJson(_withId(row))];
@@ -226,31 +208,28 @@ class TypedPipeline<T, S extends PipelineFieldNode> {
   Map<String, dynamic> _withId(firestore.PipelineResult row) {
     final data = Map<String, dynamic>.from(row.data() ?? const {});
     final id = row.document?.id;
-    if (id != null && !data.containsKey(_documentIdField)) {
+    if (id != null &&
+        _documentIdField != null &&
+        !data.containsKey(_documentIdField)) {
       data[_documentIdField] = id;
     }
     return data;
   }
 
-  // --- shape-changing stages (typed records) ------------------------------
-
-  /// Project each row into a typed record, e.g.
-  /// `select(($) => (name: $.name.value, years: $.age.value))`.
+  /// Projects each row into a typed record.
   ProjectedPipeline<R> select<R>(R Function(S selector) build) {
     final capture = _CaptureContext();
-    build(_selector(capture)); // capture phase
-    final p = _applySelect(_pipeline, capture.projections);
+    build(_selector(capture));
     return ProjectedPipeline<R>._(
-      p,
+      _applySelect(_pipeline, capture.projections),
       (row) => build(_selector(_RowContext(row))),
     );
   }
 
-  /// Aggregate the (filtered) pipeline into a single typed record, e.g.
-  /// `aggregate(($) => (count: $.count(), avgAge: $.age.average()))`.
+  /// Aggregates the pipeline into a single typed record.
   Future<R> aggregate<R>(R Function(S selector) build) async {
     final capture = _CaptureContext();
-    build(_selector(capture)); // capture phase
+    build(_selector(capture));
     final p = _applyAggregate(_pipeline, capture.aggregates);
     final snapshot = await p.execute();
     final row = snapshot.result.isNotEmpty
@@ -260,11 +239,12 @@ class TypedPipeline<T, S extends PipelineFieldNode> {
   }
 }
 
-/// The result of a `select` projection: execute it to get typed records.
+/// The result of a `select` projection.
 class ProjectedPipeline<R> {
+  const ProjectedPipeline._(this._pipeline, this._build);
+
   final firestore.Pipeline _pipeline;
   final R Function(Map<String, dynamic> row) _build;
-  const ProjectedPipeline._(this._pipeline, this._build);
 
   Future<List<R>> execute({firestore.ExecuteOptions? options}) async {
     final snapshot = await _pipeline.execute(options: options);
@@ -275,9 +255,6 @@ class ProjectedPipeline<R> {
   }
 }
 
-// cloud_firestore's `aggregate`/`select` take positional (not list) arguments;
-// fan a captured list out to the positional API (supports up to 10 — extend if
-// needed).
 firestore.Pipeline _applyAggregate(
   firestore.Pipeline p,
   List<firestore.AliasedAggregateFunction> a,
@@ -332,4 +309,20 @@ firestore.Pipeline _applySelect(
     default:
       throw ArgumentError('select() supports up to 8 fields for now');
   }
+}
+
+T _defaultValue<T>() {
+  if (null is T) return null as T;
+  if (T == int) return 0 as T;
+  if (T == double) return 0.0 as T;
+  if (T == num) return 0 as T;
+  if (T == bool) return false as T;
+  if (T == String) return '' as T;
+  if (T == DateTime) return DateTime.fromMillisecondsSinceEpoch(0) as T;
+  if (T == Duration) return Duration.zero as T;
+  final typeName = T.toString();
+  if (typeName.startsWith('List<')) return <dynamic>[] as T;
+  if (typeName.startsWith('Set<')) return <dynamic>{} as T;
+  if (typeName.startsWith('Map<')) return <String, dynamic>{} as T;
+  throw UnsupportedError('Cannot create default value for type $T');
 }

@@ -1,223 +1,200 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/firestore_odm.dart';
-import 'package:firestore_odm/src/interfaces/aggregatable.dart';
-import 'package:firestore_odm/src/interfaces/deletable.dart';
-import 'package:firestore_odm/src/interfaces/filterable.dart';
-import 'package:firestore_odm/src/interfaces/gettable.dart';
-import 'package:firestore_odm/src/interfaces/insertable.dart';
-import 'package:firestore_odm/src/interfaces/limitable.dart';
-import 'package:firestore_odm/src/interfaces/modifiable.dart';
-import 'package:firestore_odm/src/interfaces/orderable.dart';
-import 'package:firestore_odm/src/interfaces/patchable.dart';
-import 'package:firestore_odm/src/interfaces/streamable.dart';
-import 'package:firestore_odm/src/interfaces/updatable.dart';
-import 'package:firestore_odm/src/interfaces/upsertable.dart';
-import 'package:firestore_odm/src/services/patch_operations.dart';
+/// The typed collection surface: create/set/patch/delete writes plus the typed
+/// query surface, transactions and batches.
+///
+/// Write verbs map 1:1 to Firestore primitives (ADR-0002):
+/// - [create]: `collection.add()` — returns the generated document ID.
+/// - [set]: full document replace (`doc.set`).
+/// - [patch]: partial update with typed ops (`doc.update`).
+/// - [delete]: `doc.delete()`.
+library;
 
-/// A wrapper around Firestore CollectionReference with type safety and caching
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+
+import 'aggregate.dart';
+import 'batch.dart';
+import 'exceptions.dart';
+import 'filter_builder.dart';
+import 'firestore_document.dart';
+import 'orderby.dart';
+import 'patch.dart';
+import 'query.dart';
+import 'schema.dart';
+import 'transaction.dart';
+import 'types.dart';
+import 'utils.dart';
+
+/// A type-safe wrapper around a Firestore collection reference.
 class FirestoreCollection<
   S extends FirestoreSchema,
   T,
-  Path extends Record,
-  P extends PatchBuilder<T, Map<String, dynamic>?>,
+  P extends PatchBuilder<T>,
   F extends FilterBuilderRoot,
-  OB extends OrderByFieldNode,
+  OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
->
-    implements
-        Gettable<List<T>>,
-        Streamable<List<T>>,
-        Insertable<T>,
-        Updatable<T>,
-        Upsertable<T>,
-        Orderable<T>,
-        Filterable<T>,
-        Patchable<T>,
-        Modifiable<T>,
-        Aggregatable<T>,
-        Limitable,
-        Deletable {
-  /// The underlying Firestore collection reference
-  final firestore.CollectionReference<Map<String, dynamic>> query;
-
-  /// Model converter for data transformation
-  final Map<String, dynamic> Function(T) _toJson;
-  final T Function(Map<String, dynamic>) _fromJson;
-
-  /// Document ID field name (detected from model analysis)
-  final String documentIdField;
-
-  final P _patchBuilder;
-
-  final F _filterBuilder;
-
-  final OB Function(OrderByContext context) _orderByBuilderFunc;
-
-  final AB Function(AggregateContext context) _aggregateBuilderFunc;
-
-  /// Creates a new FirestoreCollection instance
-  const FirestoreCollection({
-    required this.query,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
+> {
+  FirestoreCollection({
+    required this.ref,
+    required JsonSerializer<T> toJson,
+    required JsonDeserializer<T> fromJson,
     required this.documentIdField,
-    required P patchBuilder,
+    required P Function() patchBuilderFactory,
     required F filterBuilder,
     required OB Function(OrderByContext context) orderByBuilderFunc,
     required AB Function(AggregateContext context) aggregateBuilderFunc,
   }) : _toJson = toJson,
        _fromJson = fromJson,
-       _patchBuilder = patchBuilder,
+       _patchBuilderFactory = patchBuilderFactory,
        _filterBuilder = filterBuilder,
        _orderByBuilderFunc = orderByBuilderFunc,
        _aggregateBuilderFunc = aggregateBuilderFunc;
 
-  /// Gets a document reference with the specified ID
-  /// Documents are cached to ensure consistency
-  /// Usage: users('id')
-  FirestoreDocument<S, T, Path, P> call(String id) => doc(id);
+  /// The underlying Firestore collection reference (escape hatch).
+  final firestore.CollectionReference<Map<String, dynamic>> ref;
 
-  FirestoreDocument<S, T, Path, P> doc(String id) =>
-      FirestoreDocument<S, T, Path, P>(
-        ref: query.doc(id),
+  final JsonSerializer<T> _toJson;
+  final JsonDeserializer<T> _fromJson;
+
+  /// The model field that holds the document ID, or null when the model does
+  /// not store its ID.
+  final String? documentIdField;
+
+  final P Function() _patchBuilderFactory;
+  final F _filterBuilder;
+  final OB Function(OrderByContext context) _orderByBuilderFunc;
+  final AB Function(AggregateContext context) _aggregateBuilderFunc;
+
+  /// The model deserializer (exposed for generated pipeline extensions).
+  JsonDeserializer<T> get fromJson => _fromJson;
+
+  /// A typed document handle for [id].
+  FirestoreDocument<S, T, P> doc(String id) => FirestoreDocument<S, T, P>(
+    ref: ref.doc(id),
+    toJson: _toJson,
+    fromJson: _fromJson,
+    documentIdField: documentIdField,
+    patchBuilderFactory: _patchBuilderFactory,
+  );
+
+  /// Creates a document with a server-generated ID and returns that ID.
+  ///
+  /// The document ID field of [value] is not stored.
+  Future<String> create(T value) async {
+    final data = toFirestoreData(_toJson, value, documentIdField: documentIdField);
+    final docRef = await ref.add(data);
+    return docRef.id;
+  }
+
+  /// Replaces a document. When [id] is null the document ID is read from the
+  /// model's document ID field.
+  Future<void> set(T value, {String? id}) async {
+    if (id != null) {
+      validateDocumentId(id);
+      await ref.doc(id).set(
+        toFirestoreData(_toJson, value, documentIdField: documentIdField),
+      );
+    } else {
+      final result = _serializeWithId(value);
+      await ref.doc(result.documentId!).set(result.data);
+    }
+  }
+
+  /// Applies typed patch operations to the document at [id].
+  Future<void> patch(
+    String id,
+    List<UpdateOperation> Function(P builder) patches,
+  ) async {
+    validateDocumentId(id);
+    final operations = patches(_patchBuilderFactory());
+    final updateMap = operationsToMap(operations);
+    if (updateMap.isEmpty) return;
+    await ref.doc(id).update(updateMap);
+  }
+
+  /// Deletes the document at [id].
+  Future<void> delete(String id) async {
+    validateDocumentId(id);
+    await ref.doc(id).delete();
+  }
+
+  ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
+    final result = processObject(_toJson, value, documentIdField: documentIdField);
+    final id = result.documentId;
+    if (id == null || id.isEmpty) {
+      throw FirestoreODMValidationException(
+        'Model document ID field "${documentIdField ?? '(none)'}" must be set for set() without an explicit ID',
+        code: 'invalid_document_id',
+        field: documentIdField,
+      );
+    }
+    validateDocumentId(id);
+    return result;
+  }
+
+  /// All documents in this collection.
+  Future<List<T>> get() => _query().get();
+
+  /// Live stream of all documents in this collection.
+  Stream<List<T>> get stream => _query().stream;
+
+  /// Typed query with filters.
+  Query<S, T, P, F, OB, AB> where(FilterOperation Function(F builder) filterFunc) =>
+      _query().where(filterFunc);
+
+  /// Typed ordered query.
+  OrderedQuery<S, T, O, P, F, OB, AB> orderBy<O extends Record>(
+    O Function(OB selector) orderByFunc,
+  ) => _query().orderBy(orderByFunc);
+
+  /// Limits the number of documents returned.
+  Query<S, T, P, F, OB, AB> limit(int limit) => _query().limit(limit);
+
+  /// Limits to the last [limit] documents (requires an orderBy).
+  Query<S, T, P, F, OB, AB> limitToLast(int limit) => _query().limitToLast(limit);
+
+  /// Server-side document count (one-shot).
+  Future<int> count() => _query().count();
+
+  /// Typed server-side aggregate (one-shot).
+  AggregateQuery<R, AB> aggregate<R extends Record>(
+    R Function(AB selector) aggregateFunc,
+  ) => _query().aggregate(aggregateFunc);
+
+  /// Bulk patch on all matching documents (chunked, ≤500 writes per batch).
+  Future<void> patchAll(List<UpdateOperation> operations) =>
+      _query().patchAll(operations);
+
+  /// Bulk delete on all matching documents (chunked, ≤500 writes per batch).
+  Future<void> deleteAll() => _query().deleteAll();
+
+  Query<S, T, P, F, OB, AB> _query() => Query<S, T, P, F, OB, AB>(
+    query: ref,
+    toJson: _toJson,
+    fromJson: _fromJson,
+    documentIdField: documentIdField,
+    patchBuilderFactory: _patchBuilderFactory,
+    filterBuilder: _filterBuilder,
+    orderByBuilderFunc: _orderByBuilderFunc,
+    aggregateBuilderFunc: _aggregateBuilderFunc,
+  );
+
+  /// A typed transaction handle for this collection.
+  TransactionCollection<S, T, P> inTransaction(TransactionContext<S> context) =>
+      TransactionCollection<S, T, P>(
+        context: context,
+        ref: ref,
         toJson: _toJson,
         fromJson: _fromJson,
         documentIdField: documentIdField,
-        patchBuilder: _patchBuilder,
+        patchBuilderFactory: _patchBuilderFactory,
       );
 
-  /// Upsert a document using the id field as document ID
-  Future<void> upsert(T value) =>
-      CollectionHandler.upsert(query, value, _toJson, documentIdField);
-
-  /// Insert a new document using the id field as document ID
-  /// Use FirestoreODM.autoGeneratedId for server-generated unique IDs
-  /// Fails if document already exists (when ID is specified)
-  Future<void> insert(T value) =>
-      CollectionHandler.insert(query, value, _toJson, documentIdField);
-
-  /// Update an existing document using the id field as document ID
-  /// Fails if document doesn't exist
-  @override
-  Future<void> update(T value) =>
-      CollectionHandler.update(query, value, _toJson, documentIdField);
-
-  @override
-  Future<List<T>> get() =>
-      CollectionHandler.get<T>(query, _fromJson, documentIdField);
-
-  @override
-  Stream<List<T>> get stream =>
-      QueryHandler.stream(query, _fromJson, documentIdField);
-
-  /// The model deserializer for this collection. Exposed so the generated,
-  /// per-model `pipeline()` extension can map pipeline rows back to `T`.
-  T Function(Map<String, dynamic>) get fromJson => _fromJson;
-
-  @override
-  OrderedQuery<S, T, O, P, F, OB, AB> orderBy<O extends Record>(
-    O Function(OB selector) orderByFunc,
-  ) {
-    final config = QueryOrderbyHandler.buildOrderBy(
-      orderByFunc: orderByFunc,
-      orderByBuilderFunc: _orderByBuilderFunc,
-      documentIdFieldName: documentIdField,
-    );
-    final newQuery = QueryOrderbyHandler.applyOrderBy(query, config);
-    return OrderedQuery(
-      query: newQuery,
-      toJson: _toJson,
-      fromJson: _fromJson,
-      documentIdField: documentIdField,
-      orderByConfig: config,
-      patchBuilder: _patchBuilder,
-      filterBuilder: _filterBuilder,
-      orderByBuilderFunc: _orderByBuilderFunc,
-      aggregateBuilderFunc: _aggregateBuilderFunc,
-    );
-  }
-
-  Query<S, T, P, F, OB, AB> _newQuery(
-    firestore.Query<Map<String, dynamic>> newQuery,
-  ) {
-    return Query<S, T, P, F, OB, AB>(
-      query: newQuery,
-      toJson: _toJson,
-      fromJson: _fromJson,
-      documentIdField: documentIdField,
-      patchBuilder: _patchBuilder,
-      filterBuilder: _filterBuilder,
-      orderByBuilderFunc: _orderByBuilderFunc,
-      aggregateBuilderFunc: _aggregateBuilderFunc,
-    );
-  }
-
-  @override
-  Query<S, T, P, F, OB, AB> where(
-    FilterOperation Function(F selector) filterFunc,
-  ) {
-    final filter = filterFunc(_filterBuilder);
-    final newQuery = QueryFilterHandler.applyFilter(query, filter);
-    return _newQuery(newQuery);
-  }
-
-  @override
-  Query<S, T, P, F, OB, AB> limit(int limit) {
-    final newQuery = QueryLimitHandler.applyLimit(query, limit);
-    return _newQuery(newQuery);
-  }
-
-  @override
-  Query<S, T, P, F, OB, AB> limitToLast(int limit) {
-    final newQuery = QueryLimitHandler.applyLimitToLast(query, limit);
-    return _newQuery(newQuery);
-  }
-
-  @override
-  Future<void> patch(List<UpdateOperation> Function(P patches) patches) {
-    final operations = patches(_patchBuilder);
-    return QueryHandler.patch(query, operations);
-  }
-
-  @override
-  AggregateQuery<T, R, AB> aggregate<R extends Record>(
-    R Function(AB selector) builder,
-  ) {
-    final config = QueryAggregatableHandler.buildAggregate(
-      builder,
-      _aggregateBuilderFunc,
-    );
-    final newQuery = QueryAggregatableHandler.applyAggregate(
-      query,
-      config.operations,
-    );
-    return AggregateQuery(
-      newQuery,
-      _toJson,
-      _fromJson,
-      documentIdField,
-      config,
-      _aggregateBuilderFunc,
-    );
-  }
-
-  @override
-  AggregateCountQuery count() {
-    final newQuery = QueryAggregatableHandler.applyCount(query);
-    return AggregateCountQuery(newQuery);
-  }
-
-  @override
-  Future<void> modify(ModifierBuilder<T> modifier, {bool atomic = true}) =>
-      QueryHandler.modify(
-        query,
-        documentIdField,
-        _toJson,
-        _fromJson,
-        modifier,
-        atomic: atomic,
+  /// A typed batch handle for this collection.
+  BatchCollection<S, T, P> inBatch(BatchContext<S> context) =>
+      BatchCollection<S, T, P>(
+        context: context,
+        ref: ref,
+        toJson: _toJson,
+        documentIdField: documentIdField,
+        patchBuilderFactory: _patchBuilderFactory,
       );
-
-  @override
-  Future<void> delete() => QueryHandler.delete(query);
 }

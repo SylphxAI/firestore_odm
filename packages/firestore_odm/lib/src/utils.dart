@@ -1,264 +1,127 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-import 'package:firestore_odm/src/exceptions.dart';
-import 'package:firestore_odm/src/model_converter.dart';
-import 'package:firestore_odm/src/services/update_helpers.dart';
-import 'package:firestore_odm/src/types.dart';
+/// Shared serialization helpers used by every write/read path.
+///
+/// v5 semantics: DateTime is a native Timestamp, no sentinels, no implicit
+/// type rewriting. These helpers only splice the document ID field in/out.
+library;
 
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+
+import 'exceptions.dart';
+import 'types.dart';
+
+/// Adds the document ID into the JSON map (if a document ID field is
+/// declared) and returns the deserialized model.
 T fromFirestoreData<T>(
-  JsonDeserializer<T> fromJsonFunction,
+  JsonDeserializer<T> fromJson,
   Map<String, dynamic> json,
-  String documentIdField,
+  String? documentIdField,
   String documentId,
 ) {
-  // Process the JSON data
-
-  final processedData = processFirestoreData(
-    json,
-    documentIdField: documentIdField,
-    documentId: documentId,
-  );
-  final result = fromJsonFunction(processedData);
-  return result;
-}
-
-Map<String, dynamic> processFirestoreData(
-  Map<String, dynamic> data, {
-  String? documentIdField,
-  String? documentId,
-}) {
-  final result = Map<String, dynamic>.from(data);
-
-  // Add document ID field if specified
-  if (documentIdField != null && documentId != null) {
-    result[documentIdField] = documentId;
-  }
-
-  // Process all values recursively to convert Timestamps
-  return _processValue(result) as Map<String, dynamic>;
-}
-
-/// Recursively processes Firestore data, converting Timestamps to ISO8601 strings.
-dynamic _processValue(dynamic value) {
-  if (value == null) {
-    return null;
-  }
-
-  // Handle Firestore Timestamp type directly
-  if (value is firestore.Timestamp) {
-    return value.toDate().toIso8601String();
-  }
-
-  // Handle nested structures
-  if (value is Map<String, dynamic>) {
-    return <String, dynamic>{
-      for (final entry in value.entries) entry.key: _processValue(entry.value),
-    };
-  }
-
-  if (value is List) {
-    return value.map(_processValue).toList();
-  }
-
-  return value;
-}
-
-Map<String, dynamic> toFirestoreData<T>(
-  JsonSerializer<T> toJsonFunction,
-  T data, {
-  String? documentIdField,
-}) {
-  final mapData = toJsonFunction(data);
-  return removeDocumentIdField(mapData, documentIdField);
-}
-
-(Map<String, dynamic>, String) processObject<T>(
-  Map<String, dynamic> Function(T) toJson,
-  T data, {
-  String? documentIdField,
-}) {
-  // Process the data to ensure it is ready for Firestore storage
-  final mapData = toJson(data);
-  final documentId = extractDocumentId(mapData, documentIdField);
-  final processedData = removeDocumentIdField(mapData, documentIdField);
-
-  // Replace FirestoreODM.serverTimestamp with FieldValue.serverTimestamp()
-  // This ensures server timestamps work correctly on insert (not just update)
-  final timestampedData = replaceServerTimestamps(processedData);
-
-  return (timestampedData, documentId);
-}
-
-String extractDocumentId(Map<String, dynamic> json, String? documentIdField) {
-  if (documentIdField == null) return '';
-  return json[documentIdField] as String? ?? '';
-}
-
-void validateDocumentId(
-  String? documentId,
-  String? fieldName, {
-  bool isInsert = false,
-}) {
-  // if it is an insert operation, allow empty string for auto ID generation
-  if (isInsert && documentId == null) {
-    return; // Allow null for insert operation
-  }
-
-  // Validate that the document ID is not null or empty
-  if (fieldName != null && (documentId == null || documentId.isEmpty)) {
-    throw FirestoreODMValidationException(
-      'Document ID must not be null or empty for upsert operation',
-      code: 'invalid_document_id',
-      field: fieldName,
-    );
-  }
-}
-
-Map<String, dynamic> removeDocumentIdField(
-  Map<String, dynamic> json,
-  String? documentIdField,
-) {
-  final result = Map<String, dynamic>.from(json);
+  final processed = Map<String, dynamic>.from(json);
   if (documentIdField != null) {
-    result.remove(documentIdField);
+    processed[documentIdField] = documentId;
   }
-  return result;
+  return fromJson(processed);
 }
 
+/// Serializes [value] and removes the document ID field (it is not stored).
+Map<String, dynamic> toFirestoreData<T>(
+  JsonSerializer<T> toJson,
+  T value, {
+  String? documentIdField,
+}) {
+  final map = toJson(value);
+  if (documentIdField != null) {
+    map.remove(documentIdField);
+  }
+  return map;
+}
+
+/// Serializes [value] and returns `(data, documentId)` where the document ID
+/// is read from the model (or `null` when the model declares no ID field).
+({Map<String, dynamic> data, String? documentId}) processObject<T>(
+  JsonSerializer<T> toJson,
+  T value, {
+  String? documentIdField,
+}) {
+  final map = toJson(value);
+  final documentId = documentIdField == null
+      ? null
+      : map[documentIdField] as String?;
+  if (documentIdField != null) {
+    map.remove(documentIdField);
+  }
+  return (data: map, documentId: documentId);
+}
+
+/// Deserializes a query snapshot into a list of models.
 List<T> processQuerySnapshot<T>(
   firestore.QuerySnapshot<Map<String, dynamic>> snapshot,
-  JsonDeserializer<T> fromMap,
-  String documentIdField,
+  JsonDeserializer<T> fromJson,
+  String? documentIdField,
 ) {
-  if (snapshot.docs.isEmpty) return [];
   return snapshot.docs
-      .map((doc) => processDocumentSnapshot<T>(doc, fromMap, documentIdField))
+      .map(
+        (doc) =>
+            fromFirestoreData(fromJson, doc.data(), documentIdField, doc.id),
+      )
       .toList();
 }
 
+/// Deserializes a document snapshot; throws [FirestoreODMDocumentException]
+/// when the document does not exist.
 T processDocumentSnapshot<T>(
   firestore.DocumentSnapshot<Map<String, dynamic>> snapshot,
-  JsonDeserializer<T> fromMap,
-  String documentIdField,
+  JsonDeserializer<T> fromJson,
+  String? documentIdField,
 ) {
-  if (!snapshot.exists) {
+  final data = snapshot.data();
+  if (data == null) {
     throw FirestoreODMDocumentException(
       'Document does not exist',
       code: 'not_found',
       documentPath: snapshot.reference.path,
     );
   }
-  return fromFirestoreData<T>(
-    fromMap,
-    snapshot.data()!,
-    documentIdField,
-    snapshot.id,
-  );
+  return fromFirestoreData(fromJson, data, documentIdField, snapshot.id);
 }
 
-T resolveJsonWithParts<T>(
-  Map<String, dynamic> json,
-  String id,
-  FieldPath path,
-) {
-  switch (path) {
-    case DocumentIdFieldPath():
-      // Special case for document ID field
-      return id as T;
-    case PathFieldPath(:final components, :final path):
-      if (path is DocumentIdFieldPath) {
-        // Special case for document ID field
-        return id as T;
-      }
-
-      dynamic current = json;
-
-      for (final part in components) {
-        if (current == null) {
-          throw FirestoreODMPathException(
-            'Cannot resolve path - null encountered',
-            code: 'null_in_path',
-            path: components.join('.'),
-            failedComponent: part,
-          );
-        }
-
-        // Check if it's a numeric index (array access)
-        if (RegExp(r'^\d+$').hasMatch(part)) {
-          final index = int.parse(part);
-          if (current is List) {
-            if (index >= 0 && index < current.length) {
-              current = current[index];
-            } else {
-              throw FirestoreODMPathException(
-                'Index $index out of bounds for array of length ${current.length}',
-                code: 'index_out_of_bounds',
-                path: components.join('.'),
-                failedComponent: part,
-              );
-            }
-          } else {
-            throw FirestoreODMTypeException(
-              'Expected List but found ${current.runtimeType} when accessing index',
-              code: 'type_mismatch',
-              expectedType: List,
-              actualType: current.runtimeType,
-            );
-          }
-        } else {
-          // String key (object access)
-          if (current is Map<String, dynamic>) {
-            if (current.containsKey(part)) {
-              current = current[part];
-            } else {
-              throw FirestoreODMPathException(
-                'Key "$part" not found in object',
-                code: 'key_not_found',
-                path: components.join('.'),
-                failedComponent: part,
-              );
-            }
-          } else {
-            throw FirestoreODMTypeException(
-              'Expected Map but found ${current.runtimeType} when accessing key',
-              code: 'type_mismatch',
-              expectedType: Map,
-              actualType: current.runtimeType,
-            );
-          }
-        }
-      }
-
-      // Type checking and conversion
-      if (current is T) {
-        return current;
-      } else {
-        throw FirestoreODMTypeException(
-          'Unexpected type at path ${components.join(".")}',
-          code: 'type_mismatch',
-          expectedType: T,
-          actualType: current.runtimeType,
-        );
-      }
+/// Validates a document ID against Firestore's ID rules.
+///
+/// Firestore document IDs must be non-empty, at most 1500 bytes, and must not
+/// contain `/` or the lone `*`/`.` characters (`.` alone is illegal, and `..`
+/// as a segment is illegal).
+void validateDocumentId(String id) {
+  if (id.isEmpty) {
+    throw FirestoreODMValidationException(
+      'Document ID must not be empty',
+      code: 'invalid_document_id',
+    );
+  }
+  if (id.contains('/')) {
+    throw FirestoreODMValidationException(
+      'Document ID must not contain "/"',
+      code: 'invalid_document_id',
+    );
+  }
+  if (id == '.' || id == '..') {
+    throw FirestoreODMValidationException(
+      'Document ID must not be "." or ".."',
+      code: 'invalid_document_id',
+    );
+  }
+  if (id.length * 4 > 1500) {
+    throw FirestoreODMValidationException(
+      'Document ID exceeds Firestore limit of 1500 bytes',
+      code: 'invalid_document_id',
+    );
   }
 }
 
-/// Returns a sensible default value for the given type [T].
-///
-/// Supported types:
-/// - Nullable types: null
-/// - int, double, num: 0
-/// - bool: false
-/// - String: ''
-/// - List, Set, Map: empty collection
-/// - DateTime: epoch (1970-01-01)
-/// - Duration: zero
-///
-/// Throws [UnsupportedError] for unsupported types.
+/// Returns a sensible dummy value for capture contexts (orderBy/aggregate
+/// record builders). The value is never written to Firestore.
 T defaultValue<T>() {
-  // Handle nullable types - null is a valid value for T?
   if (null is T) return null as T;
-
-  // Primitive types - direct type comparison works here
   if (T == int) return 0 as T;
   if (T == double) return 0.0 as T;
   if (T == num) return 0 as T;
@@ -266,18 +129,13 @@ T defaultValue<T>() {
   if (T == String) return '' as T;
   if (T == DateTime) return DateTime.fromMillisecondsSinceEpoch(0) as T;
   if (T == Duration) return Duration.zero as T;
-
-  // Generic collection types require string-based type inspection since
-  // Dart doesn't support pattern matching on generic types at runtime.
-  // e.g., List<int> cannot be matched with `T == List<int>` when T is generic.
   final typeName = T.toString();
   if (typeName.startsWith('List<')) return <dynamic>[] as T;
   if (typeName.startsWith('Set<')) return <dynamic>{} as T;
   if (typeName.startsWith('Map<')) return <String, dynamic>{} as T;
-
   throw UnsupportedError(
-    'Cannot create default value for type $T. '
-    'Supported types: nullable, int, double, num, bool, String, '
-    'DateTime, Duration, List, Set, Map.',
+    'Cannot create default value for type $T in a capture context. '
+    'Supported: nullable, int, double, num, bool, String, DateTime, Duration, '
+    'List, Set, Map.',
   );
 }
