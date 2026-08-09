@@ -1,3 +1,7 @@
+> **5.0 note:** examples use the current 5.0 API (create/set/patch/delete, no
+> sentinels, no modify). For the v4→5.0 migration map see
+> [migration-guide-5](./migration-guide-5).
+>
 # Migration Guide: From cloud_firestore to Firestore ODM
 
 This comprehensive guide will walk you through migrating from the standard `cloud_firestore` package to Firestore ODM, feature by feature. Each section includes detailed comparisons, benefits, and step-by-step migration instructions.
@@ -172,10 +176,10 @@ await usersCollection.doc('user123').update({
 });
 ```
 
-### After (Type-Safe Operations)
+### After (Type-Safe Operations, 5.0 API)
 ```dart
-// Create a document - type-safe model
-await db.users.insert(User(
+// Create a document - type-safe model (explicit ID = full replace)
+await db.users.set(User(
   id: 'user123',
   name: 'John Doe',
   email: 'john@example.com',
@@ -183,36 +187,36 @@ await db.users.insert(User(
   isActive: true,
 ));
 
-// Update with two powerful strategies:
-
-// 1. Patch - Explicit atomic operations
-await db.users('user123').patch(($) => [
-  $.age.increment(1),
-  $.tags.add('premium'),
-  $.lastLogin.serverTimestamp(),
-]);
-
-// 2. Modify - Smart atomic detection (reads then applies optimized updates)
-await db.users('user123').modify((user) => user.copyWith(
-  age: user.age + 1, // Auto-detects -> FieldValue.increment(1)
-  tags: [...user.tags, 'premium'], // Auto-detects -> FieldValue.arrayUnion()
-  lastLogin: FirestoreODM.serverTimestamp,
+// Or let Firestore generate the ID:
+final id = await db.users.create(User(
+  id: '',
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30,
+  isActive: true,
 ));
+
+// Partial update with explicit typed patch operations (ADR-0002)
+await db.users('user123').patch((p) => [
+  p.age.increment(1),
+  p.tags.arrayUnion(['premium']),
+  p.lastLogin.serverTimestamp(),
+]);
 ```
 
 ### Migration Steps:
-1. **Replace `set()` operations** with `insert()` or `upsert()`
+1. **Replace `insert()`/`update()`/`upsert()`** with `set()` (explicit ID) or
+   `create()` (generated ID)
 2. **Convert manual maps** to typed model instances
-3. **Choose update strategy**:
-   - Use `patch()` for explicit atomic operations
-   - Use `modify()` for smart automatic detection (reads current values first)
+3. **Use `patch()`** for explicit atomic operations (six FieldValue-shaped ops)
+   — there is no `modify()` in 5.0
 4. **Replace `FieldValue` operations** with ODM equivalents
 
 ### Benefits After Migration:
-- ✅ **Two powerful update strategies** - Choose the best approach for each use case
-- ✅ **Automatic atomic operations** - `modify` detects and optimizes updates
+- ✅ **Explicit typed patch operations** - six FieldValue-shaped ops
+- ✅ **Native Timestamp storage** - DateTime round-trips as Firestore timestamps
 - ✅ **Type-safe field updates** - No more string-based field names
-- ✅ **Server timestamp helpers** - Easy server timestamp handling
+- ✅ **Explicit server timestamps** - via the `serverTimestamp()` patch op
 
 ## 5. Batch Operations Migration
 
@@ -243,29 +247,28 @@ await batch.commit();
 // Manual error handling for batch limits
 ```
 
-### After (Type-Safe Batch Operations)
+### After (Type-Safe Batch Operations, 5.0)
 ```dart
 // Automatic batch management - simple and clean
 await db.runBatch((batch) {
-  // Type-safe operations with models
-  batch.users.insert(User(
+  final users = db.users.inBatch(batch);
+
+  // Type-safe writes with models
+  users.set(User(
     id: 'user1',
     name: 'John Doe',
     email: 'john@example.com',
     age: 30,
   ));
-  
-  // Atomic operations with type safety
-  batch.users('user2').patch(($) => [
-    $.age.increment(1),
-    $.tags.add('premium'),
-  ]);
-  
+
+  // Typed patch operations
+  users.patch('user2', (p) => [p.age.increment(1), p.tags.arrayUnion(['premium'])]);
+
   // Delete operations
-  batch.users('user3').delete();
-  
-  // Subcollection support
-  batch.users('user1').posts.insert(Post(
+  users.delete('user3');
+
+  // Subcollection support (path-derived accessor)
+  db.usersPosts('user1').inBatch(batch).set(Post(
     id: 'post1',
     title: 'My First Post',
     content: 'Hello world!',
@@ -274,9 +277,9 @@ await db.runBatch((batch) {
 
 // Manual batch management for fine-grained control
 final batch = db.batch();
-batch.users.insert(user1);
-batch.users.insert(user2);
-batch.posts.update(post);
+db.users.inBatch(batch).set(user1);
+db.users.inBatch(batch).set(user2);
+db.posts.inBatch(batch).patch('p1', (p) => [p.likes.increment(1)]);
 await batch.commit();
 ```
 
@@ -522,14 +525,10 @@ await db.runTransaction((tx) async {
     throw Exception('Insufficient funds');
   }
   
-  // Writes are automatically deferred until the end
-  await tx.users('user1').modify((user) => user.copyWith(
-    balance: user.balance - 100, // Becomes atomic decrement
-  ));
-  
-  await tx.users('user2').modify((user) => user.copyWith(
-    balance: user.balance + 100, // Becomes atomic increment
-  ));
+  // Writes are automatically deferred until the end (explicit ops)
+  final txUsers = db.users.inTransaction(tx);
+  txUsers('user1').patch((p) => [p.balance.increment(-100)]);
+  txUsers('user2').patch((p) => [p.balance.increment(100)]);
 });
 ```
 
@@ -577,13 +576,13 @@ List<Map<String, dynamic>> posts = postsSnapshot.docs
 @Collection<Comment>("users/*/posts/*/comments")
 final appSchema = _$AppSchema;
 
-// Type-safe subcollection access
-final userPosts = db.users('user123').posts;
-final postComments = db.users('user123').posts('post456').comments;
+// Type-safe subcollection access (path-derived accessors, ADR-0002)
+final userPosts = db.usersPosts('user123');
+final postComments = db.usersPostsComments('user123', 'post456');
 
 // Fully typed operations
 List<Post> posts = await userPosts.get();
-await userPosts.insert(Post(
+await userPosts.set(Post(
   id: 'new-post',
   title: 'My New Post',
   content: 'Post content...',
