@@ -45,6 +45,18 @@ int age = user.profile.age;  // ✅ Type-safe nested access
 
 ---
 
+## 🎉 New in Version 5.0 (clean break, ADR-0002)
+
+- **Exact Firestore semantics** - DateTime ↔ native Timestamp both directions;
+  the ODM owns storage serialization.
+- **Honest write verbs** - `create` (returns the generated ID), `set`, `patch`
+  (six FieldValue-shaped ops), `delete`. No sentinels, no `modify()` magic.
+- **One-shot server-side aggregates** - no fake client-side streaming.
+- **Typed bulk writes** - `patchAll` / `deleteAll` chunked to Firestore's
+  500-write batch limit.
+- **Stable pagination** - orderBy with the `$.documentId` tie-breaker selector.
+- **Recorded benchmarks + emulator e2e lane** - measured, not asserted.
+
 ## 🎉 New in Version 4.0
 
 Building on 3.0's performance foundation, **4.0 expands type coverage and ergonomics** on top of a fully reworked code generator.
@@ -71,10 +83,12 @@ measurements are not made.
 | Runtime overhead | Zero reflection — all magic happens at compile time |
 
 ### Carried over from 3.0
-- ✅ **Full generic model support** - Generic classes with type-safe patch operations
-- ✅ **JsonKey subset** (`name`, `ignore`, `includeFromJson`/`includeToJson`) and `@JsonConverter` — documented honestly, no silent partial support
-- ✅ **Automatic conversion fallbacks** - JsonConverter optional in most cases
-- ✅ **Enhanced map operations** - Comprehensive map field support with atomic ops
+- ✅ **Full generic model support** - generic classes with type-safe patch
+  operations and converter-argument threading (freezed-style `toT`/`fromT`)
+- ✅ **JsonKey subset** (`name`, `ignore`, `includeFromJson`/`includeToJson`)
+  and `@JsonConverter` — documented honestly, no silent partial support
+- ✅ **ODM-owned storage serialization** - native Timestamp both directions;
+  your model's `toJson`/`fromJson` remain for JSON interchange only
 
 ---
 

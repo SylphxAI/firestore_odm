@@ -65,6 +65,16 @@ jobs:
           echo "PACKAGE_VERSION_ANNOTATION=$(grep '^version:' packages/firestore_odm_annotation/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
           echo "PACKAGE_VERSION_RUNTIME=$(grep '^version:' packages/firestore_odm/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
           echo "PACKAGE_VERSION_BUILDER=$(grep '^version:' packages/firestore_odm_builder/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
+
+      - name: 🚦 Enforce Stable-Only Versions (no -dev/-rc on pub.dev)
+        run: |
+          for v in "$PACKAGE_VERSION_ANNOTATION" "$PACKAGE_VERSION_RUNTIME" "$PACKAGE_VERSION_BUILDER"; do
+            if [[ "$v" == *-* ]]; then
+              echo "❌ Refusing to release pre-release version: $v (stable-only tags, ADR-0002)"
+              exit 1
+            fi
+          done
+          echo "✅ All package versions are stable: $PACKAGE_VERSION_ANNOTATION / $PACKAGE_VERSION_RUNTIME / $PACKAGE_VERSION_BUILDER"
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
         with:
