@@ -28,10 +28,14 @@ class TestSchema extends FirestoreSchema {
 @Collection<User>('users')
 @Collection<Post>('posts')
 @Collection<Post>('users/*/posts') // User subcollection
-@Collection<User>('users2') // Second User collection without posts subcollection
+@Collection<User>(
+  'users2',
+) // Second User collection without posts subcollection
 @Collection<Comment>('comments') // Root comments collection
 @Collection<Comment>('posts/*/comments') // Comments on posts in main collection
-@Collection<Comment>('users/*/posts/*/comments') // Nested: comments on user posts
+@Collection<Comment>(
+  'users/*/posts/*/comments',
+) // Nested: comments on user posts
 @Collection<SimpleStory>('simpleStories')
 @Collection<SharedPost>('sharedPosts')
 @Collection<SharedPost>('users/*/sharedPosts') // Subcollection path

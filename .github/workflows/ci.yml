@@ -242,11 +242,17 @@ jobs:
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
+      - name: 🔒 Known-Vulnerability Scan
+        uses: google/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --lockfile=apps/flutter_example/pubspec.lock
+            --lockfile=packages/firestore_odm/pubspec.lock
+            --lockfile=packages/firestore_odm_annotation/pubspec.lock
+            --lockfile=packages/firestore_odm_builder/pubspec.lock
+
       - name: 🔒 Security Audit
         run: |
-          # Known-vulnerability scan (fails on findings).
-          melos exec -- "dart pub audit"
-
           # Check outdated dependencies (informational).
           melos run deps:outdated --no-select || true
 

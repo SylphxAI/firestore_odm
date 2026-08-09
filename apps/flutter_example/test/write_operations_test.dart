@@ -48,29 +48,36 @@ void main() {
   });
 
   group('patch', () {
-    test('set, increment, arrayUnion, arrayRemove, delete, serverTimestamp',
-        () async {
-      final (_, odm) = newDb();
-      await odm.users.set(sampleUser(id: 'u1', age: 30));
-      await odm.users.patch(
-        'u1',
-        (p) => [
-          p.name.set('Renamed'),
-          p.age.increment(5),
-          p.tags.arrayUnion(['new-tag']),
-          p.updatedAt.serverTimestamp(),
-          p.lastLogin.delete(),
-        ],
-      );
-      await odm.users.patch('u1', (p) => [p.tags.arrayRemove(['tag-a'])]);
-      final user = await odm.users('u1').get();
-      expect(user?.name, 'Renamed');
-      expect(user?.age, 35);
-      expect(user?.tags, containsAll(['tag-b', 'new-tag']));
-      expect(user?.tags, isNot(contains('tag-a')));
-      expect(user?.lastLogin, isNull);
-      expect(user?.updatedAt, isA<DateTime>());
-    });
+    test(
+      'set, increment, arrayUnion, arrayRemove, delete, serverTimestamp',
+      () async {
+        final (_, odm) = newDb();
+        await odm.users.set(sampleUser(id: 'u1', age: 30));
+        await odm.users.patch(
+          'u1',
+          (p) => [
+            p.name.set('Renamed'),
+            p.age.increment(5),
+            p.tags.arrayUnion(['new-tag']),
+            p.updatedAt.serverTimestamp(),
+            p.lastLogin.delete(),
+          ],
+        );
+        await odm.users.patch(
+          'u1',
+          (p) => [
+            p.tags.arrayRemove(['tag-a']),
+          ],
+        );
+        final user = await odm.users('u1').get();
+        expect(user?.name, 'Renamed');
+        expect(user?.age, 35);
+        expect(user?.tags, containsAll(['tag-b', 'new-tag']));
+        expect(user?.tags, isNot(contains('tag-a')));
+        expect(user?.lastLogin, isNull);
+        expect(user?.updatedAt, isA<DateTime>());
+      },
+    );
 
     test('no-op patch leaves the document untouched', () async {
       final (_, odm) = newDb();

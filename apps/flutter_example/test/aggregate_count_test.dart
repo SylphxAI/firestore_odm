@@ -12,10 +12,7 @@ void main() {
       await odm.users.set(sampleUser(id: 'u$i', age: i));
     }
     expect(await odm.users.count(), 5);
-    expect(
-      await odm.users.where(($) => $.age(isGreaterThan: 3)).count(),
-      2,
-    );
+    expect(await odm.users.where(($) => $.age(isGreaterThan: 3)).count(), 2);
   });
 
   test('aggregate() returns a typed record (count/sum/average)', () async {

@@ -9,7 +9,11 @@ import 'types.dart';
 import 'utils.dart';
 
 /// A type-safe wrapper around a Firestore document reference.
-class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
+class FirestoreDocument<
+  S extends FirestoreSchema,
+  T,
+  P extends PatchBuilder<T>
+> {
   FirestoreDocument({
     required this.ref,
     required JsonSerializer<T> toJson,
@@ -44,7 +48,9 @@ class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
 
   /// Replaces this document.
   Future<void> set(T value) async {
-    await ref.set(toFirestoreData(_toJson, value, documentIdField: documentIdField));
+    await ref.set(
+      toFirestoreData(_toJson, value, documentIdField: documentIdField),
+    );
   }
 
   /// Applies typed patch operations to this document.

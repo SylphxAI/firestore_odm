@@ -98,7 +98,6 @@ class AggregateField<T extends num?> {
   double average() => _context.resolve<double>(
     AverageOperation('avg:${_field.components.join('.')}', _field),
   );
-
 }
 
 /// The result of an aggregate query; one-shot only.
@@ -162,7 +161,6 @@ abstract final class QueryAggregatableHandler {
           AverageOperation(:final field) => firestore.average(
             field.components.join('.'),
           ),
-
         },
     ];
     if (fields.length > 30) {

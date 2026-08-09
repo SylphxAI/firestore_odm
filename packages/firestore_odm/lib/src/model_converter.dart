@@ -9,7 +9,6 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart' show Blob, GeoPoint;
 
-
 /// Converts a `Duration` to Firestore microseconds (int).
 dynamic durationToJson(Duration value) => value.inMicroseconds;
 

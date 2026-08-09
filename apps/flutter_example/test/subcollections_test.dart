@@ -44,9 +44,6 @@ void main() {
     await odm.users.set(sampleUser(id: 'u'));
     await odm.usersPosts('u').set(samplePost(id: 'sub-post'));
     expect((await odm.posts('root-post').get())?.id, 'root-post');
-    expect(
-      (await odm.usersPosts('u')('sub-post').get())?.id,
-      'sub-post',
-    );
+    expect((await odm.usersPosts('u')('sub-post').get())?.id, 'sub-post');
   });
 }

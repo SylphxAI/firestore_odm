@@ -153,4 +153,5 @@ DateTime dateTimeFromJson(Object? value) =>
 Object? durationToJson(Duration value) => value.inMicroseconds;
 
 /// Converts a stored microseconds int back to Duration.
-Duration durationFromJson(Object? value) => Duration(microseconds: value as int);
+Duration durationFromJson(Object? value) =>
+    Duration(microseconds: value as int);

@@ -3,9 +3,9 @@ import 'package:flutter_example/models/comment.dart';
 import 'package:flutter_example/models/post.dart';
 import 'package:flutter_example/models/user.dart';
 
-
 /// Secondary schema class (multiple-schema support). Declared by hand so the
 part 'secondary_schema.g.dart';
+
 /// schema variable's type is resolvable before code generation (ADR-0002).
 class SecondarySchema extends FirestoreSchema {
   const SecondarySchema();

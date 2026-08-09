@@ -13,15 +13,13 @@ void main() {
     for (var i = 1; i <= 5; i++) {
       await odm.users.set(sampleUser(id: 'u$i', age: 20 + i));
     }
-    await odm.users
-        .where(($) => $.age(isGreaterThan: 22))
-        .patchAll(const []);
+    await odm.users.where(($) => $.age(isGreaterThan: 22)).patchAll(const []);
     // patchAll with empty ops is a no-op.
     expect((await odm.users('u3').get())?.age, 23);
 
-    await odm.users
-        .where(($) => $.age(isGreaterThan: 22))
-        .patchAll([SetOperation(const FieldNode(components: ['age']), 99)]);
+    await odm.users.where(($) => $.age(isGreaterThan: 22)).patchAll([
+      SetOperation(const FieldNode(components: ['age']), 99),
+    ]);
     expect((await odm.users('u3').get())?.age, 99);
     expect((await odm.users('u2').get())?.age, 22);
   });

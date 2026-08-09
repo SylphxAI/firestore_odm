@@ -28,9 +28,9 @@ void main() {
     final fake = FakeFirebaseFirestore();
     final secondary = FirestoreODM(secondarySchema, firestore: fake);
     await secondary.secondaryUsers.set(sampleUser(id: 'u'));
-    await secondary.secondaryUsersUserPosts('u').set(
-      samplePost(id: 'p', author: 'u'),
-    );
+    await secondary
+        .secondaryUsersUserPosts('u')
+        .set(samplePost(id: 'p', author: 'u'));
     expect((await secondary.secondaryUsersUserPosts('u')('p').get())?.id, 'p');
   });
 }

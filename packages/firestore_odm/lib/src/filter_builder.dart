@@ -113,13 +113,16 @@ class FilterField<T, E> {
         isGreaterThanOrEqualTo: isGreaterThanOrEqualTo == null
             ? null
             : _toJson(isGreaterThanOrEqualTo),
-        arrayContains:
-            arrayContains == null ? null : _convertElement(arrayContains),
+        arrayContains: arrayContains == null
+            ? null
+            : _convertElement(arrayContains),
         arrayContainsAny: arrayContainsAny == null
             ? null
             : arrayContainsAny.map(_convertElement).toList(),
         whereIn: whereIn == null ? null : whereIn.map(_toJson).toList(),
-        whereNotIn: whereNotIn == null ? null : whereNotIn.map(_toJson).toList(),
+        whereNotIn: whereNotIn == null
+            ? null
+            : whereNotIn.map(_toJson).toList(),
         isNull: isNull,
       ),
     );

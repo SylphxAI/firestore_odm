@@ -7,8 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'helpers.dart';
 
 void main() {
-  test('deferred writes flush after reads; read-before-write holds',
-      () async {
+  test('deferred writes flush after reads; read-before-write holds', () async {
     final (_, odm) = newDb();
     await odm.users.set(sampleUser(id: 'a', age: 10));
     await odm.users.set(sampleUser(id: 'b', age: 20));

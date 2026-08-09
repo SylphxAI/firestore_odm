@@ -14,7 +14,8 @@ void main() {
   test('document ID is injected on read and stripped on write', () async {
     final (_, odm) = newDb();
     await odm.users.set(sampleUser(id: 'u1'));
-    final raw = (await odm.firestore.collection('users').doc('u1').get()).data();
+    final raw = (await odm.firestore.collection('users').doc('u1').get())
+        .data();
     expect(raw, isNot(contains('id')));
     final user = await odm.users('u1').get();
     expect(user?.id, 'u1');
@@ -43,10 +44,13 @@ void main() {
       createdAt: DateTime.utc(2026, 1, 1),
     );
     await odm.tasks.set(task);
-    final raw = (await odm.firestore.collection('tasks').doc('t1').get()).data();
+    final raw = (await odm.firestore.collection('tasks').doc('t1').get())
+        .data();
     expect(raw?['estimatedDuration'], 90000000);
-    expect((await odm.tasks('t1').get())?.estimatedDuration,
-        const Duration(seconds: 90));
+    expect(
+      (await odm.tasks('t1').get())?.estimatedDuration,
+      const Duration(seconds: 90),
+    );
   });
 
   test('enums serialize via @JsonValue and read back', () async {
@@ -68,19 +72,25 @@ void main() {
     expect(read?.optional, AccountType.pro);
   });
 
-  test('DateTime reads accept both Timestamp and DateTime (fake vs live)',
-      () async {
-    final (_, odm) = newDb();
-    final when = DateTime.utc(2026, 6, 1);
-    await odm.users.set(sampleUser(id: 'u1').copyWith(createdAt: when));
-    final raw = (await odm.firestore.collection('users').doc('u1').get()).data();
-    final user = await odm.users('u1').get();
-    expect(user?.createdAt?.microsecondsSinceEpoch, when.microsecondsSinceEpoch);
-    // The raw stored value is a Timestamp (never an ISO string).
-    expect(raw?['createdAt'], isA<Timestamp>());
-    // Simulate the live SDK shape (Timestamp) directly through the converter.
-    final ts = Timestamp.fromDate(when);
-    final viaTimestamp = dateTimeFromJson(ts);
-    expect(viaTimestamp.microsecondsSinceEpoch, when.microsecondsSinceEpoch);
-  });
+  test(
+    'DateTime reads accept both Timestamp and DateTime (fake vs live)',
+    () async {
+      final (_, odm) = newDb();
+      final when = DateTime.utc(2026, 6, 1);
+      await odm.users.set(sampleUser(id: 'u1').copyWith(createdAt: when));
+      final raw = (await odm.firestore.collection('users').doc('u1').get())
+          .data();
+      final user = await odm.users('u1').get();
+      expect(
+        user?.createdAt?.microsecondsSinceEpoch,
+        when.microsecondsSinceEpoch,
+      );
+      // The raw stored value is a Timestamp (never an ISO string).
+      expect(raw?['createdAt'], isA<Timestamp>());
+      // Simulate the live SDK shape (Timestamp) directly through the converter.
+      final ts = Timestamp.fromDate(when);
+      final viaTimestamp = dateTimeFromJson(ts);
+      expect(viaTimestamp.microsecondsSinceEpoch, when.microsecondsSinceEpoch);
+    },
+  );
 }

@@ -3,11 +3,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart'
-    show
-        CollectionReference,
-        DocumentReference,
-        FirebaseFirestore,
-        WriteBatch;
+    show CollectionReference, DocumentReference, FirebaseFirestore, WriteBatch;
 
 import 'exceptions.dart';
 import 'patch.dart';
@@ -95,7 +91,11 @@ class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
   }
 
   ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
-    final result = processObject(_toJson, value, documentIdField: documentIdField);
+    final result = processObject(
+      _toJson,
+      value,
+      documentIdField: documentIdField,
+    );
     final id = result.documentId;
     if (id == null || id.isEmpty) {
       throw FirestoreODMValidationException(

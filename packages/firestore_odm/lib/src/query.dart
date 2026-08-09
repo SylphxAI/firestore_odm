@@ -103,7 +103,11 @@ abstract class _QueryOperations<
 
   Future<void> _runChunked(
     List<firestore.DocumentReference<Map<String, dynamic>>> refs,
-    void Function(firestore.WriteBatch batch, firestore.DocumentReference<Map<String, dynamic>> ref) op,
+    void Function(
+      firestore.WriteBatch batch,
+      firestore.DocumentReference<Map<String, dynamic>> ref,
+    )
+    op,
   ) async {
     for (var i = 0; i < refs.length; i += kFirestoreMaxWritesPerBatch) {
       final batch = _query.firestore.batch();
@@ -123,7 +127,8 @@ class Query<
   F extends FilterBuilderRoot,
   OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
-> extends _QueryOperations<S, T, P, F, OB, AB> {
+>
+    extends _QueryOperations<S, T, P, F, OB, AB> {
   Query({
     required firestore.Query<Map<String, dynamic>> query,
     required JsonSerializer<T> toJson,
@@ -171,8 +176,7 @@ class Query<
     );
   }
 
-  Query<S, T, P, F, OB, AB> limit(int limit) =>
-      _newQuery(_query.limit(limit));
+  Query<S, T, P, F, OB, AB> limit(int limit) => _newQuery(_query.limit(limit));
 
   Query<S, T, P, F, OB, AB> limitToLast(int limit) =>
       _newQuery(_query.limitToLast(limit));
@@ -200,7 +204,8 @@ class OrderedQuery<
   F extends FilterBuilderRoot,
   OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
-> extends _QueryOperations<S, T, P, F, OB, AB> {
+>
+    extends _QueryOperations<S, T, P, F, OB, AB> {
   OrderedQuery({
     required firestore.Query<Map<String, dynamic>> query,
     required this.orderByFields,
@@ -239,22 +244,18 @@ class OrderedQuery<
       _newQuery(QueryPaginationHandler.applyEndBefore(_query, cursor));
 
   OrderedQuery<S, T, O, P, F, OB, AB> startAtObject(T object) =>
-      _newQuery(
-        QueryPaginationHandler.applyStartAt(_query, _extract(object)),
-      );
+      _newQuery(QueryPaginationHandler.applyStartAt(_query, _extract(object)));
 
-  OrderedQuery<S, T, O, P, F, OB, AB> startAfterObject(T object) =>
-      _newQuery(
-        QueryPaginationHandler.applyStartAfter(_query, _extract(object)),
-      );
+  OrderedQuery<S, T, O, P, F, OB, AB> startAfterObject(T object) => _newQuery(
+    QueryPaginationHandler.applyStartAfter(_query, _extract(object)),
+  );
 
   OrderedQuery<S, T, O, P, F, OB, AB> endAtObject(T object) =>
       _newQuery(QueryPaginationHandler.applyEndAt(_query, _extract(object)));
 
-  OrderedQuery<S, T, O, P, F, OB, AB> endBeforeObject(T object) =>
-      _newQuery(
-        QueryPaginationHandler.applyEndBefore(_query, _extract(object)),
-      );
+  OrderedQuery<S, T, O, P, F, OB, AB> endBeforeObject(T object) => _newQuery(
+    QueryPaginationHandler.applyEndBefore(_query, _extract(object)),
+  );
 
   List<Object?> _extract(T object) => OrderByExtractor.extractValues(
     object: object,

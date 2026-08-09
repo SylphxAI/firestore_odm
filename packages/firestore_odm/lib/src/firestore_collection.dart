@@ -82,7 +82,11 @@ class FirestoreCollection<
   ///
   /// The document ID field of [value] is not stored.
   Future<String> create(T value) async {
-    final data = toFirestoreData(_toJson, value, documentIdField: documentIdField);
+    final data = toFirestoreData(
+      _toJson,
+      value,
+      documentIdField: documentIdField,
+    );
     final docRef = await ref.add(data);
     return docRef.id;
   }
@@ -92,9 +96,11 @@ class FirestoreCollection<
   Future<void> set(T value, {String? id}) async {
     if (id != null) {
       validateDocumentId(id);
-      await ref.doc(id).set(
-        toFirestoreData(_toJson, value, documentIdField: documentIdField),
-      );
+      await ref
+          .doc(id)
+          .set(
+            toFirestoreData(_toJson, value, documentIdField: documentIdField),
+          );
     } else {
       final result = _serializeWithId(value);
       await ref.doc(result.documentId!).set(result.data);
@@ -120,7 +126,11 @@ class FirestoreCollection<
   }
 
   ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
-    final result = processObject(_toJson, value, documentIdField: documentIdField);
+    final result = processObject(
+      _toJson,
+      value,
+      documentIdField: documentIdField,
+    );
     final id = result.documentId;
     if (id == null || id.isEmpty) {
       throw FirestoreODMValidationException(
@@ -140,8 +150,9 @@ class FirestoreCollection<
   Stream<List<T>> get stream => _query().stream;
 
   /// Typed query with filters.
-  Query<S, T, P, F, OB, AB> where(FilterOperation Function(F builder) filterFunc) =>
-      _query().where(filterFunc);
+  Query<S, T, P, F, OB, AB> where(
+    FilterOperation Function(F builder) filterFunc,
+  ) => _query().where(filterFunc);
 
   /// Typed ordered query.
   OrderedQuery<S, T, O, P, F, OB, AB> orderBy<O extends Record>(
@@ -152,7 +163,8 @@ class FirestoreCollection<
   Query<S, T, P, F, OB, AB> limit(int limit) => _query().limit(limit);
 
   /// Limits to the last [limit] documents (requires an orderBy).
-  Query<S, T, P, F, OB, AB> limitToLast(int limit) => _query().limitToLast(limit);
+  Query<S, T, P, F, OB, AB> limitToLast(int limit) =>
+      _query().limitToLast(limit);
 
   /// Server-side document count (one-shot).
   Future<int> count() => _query().count();

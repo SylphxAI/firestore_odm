@@ -59,8 +59,5 @@ Post samplePost({String id = 'post1', String author = 'user1'}) => Post(
 
 /// Expects [future] to complete with a [FirestoreODMValidationException].
 Future<void> expectValidationError(Future<void> Function() future) async {
-  await expectLater(
-    future,
-    throwsA(isA<FirestoreODMValidationException>()),
-  );
+  await expectLater(future, throwsA(isA<FirestoreODMValidationException>()));
 }

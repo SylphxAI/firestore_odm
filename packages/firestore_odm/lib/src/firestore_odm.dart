@@ -2,8 +2,7 @@
 /// functionality is provided by generated extensions on this class.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart'
-    show FirebaseFirestore;
+import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseFirestore;
 
 import 'batch.dart';
 import 'schema.dart';

@@ -20,7 +20,8 @@ void main() {
     final (_, odm) = newDb();
     final when = DateTime.utc(2026, 5, 1, 12, 30);
     await odm.users.set(sampleUser(id: 'u1').copyWith(createdAt: when));
-    final raw = (await odm.firestore.collection('users').doc('u1').get()).data();
+    final raw = (await odm.firestore.collection('users').doc('u1').get())
+        .data();
     // The raw stored value is a Timestamp — never an ISO string.
     expect(raw?['createdAt'], isA<Timestamp>());
     expect(raw?['createdAt'], isNot(isA<String>()));

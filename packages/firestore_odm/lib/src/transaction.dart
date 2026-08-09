@@ -104,7 +104,8 @@ class TransactionCollection<
     } else {
       final result = _serializeWithId(value);
       _context._defer(
-        () => _context.transaction.set(ref.doc(result.documentId!), result.data),
+        () =>
+            _context.transaction.set(ref.doc(result.documentId!), result.data),
       );
     }
   }
@@ -125,7 +126,11 @@ class TransactionCollection<
   }
 
   ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
-    final result = processObject(_toJson, value, documentIdField: documentIdField);
+    final result = processObject(
+      _toJson,
+      value,
+      documentIdField: documentIdField,
+    );
     final id = result.documentId;
     if (id == null || id.isEmpty) {
       throw FirestoreODMValidationException(

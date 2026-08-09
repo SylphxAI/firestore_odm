@@ -31,7 +31,9 @@ abstract class PipelineContext {
     firestore.PipelineAggregateFunction Function() fn, {
     R Function()? defaultValue,
   });
-  R project<R>(String alias, firestore.Field Function() field, {
+  R project<R>(
+    String alias,
+    firestore.Field Function() field, {
     R Function()? defaultValue,
   });
 }
@@ -51,7 +53,9 @@ class _CaptureContext implements PipelineContext {
   }
 
   @override
-  R project<R>(String alias, firestore.Field Function() field, {
+  R project<R>(
+    String alias,
+    firestore.Field Function() field, {
     R Function()? defaultValue,
   }) {
     projections.add(field().alias(alias));
@@ -81,7 +85,9 @@ class _RowContext implements PipelineContext {
   }) => _coerce<R>(row[alias]);
 
   @override
-  R project<R>(String alias, firestore.Field Function() _, {
+  R project<R>(
+    String alias,
+    firestore.Field Function() _, {
     R Function()? defaultValue,
   }) => _coerce<R>(row[alias]);
 }
@@ -168,10 +174,8 @@ class PipelineField<T> extends PipelineFieldNode {
     () => expression.sum(),
     defaultValue: _defaultValue,
   );
-  double average() => $ctx!.aggregate<double>(
-    'avg_$_alias',
-    () => expression.average(),
-  );
+  double average() =>
+      $ctx!.aggregate<double>('avg_$_alias', () => expression.average());
   T minimum() => $ctx!.aggregate<T>(
     'min_$_alias',
     () => expression.minimum(),
@@ -182,10 +186,8 @@ class PipelineField<T> extends PipelineFieldNode {
     () => expression.maximum(),
     defaultValue: _defaultValue,
   );
-  int countField() => $ctx!.aggregate<int>(
-    'count_$_alias',
-    () => expression.count(),
-  );
+  int countField() =>
+      $ctx!.aggregate<int>('count_$_alias', () => expression.count());
 }
 
 const Object _sentinel = Object();

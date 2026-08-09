@@ -18,8 +18,9 @@ import 'test_helper.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('write/read/query semantics against the emulator',
-      (tester) async {
+  testWidgets('write/read/query semantics against the emulator', (
+    tester,
+  ) async {
     await initializeFirebase();
     await clearFirestoreEmulator();
     final odm = FirestoreODM(testSchema);
@@ -44,8 +45,10 @@ void main() {
     expect(id, isNotEmpty);
     final doc = await odm.users(id).get();
     expect(doc?.name, 'E2E');
-    expect(doc?.createdAt?.microsecondsSinceEpoch,
-        DateTime.utc(2026, 7, 1).microsecondsSinceEpoch);
+    expect(
+      doc?.createdAt?.microsecondsSinceEpoch,
+      DateTime.utc(2026, 7, 1).microsecondsSinceEpoch,
+    );
 
     // patch ops (increment/union/serverTimestamp) round-trip.
     await odm.users.patch(

@@ -21,4 +21,10 @@ export 'src/record_utils.dart';
 export 'src/schema.dart';
 export 'src/transaction.dart';
 export 'src/types.dart';
-export 'src/utils.dart' show defaultValue, identity, dateTimeFromJson, durationToJson, durationFromJson;
+export 'src/utils.dart'
+    show
+        defaultValue,
+        identity,
+        dateTimeFromJson,
+        durationToJson,
+        durationFromJson;

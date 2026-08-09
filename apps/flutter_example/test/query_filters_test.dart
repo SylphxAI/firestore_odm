@@ -24,13 +24,9 @@ void main() {
   });
 
   test('isEqualTo / isNotEqualTo', () async {
-    final eq = await db.users
-        .where(($) => $.name(isEqualTo: 'User u2'))
-        .get();
+    final eq = await db.users.where(($) => $.name(isEqualTo: 'User u2')).get();
     expect(eq.single.id, 'u2');
-    final neq = await db.users
-        .where(($) => $.age(isNotEqualTo: 21))
-        .get();
+    final neq = await db.users.where(($) => $.age(isNotEqualTo: 21)).get();
     expect(neq.map((u) => u.id), isNot(contains('u1')));
   });
 
@@ -61,17 +57,13 @@ void main() {
   });
 
   test('whereIn / whereNotIn / isNull', () async {
-    final inQ = await db.users
-        .where(($) => $.age(whereIn: [21, 23]))
-        .get();
+    final inQ = await db.users.where(($) => $.age(whereIn: [21, 23])).get();
     expect(inQ.length, 2);
     final notIn = await db.users
         .where(($) => $.age(whereNotIn: [21, 23]))
         .get();
     expect(notIn.length, 3);
-    final nullQ = await db.users
-        .where(($) => $.lastLogin(isNull: true))
-        .get();
+    final nullQ = await db.users.where(($) => $.lastLogin(isNull: true)).get();
     // All sample users have lastLogin set; none should match.
     expect(nullQ, isEmpty);
   });
@@ -85,15 +77,11 @@ void main() {
 
   test('and / or composition', () async {
     final andQ = await db.users
-        .where(
-          ($) => $.age(isGreaterThan: 22) & $.isActive(isEqualTo: true),
-        )
+        .where(($) => $.age(isGreaterThan: 22) & $.isActive(isEqualTo: true))
         .get();
     expect(andQ.map((u) => u.id), containsAll(['u4']));
     final orQ = await db.users
-        .where(
-          ($) => $.age(isEqualTo: 21) | $.age(isEqualTo: 25),
-        )
+        .where(($) => $.age(isEqualTo: 21) | $.age(isEqualTo: 25))
         .get();
     expect(orQ.length, 2);
   });
@@ -106,10 +94,7 @@ void main() {
   });
 
   test('filter requires exactly one condition', () {
-    expect(
-      () => db.users.where(($) => $.age()),
-      throwsArgumentError,
-    );
+    expect(() => db.users.where(($) => $.age()), throwsArgumentError);
   });
 
   test('stream emits matching documents', () async {
