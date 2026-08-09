@@ -123,7 +123,10 @@ jobs:
         run: |
           rm -f packages/firestore_odm_annotation/pubspec_overrides.yaml
           cd packages/firestore_odm_annotation && dart pub get
-          dart pub publish 2>&1 | tee /tmp/pub_annotation.txt
+          # --force only skips the interactive y/N confirmation (CI is
+          # non-interactive); pub.dev still rejects duplicate versions and the
+          # readback gate below verifies the exact version (ADR-0002).
+          dart pub publish --force 2>&1 | tee /tmp/pub_annotation.txt
           # Verify pub.dev readback for the exact version (ADR-0002 deploy gate).
           for attempt in $(seq 1 18); do
             curl -fsS "https://pub.dev/api/packages/firestore_odm_annotation" -o /tmp/pubdev_annotation.json && break
@@ -138,7 +141,8 @@ jobs:
         run: |
           rm -f packages/firestore_odm/pubspec_overrides.yaml
           cd packages/firestore_odm && dart pub get
-          dart pub publish 2>&1 | tee /tmp/pub_runtime.txt
+          # --force skips the interactive confirmation only (see annotation step).
+          dart pub publish --force 2>&1 | tee /tmp/pub_runtime.txt
           for attempt in $(seq 1 18); do
             curl -fsS "https://pub.dev/api/packages/firestore_odm" -o /tmp/pubdev_runtime.json && break
             sleep 10
@@ -152,7 +156,8 @@ jobs:
         run: |
           rm -f packages/firestore_odm_builder/pubspec_overrides.yaml
           cd packages/firestore_odm_builder && dart pub get
-          dart pub publish 2>&1 | tee /tmp/pub_builder.txt
+          # --force skips the interactive confirmation only (see annotation step).
+          dart pub publish --force 2>&1 | tee /tmp/pub_builder.txt
           for attempt in $(seq 1 18); do
             curl -fsS "https://pub.dev/api/packages/firestore_odm_builder" -o /tmp/pubdev_builder.json && break
             sleep 10
