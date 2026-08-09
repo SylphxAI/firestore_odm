@@ -1,6 +1,6 @@
 name: firestore_odm_annotation
 description: Pure annotations for Firestore ODM code generation. Provides the core annotations used to generate type-safe Firestore ODM code.
-version: 5.0.0-dev.1
+version: 5.0.0
 homepage: https://github.com/SylphxAI/firestore_odm
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues

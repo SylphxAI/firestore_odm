@@ -56,9 +56,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
     needs: [e2e-gate]
-    env:
-      PACKAGE_VERSION_ANNOTATION: ${{ format('{0}', '') }}
     steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: 📦 Load Package Versions
         id: versions
         run: |
@@ -75,18 +78,9 @@ jobs:
             fi
           done
           echo "✅ All package versions are stable: $PACKAGE_VERSION_ANNOTATION / $PACKAGE_VERSION_RUNTIME / $PACKAGE_VERSION_BUILDER"
-      - name: 📚 Git Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full git history for conventional commits
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐦 Setup Flutter & Bootstrap
         run: |
-          # Mirror ci.yml: pin Flutter to current stable 3.44.2 (bump
-          # deliberately), installed via a retry-guarded git clone (subosito's
-          # archive install intermittently leaves an empty engine version on
-          # these self-hosted runners).
           export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
           ok=0
           for attempt in 1 2 3; do
@@ -106,85 +100,69 @@ jobs:
           [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-          # subosito used to export PUB_CACHE; the git-clone setup doesn't, so the
-          # later "Setup Pub Credentials" step's `mkdir -p $PUB_CACHE` failed on an
-          # empty var. Export it for the credentials + publish steps.
           echo "PUB_CACHE=$HOME/.pub-cache" >> "$GITHUB_ENV"
 
-      - name: 📋 Dry Run Publish (annotation only)
+      - name: 📋 Dry Run Publish (annotation only — others resolve it from pub.dev)
         run: |
           # Remove pubspec_overrides.yaml files created by melos bootstrap
           find packages -name "pubspec_overrides.yaml" -delete
-
-          # Only dry-run annotation package (no local dependencies)
-          # Other packages depend on annotation which isn't published yet
           cd packages/firestore_odm_annotation && dart pub publish --dry-run
 
       - name: 🔐 Setup Pub Credentials
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          # Setup credentials in both possible locations
           PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
           mkdir -p "$PUB_CACHE" ~/.config/dart
           printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > "$PUB_CACHE/credentials.json"
           printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
-          # Verify credentials were written
-          echo "Credentials written to:"
           ls -la "$PUB_CACHE/credentials.json" || true
           ls -la ~/.config/dart/pub-credentials.json || true
 
-      - name: 🚀 Publish firestore_odm
+      - name: 🚀 Publish firestore_odm_annotation
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          rm -f packages/firestore_odm/pubspec_overrides.yaml
-          cd packages/firestore_odm && dart pub get
-          dart pub publish 2>&1 | tee /tmp/pub_firestore_odm.txt
+          rm -f packages/firestore_odm_annotation/pubspec_overrides.yaml
+          cd packages/firestore_odm_annotation && dart pub get
+          dart pub publish 2>&1 | tee /tmp/pub_annotation.txt
           # Verify pub.dev readback for the exact version (ADR-0002 deploy gate).
-          for attempt in 1 2 3; do
-            curl -fsS "https://pub.dev/api/packages/firestore_odm" -o /tmp/pubdev_firestore_odm.json && break
+          for attempt in $(seq 1 18); do
+            curl -fsS "https://pub.dev/api/packages/firestore_odm_annotation" -o /tmp/pubdev_annotation.json && break
             sleep 10
           done
-          grep -q '"version": "${{ env.PACKAGE_VERSION_RUNTIME }}"' /tmp/pubdev_firestore_odm.json \
-            && echo "✅ pub.dev readback verified for firestore_odm" \
-            || (echo "❌ pub.dev readback failed for firestore_odm"; exit 1)
+          grep -qE '"version"\s*:\s*"${{ env.PACKAGE_VERSION_ANNOTATION }}"' /tmp/pubdev_annotation.json \
+            && echo "✅ pub.dev readback verified for firestore_odm_annotation" \
+            || (echo "❌ pub.dev readback failed for firestore_odm_annotation"; exit 1)
 
       - name: 🚀 Publish firestore_odm
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
-          # Remove pubspec_overrides.yaml and get fresh dependencies
           rm -f packages/firestore_odm/pubspec_overrides.yaml
           cd packages/firestore_odm && dart pub get
-          # Publish, but don't fail if version already exists
-          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
-            echo "✅ Published firestore_odm successfully"
-          elif grep -q "already exists" /tmp/pub_output.txt; then
-            echo "⏭️ firestore_odm version already published, skipping"
-          else
-            echo "❌ Failed to publish firestore_odm"
-            cat /tmp/pub_output.txt
-            exit 1
-          fi
-          echo "Waiting for package to be indexed on pub.dev..."
-          sleep 60
+          dart pub publish 2>&1 | tee /tmp/pub_runtime.txt
+          for attempt in $(seq 1 18); do
+            curl -fsS "https://pub.dev/api/packages/firestore_odm" -o /tmp/pubdev_runtime.json && break
+            sleep 10
+          done
+          grep -qE '"version"\s*:\s*"${{ env.PACKAGE_VERSION_RUNTIME }}"' /tmp/pubdev_runtime.json \
+            && echo "✅ pub.dev readback verified for firestore_odm" \
+            || (echo "❌ pub.dev readback failed for firestore_odm"; exit 1)
 
       - name: 🚀 Publish firestore_odm_builder
         if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
         run: |
           rm -f packages/firestore_odm_builder/pubspec_overrides.yaml
           cd packages/firestore_odm_builder && dart pub get
-          dart pub publish 2>&1 | tee /tmp/pub_firestore_odm_builder.txt
-          # Verify pub.dev readback for the exact version (ADR-0002 deploy gate).
-          for attempt in 1 2 3; do
-            curl -fsS "https://pub.dev/api/packages/firestore_odm_builder" -o /tmp/pubdev_firestore_odm_builder.json && break
+          dart pub publish 2>&1 | tee /tmp/pub_builder.txt
+          for attempt in $(seq 1 18); do
+            curl -fsS "https://pub.dev/api/packages/firestore_odm_builder" -o /tmp/pubdev_builder.json && break
             sleep 10
           done
-          grep -q '"version": "${{ env.PACKAGE_VERSION_BUILDER }}"' /tmp/pubdev_firestore_odm_builder.json \
+          grep -qE '"version"\s*:\s*"${{ env.PACKAGE_VERSION_BUILDER }}"' /tmp/pubdev_builder.json \
             && echo "✅ pub.dev readback verified for firestore_odm_builder" \
             || (echo "❌ pub.dev readback failed for firestore_odm_builder"; exit 1)
 
       - name: 📊 Create Release
-        # Only on tag pushes — workflow_dispatch has github.ref_name=main (and a
-        # `main` tag already exists), which would make a bogus release.
+        # Only on tag pushes — workflow_dispatch would otherwise make a bogus release.
         if: ${{ startsWith(github.ref, 'refs/tags/') && success() }}
         uses: actions/create-release@v1
         env:
@@ -193,20 +171,17 @@ jobs:
           tag_name: ${{ github.ref_name }}
           release_name: Release ${{ github.ref_name }}
           body: |
-            🎉 **Firestore ODM Packages Released**
-            
+            🎉 **Firestore ODM Packages Released (5.0 clean break, ADR-0002)**
+
             ## 📦 Published Packages
             - [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)
-            - [firestore_odm](https://pub.dev/packages/firestore_odm) 
+            - [firestore_odm](https://pub.dev/packages/firestore_odm)
             - [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)
-            
+
             ## 🔗 Links
             - **Repository**: https://github.com/SylphxAI/firestore_odm
             - **Documentation**: https://pub.dev/documentation/firestore_odm/latest/
             - **Issues**: https://github.com/SylphxAI/firestore_odm/issues
-            
-            ## 📝 Changes
-            See individual package changelogs for detailed changes.
           draft: false
           prerelease: false
 
@@ -215,41 +190,39 @@ jobs:
         run: |
           echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
-            echo "✅ **Packages Published to pub.dev**" >> $GITHUB_STEP_SUMMARY
-            echo "- [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)" >> $GITHUB_STEP_SUMMARY
-            echo "- [firestore_odm](https://pub.dev/packages/firestore_odm)" >> $GITHUB_STEP_SUMMARY  
-            echo "- [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "🔍 **Dry-run completed successfully**" >> $GITHUB_STEP_SUMMARY
-            echo "Ready for publishing! Run again with 'Actually publish' checked." >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
+          echo "- [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)" >> $GITHUB_STEP_SUMMARY
+          echo "- [firestore_odm](https://pub.dev/packages/firestore_odm)" >> $GITHUB_STEP_SUMMARY
+          echo "- [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)" >> $GITHUB_STEP_SUMMARY
 
-  # Verify publication success
+  # Real publish verification: exact-version readback from the pub.dev API.
   verify-publish:
     runs-on: ubuntu-latest
     if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
     needs: release
     steps:
-      - name: 📚 Git Checkout  
+      - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: ✅ Verify Published Packages
+      - name: 📦 Load Package Versions
         run: |
-          echo "Waiting for packages to be available on pub.dev..."
-          sleep 30
-          
-          # Try to fetch published packages from pub.dev
-          dart pub deps --style=tree firestore_odm_annotation || echo "Package not yet available"
-          dart pub deps --style=tree firestore_odm || echo "Package not yet available"  
-          dart pub deps --style=tree firestore_odm_builder || echo "Package not yet available"
-          
-          echo "✅ Verification completed"
+          echo "PACKAGE_VERSION_ANNOTATION=$(grep '^version:' packages/firestore_odm_annotation/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
+          echo "PACKAGE_VERSION_RUNTIME=$(grep '^version:' packages/firestore_odm/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
+          echo "PACKAGE_VERSION_BUILDER=$(grep '^version:' packages/firestore_odm_builder/pubspec.yaml | awk '{print $2}')" >> "$GITHUB_ENV"
+
+      - name: ✅ Verify Published Packages (exact-version readback)
+        run: |
+          for pkg in firestore_odm_annotation:$PACKAGE_VERSION_ANNOTATION \
+                       firestore_odm:$PACKAGE_VERSION_RUNTIME \
+                       firestore_odm_builder:$PACKAGE_VERSION_BUILDER; do
+            name="${pkg%%:*}"; ver="${pkg##*:}"
+            for attempt in $(seq 1 18); do
+              body=$(curl -fsS "https://pub.dev/api/packages/$name") && break
+              sleep 10
+            done
+            if echo "$body" | grep -qE '"version"\s*:\s*"$ver"'; then
+              echo "✅ $name $ver verified on pub.dev"
+            else
+              echo "❌ $name $ver NOT found on pub.dev"
+              exit 1
+            fi
+          done

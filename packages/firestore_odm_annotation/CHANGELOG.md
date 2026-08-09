@@ -1,3 +1,13 @@
+## 5.0.0
+
+- **Stable release of the 5.0 clean break (ADR-0002)** — exact Firestore
+  semantics: native Timestamp storage, create/set/patch/delete write verbs,
+  no sentinels, one-shot server-side aggregates, typed Pipelines
+  (experimental), chunked bulk writes, stable documentId tie-breaker
+  pagination, real evidence gates (unit + goldens + benchmarks + emulator
+  e2e) and release readback. See `docs/adr/0002-semantics-contract-v5.md`
+  and `docs/guide/migration-guide-5.md`.
+
 ## 4.1.0-dev.1
 
 - Bump version to match other packages (typed pipeline API).
