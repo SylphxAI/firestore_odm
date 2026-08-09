@@ -48,59 +48,109 @@ Expression modelFromJsonRef(DartType type) {
 }
 
 /// Serializes a single value of [type] for storage or filter use.
+///
+/// Every branch is null-tolerant (null-aware operators or nullable-accepting
+/// helpers) so no re-evaluation of the source expression is needed — model
+/// fields are often getters (freezed) that cannot be promoted.
 Expression toJsonValue(
   DartType type,
   Expression value, {
   CustomConverter? customConverter,
   String? modelName,
 }) {
-  if (customConverter != null) return customConverter.toJson.call([value]);
   if (type is TypeParameterType) return value;
 
+  if (customConverter != null) {
+    return value
+        .equalTo(literalNull)
+        .conditional(literalNull, customConverter.toJson.call([value]));
+  }
   if (TypeAnalyzer.isDateTime(type)) {
     // Native Timestamp; the SDK converts DateTime<->Timestamp on the wire.
     return value;
   }
   if (TypeAnalyzer.isDuration(type)) {
+    if (type.isNullable) return _nullAware(value, 'inMicroseconds');
     return value.property('inMicroseconds');
   }
   if (TypeAnalyzer.isEnum(type)) {
-    final enumName = type.element!.name;
+    final enumName = type.element!.name!;
     return refer(
-      '_\$${modelName ?? _requireModelName(type)}${enumName}ToJson',
+      '_\$${modelName ?? _requireModelName(type)}$enumName'
+      'ToJson',
     ).call([value]);
   }
   if (TypeAnalyzer.isMap(type)) {
     final (_, valueType) = TypeAnalyzer.mapTypes(type);
     if (valueType == null || !_needsConversion(valueType)) return value;
     final v = refer('v');
-    return value.property('map').call([
+    final mapped = value.property('map').call([
       Method(
         (m) => m
           ..requiredParameters.addAll([
             Parameter((p) => p..name = 'k'),
             Parameter((p) => p..name = 'v'),
           ])
-          ..body = refer(
-            'MapEntry',
-          ).call([refer('k'), toJsonValue(valueType, v)]).code,
+          ..body = refer('MapEntry').call([
+            refer('k'),
+            toJsonValue(valueType, v, modelName: modelName),
+          ]).code,
       ).closure,
     ]);
+    if (type.isNullable) {
+      return _nullAware(value, 'map').call([
+        Method(
+          (m) => m
+            ..requiredParameters.addAll([
+              Parameter((p) => p..name = 'k'),
+              Parameter((p) => p..name = 'v'),
+            ])
+            ..body = refer('MapEntry').call([
+              refer('k'),
+              toJsonValue(valueType, v, modelName: modelName),
+            ]).code,
+        ).closure,
+      ]);
+    }
+    return mapped;
   }
   if (TypeAnalyzer.isIterable(type)) {
     final elementType = TypeAnalyzer.iterableElementType(type);
     if (!_needsConversion(elementType)) return value;
     final e = refer('e');
-    return value.property('map').call([
-      Method(
-        (m) => m
-          ..requiredParameters.add(Parameter((p) => p..name = 'e'))
-          ..body = toJsonValue(elementType, e).code,
-      ).closure,
-    ]);
+    final mapped = value
+        .property('map')
+        .call([
+          Method(
+            (m) => m
+              ..requiredParameters.add(Parameter((p) => p..name = 'e'))
+              ..body = toJsonValue(elementType, e, modelName: modelName).code,
+          ).closure,
+        ])
+        .property('toList')
+        .call(const []);
+    if (type.isNullable) {
+      return _nullAware(value, 'map')
+          .call([
+            Method(
+              (m) => m
+                ..requiredParameters.add(Parameter((p) => p..name = 'e'))
+                ..body = toJsonValue(elementType, e, modelName: modelName).code,
+            ).closure,
+          ])
+          .property('toList')
+          .call(const []);
+    }
+    return mapped;
   }
   if (isUserType(type)) {
-    return modelToJsonRef(type).call([value]);
+    if (hasOwnToJson(type as InterfaceType)) {
+      if (type.isNullable) {
+        return _nullAware(value, 'toJson').call(const []);
+      }
+      return value.property('toJson').call(const []);
+    }
+    return refer('${type.element.name!}ToJson').call([value]);
   }
   return value;
 }
@@ -136,10 +186,10 @@ Expression fromJsonValue(
       final keyRef = keyType?.reference ?? refer('String');
       final valueRef = valueType?.reference ?? refer('dynamic');
       if (valueType == null || !_needsConversion(valueType)) {
-        return casted.property('cast').call(const [], {
-          'K': keyRef,
-          'V': valueRef,
-        });
+        return casted.property('cast').call(const [], const {}, [
+          keyRef,
+          valueRef,
+        ]);
       }
       final v = refer('v');
       return casted
@@ -157,7 +207,7 @@ Expression fromJsonValue(
             ).closure,
           ])
           .property('cast')
-          .call(const [], {'K': keyRef, 'V': valueRef});
+          .call(const [], const {}, [keyRef, valueRef]);
     }
     if (TypeAnalyzer.isIterable(type)) {
       final elementType = TypeAnalyzer.iterableElementType(type);
@@ -169,7 +219,7 @@ Expression fromJsonValue(
           Method(
             (m) => m
               ..requiredParameters.add(Parameter((p) => p..name = 'e'))
-              ..body = fromJsonValue(elementType, e).code,
+              ..body = _body(fromJsonValue(elementType, e)).code,
           ).closure,
         ]);
       } else {
@@ -178,12 +228,13 @@ Expression fromJsonValue(
       if (_isSetType(type)) {
         return inner.property('toSet').call(const []).property('cast').call(
           const [],
-          {'T': elementType.reference},
+          const {},
+          [elementType.reference],
         );
       }
-      return inner.property('cast').call(const [], {
-        'T': elementType.reference,
-      });
+      return inner.property('cast').call(const [], const {}, [
+        elementType.reference,
+      ]);
     }
     if (isUserType(type)) {
       return modelFromJsonRef(
@@ -230,15 +281,19 @@ List<Spec> generateConverters(InterfaceType type) {
       Method(
         (m) => m
           ..name = '${type.element.name}ToJson'
-          ..returns = refer('Map<String, dynamic>')
+          ..types.addAll(type.element.typeParameters.map((t) => t.reference))
+          ..returns = refer('Map<String, dynamic>?')
           ..requiredParameters.add(
             Parameter(
               (p) => p
                 ..name = 'instance'
-                ..type = type.reference,
+                ..type = _nullableReference(type),
             ),
           )
-          ..body = literalMap(entries).code,
+          ..body = refer('instance')
+              .equalTo(literalNull)
+              .conditional(literalNull, literalMap(entries))
+              .code,
       ),
     );
   }
@@ -257,6 +312,7 @@ List<Spec> generateConverters(InterfaceType type) {
       Method(
         (m) => m
           ..name = '${type.element.name}FromJson'
+          ..types.addAll(type.element.typeParameters.map((t) => t.reference))
           ..returns = type.reference
           ..requiredParameters.add(
             Parameter(
@@ -335,10 +391,21 @@ List<Spec> _enumHelpers(String helperName, InterfaceType enumType) {
           Parameter(
             (p) => p
               ..name = 'value'
-              ..type = enumType.reference,
+              ..type = TypeReference(
+                (b) => b
+                  ..symbol = enumType.element.name!
+                  ..url = enumType.element.library.uri.toString()
+                  ..isNullable = true,
+              ),
           ),
         )
-        ..body = literalMap(toEntries).index(refer('value')).code,
+        ..body = refer('value')
+            .equalTo(literalNull)
+            .conditional(
+              literalNull,
+              literalMap(toEntries).index(refer('value')),
+            )
+            .code,
     ),
     Method(
       (m) => m
@@ -352,7 +419,7 @@ List<Spec> _enumHelpers(String helperName, InterfaceType enumType) {
           ),
         )
         ..body = Code(
-          'switch (value) { ${_enumSwitchCases(fromEntries)} _ => throw ArgumentError("Unknown enum value for $enumName"), }',
+          'return switch (value) { ${_enumSwitchCases(fromEntries)} _ => throw ArgumentError("Unknown enum value for $enumName"), };',
         ),
     ),
   ];
@@ -376,3 +443,33 @@ String _enumSwitchCases(Map<Expression, Expression> fromEntries) {
   }
   return buffer.toString();
 }
+
+/// Renders [expr] as a `return` statement for closure bodies (CodeExpression
+/// bodies would otherwise emit as expression statements without `return`).
+Expression _body(Expression expr) {
+  final emitter = DartEmitter(useNullSafetySyntax: true);
+  return CodeExpression(Code('return ${expr.accept(emitter)};'));
+}
+
+/// Renders `value?.member` (or `value?.member(args)`) without re-evaluating
+/// [value]; required because model fields are often getters that cannot be
+/// promoted after a null check.
+Expression _nullAware(
+  Expression value,
+  String member, [
+  List<Expression>? args,
+]) {
+  final emitter = DartEmitter(useNullSafetySyntax: true);
+  final receiver = value.accept(emitter);
+  if (args == null) return CodeExpression(Code('$receiver?.$member'));
+  final renderedArgs = args.map((a) => a.accept(emitter)).join(', ');
+  return CodeExpression(Code('$receiver?.$member($renderedArgs)'));
+}
+
+TypeReference _nullableReference(InterfaceType type) => TypeReference(
+  (b) => b
+    ..symbol = type.element.name!
+    ..url = type.element.library.uri.toString()
+    ..types.addAll(type.typeArguments.map((t) => t.reference))
+    ..isNullable = true,
+);

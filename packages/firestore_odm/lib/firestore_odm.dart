@@ -2,6 +2,8 @@
 /// reflection, exact Firestore semantics (see `docs/adr/0002`).
 library firestore_odm;
 
+export 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
+
 export 'src/aggregate.dart';
 export 'src/batch.dart';
 export 'src/exceptions.dart';

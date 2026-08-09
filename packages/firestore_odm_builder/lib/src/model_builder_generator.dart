@@ -3,11 +3,9 @@
 /// pipeline selector + `pipeline()` extension.
 library;
 
-import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:code_builder/code_builder.dart';
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 import 'generators/converter_generator.dart';
@@ -16,32 +14,35 @@ import 'generators/selector_generator.dart';
 import 'utils/model_analyzer.dart';
 import 'utils/reference_utils.dart';
 
-class ModelBuilderGenerator extends GeneratorForAnnotation<FirestoreOdm> {
+class ModelBuilderGenerator extends Generator {
   const ModelBuilderGenerator();
 
+  /// A plain [Generator] (not `GeneratorForAnnotation`) for the same reason
+  /// as [SchemaGenerator2]: libraries that also carry `@Schema` variables
+  /// whose types are only resolvable after codegen would make source_gen's
+  /// annotation resolution throw.
   @override
-  String generateForAnnotatedElement(
-    Element element,
-    ConstantReader annotation,
-    BuildStep buildStep,
-  ) {
-    if (element is! InterfaceElement) {
-      throw InvalidGenerationSourceError(
-        '@FirestoreOdm can only be applied to classes.',
-        element: element,
-      );
-    }
-    final type = element.thisType;
-    final isGeneric = element.typeParameters.isNotEmpty;
+  Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
+    final classes = library.element.classes.where(
+      (c) => c.metadata.annotations.any(
+        (m) => m.computeConstantValue()?.type?.element?.name == 'FirestoreOdm',
+      ),
+    );
+    if (classes.isEmpty) return null;
 
-    final specs = <Spec>[
-      ...generateConverters(type),
-      generatePatchBuilder(type),
-      generateSelector(type, SelectorKind.filter),
-      generateSelector(type, SelectorKind.orderBy),
-      generateSelector(type, SelectorKind.aggregate),
-      if (!isGeneric) ...generatePipelineSurface(type),
-    ];
+    final specs = <Spec>[];
+    for (final cls in classes) {
+      final type = cls.thisType;
+      final isGeneric = cls.typeParameters.isNotEmpty;
+      specs.addAll([
+        ...generateConverters(type),
+        generatePatchBuilder(type),
+        generateSelector(type, SelectorKind.filter),
+        generateSelector(type, SelectorKind.orderBy),
+        generateSelector(type, SelectorKind.aggregate),
+        if (!isGeneric) ...generatePipelineSurface(type),
+      ]);
+    }
 
     return Library(
       (b) => b..body.addAll(specs),
@@ -64,7 +65,13 @@ class ModelBuilderGenerator extends GeneratorForAnnotation<FirestoreOdm> {
           refer('${modelName}OrderByBuilder'),
           refer('${modelName}AggregateBuilder'),
         ])
-        ..types.add(refer('S'))
+        ..types.add(
+          TypeReference(
+            (b) => b
+              ..symbol = 'S'
+              ..bound = refer('FirestoreSchema'),
+          ),
+        )
         ..methods.add(
           Method(
             (m) => m
@@ -73,16 +80,16 @@ class ModelBuilderGenerator extends GeneratorForAnnotation<FirestoreOdm> {
                 type.reference,
                 refer('${modelName}PipelineSelector'),
               ])
-              ..body = refer('TypedPipeline').newInstance([], {
-                '_pipeline': refer('ref')
+              ..body = refer('TypedPipeline').newInstance([
+                refer('ref')
                     .property('firestore')
                     .property('pipeline')
                     .call(const [])
                     .property('collection')
                     .call([refer('ref').property('path')]),
-                '_fromJson': _fromJsonRef(type),
-                '_documentIdField': _documentIdFieldLiteral(type),
-                '_selector': Method(
+                _fromJsonRef(type),
+                _documentIdFieldLiteral(type),
+                Method(
                   (m) => m
                     ..requiredParameters.add(
                       Parameter((p) => p..name = 'context'),
@@ -91,7 +98,7 @@ class ModelBuilderGenerator extends GeneratorForAnnotation<FirestoreOdm> {
                       '${modelName}PipelineSelector',
                     ).newInstance([], {'context': refer('context')}).code,
                 ).closure,
-              }).code,
+              ]).code,
           ),
         ),
     );

@@ -180,7 +180,15 @@ bool hasOwnToJson(InterfaceType type) {
 
 /// Whether the model provides its own `fromJson` factory or static method.
 bool hasOwnFromJson(InterfaceType type) {
-  if (type.constructors.any((c) => c.name == 'fromJson')) return true;
+  // Generic models (e.g. freezed `genericArgumentFactories`) need an extra
+  // type-argument converter the ODM cannot supply; their fromJson is always
+  // generated instead.
+  if (type.typeArguments.isNotEmpty) return false;
+  if (type.constructors.any(
+    (c) => c.name == 'fromJson' && c.formalParameters.length == 1,
+  )) {
+    return true;
+  }
   return type.methods.any(
     (m) => m.name == 'fromJson' && m.isStatic && m.formalParameters.length == 1,
   );

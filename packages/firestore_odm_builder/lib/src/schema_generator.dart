@@ -13,7 +13,6 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:code_builder/code_builder.dart';
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 import 'utils/model_analyzer.dart';
@@ -21,22 +20,26 @@ import 'utils/reference_utils.dart';
 import 'utils/string_utils.dart';
 
 /// Generator for `@Schema` top-level variables.
-class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
+///
+/// Implemented as a plain [Generator] (not `GeneratorForAnnotation`) because
+/// the schema variable's declared type references the generated schema class
+/// (`const TestSchema testSchema = _$TestSchema;`) and is therefore
+/// `InvalidType` before codegen — source_gen's annotation resolution would
+/// fail on it. We find the annotated variable through its metadata instead.
+class SchemaGenerator2 extends Generator {
   const SchemaGenerator2();
 
   @override
-  String generateForAnnotatedElement(
-    Element element,
-    ConstantReader annotation,
-    BuildStep buildStep,
-  ) {
-    if (element is! TopLevelVariableElement) {
-      throw InvalidGenerationSourceError(
-        '@Schema can only be applied to top-level variables.',
-        element: element,
+  Future<String?> generate(LibraryReader library, BuildStep buildStep) async {
+    for (final variable in library.element.topLevelVariables) {
+      final isSchema = variable.metadata.annotations.any(
+        (m) => m.computeConstantValue()?.type?.element?.name == 'Schema',
       );
+      if (isSchema) {
+        return _generateForSchema(variable);
+      }
     }
-    return _generateForSchema(element);
+    return null;
   }
 
   String _generateForSchema(TopLevelVariableElement element) {
@@ -48,20 +51,18 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
         element: element,
       );
     }
-    final schemaName = schemaType.element.name;
+    final schemaName = schemaType.element.name!;
     final collections = _extractCollections(element);
     _validate(collections);
 
     final byName = <String, List<SchemaCollectionInfo>>{};
     for (final c in collections) {
-      byName.putIfAbsent(_accessorName(c.path), () => []).add(c);
+      byName.putIfAbsent(_accessorName(c), () => []).add(c);
     }
 
     final specs = <Spec>[];
     final methods = <Method>[];
     for (final entry in byName.entries) {
-      final helpers = _pathHelpers(entry.key, entry.value);
-      specs.addAll(helpers);
       methods.addAll(_accessors(schemaType, entry.key, entry.value));
     }
 
@@ -73,51 +74,12 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
     );
     specs.add(extension);
 
+    // The schema class is declared by the user (ADR-0002) so the schema
+    // variable's type is resolvable before codegen; the generator only emits
+    // the extension.
     return Library(
       (b) => b.body.addAll(specs),
     ).accept(DartEmitter(useNullSafetySyntax: true)).toString();
-  }
-
-  /// Generates `String _<name>Path([String? p1, ...])` helpers dispatching by
-  /// arity for subcollection groups.
-  List<Spec> _pathHelpers(String name, List<SchemaCollectionInfo> collections) {
-    final subs = collections.where((c) => c.isSubcollection).toList()
-      ..sort(
-        (a, b) =>
-            _wildcards(a.path).length.compareTo(_wildcards(b.path).length),
-      );
-    if (subs.isEmpty) return const [];
-
-    final maxWildcards = _wildcards(subs.last.path).length;
-    // Ternary chain from deepest (most wildcards) down to the root literal.
-    Expression pathExpr = subs.any((c) => !c.isSubcollection)
-        ? literalString(_firstRoot(collections).path)
-        : literalNull;
-    for (final sub in subs.reversed) {
-      final argsCheck = _wildcards(sub.path)
-          .asMap()
-          .entries
-          .map((e) => refer('p${e.key + 1}').notEqualTo(literalNull))
-          .fold<Expression>(literalBool(true), (acc, e) => acc.and(e));
-      pathExpr = argsCheck.conditional(_interpolate(sub.path), pathExpr);
-    }
-
-    return [
-      Method(
-        (m) => m
-          ..name = '_${name}Path'
-          ..returns = refer('String')
-          ..optionalParameters.addAll([
-            for (var i = 0; i < maxWildcards; i++)
-              Parameter(
-                (p) => p
-                  ..name = 'p${i + 1}'
-                  ..type = TypeReferences.string,
-              ),
-          ])
-          ..body = pathExpr.code,
-      ),
-    ];
   }
 
   List<Method> _accessors(
@@ -135,6 +97,8 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
 
     if (hasRoot) {
       final root = _firstRoot(collections);
+      // Root collection: a getter returning FirestoreCollection; documents are
+      // reached through its callable `call(id)` (e.g. `db.users('id')`).
       methods.add(
         Method(
           (m) => m
@@ -150,57 +114,35 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
       );
     }
 
-    if (subs.isEmpty && hasRoot) {
-      // Root document accessor: users(String id).
-      final root = _firstRoot(collections);
+    if (subs.isEmpty) return methods;
+
+    // Subcollections: one method per distinct subcollection path, named from
+    // the full path (e.g. 'users/*/posts' -> `usersPosts(String userId)`).
+    for (final sub in subs) {
+      final subName = _subAccessorName(sub.path);
+      final wildcards = _wildcards(sub.path);
       methods.add(
         Method(
           (m) => m
-            ..name = name
-            ..returns = _documentType(schemaType, root)
-            ..requiredParameters.add(
-              Parameter(
-                (p) => p
-                  ..name = 'id'
-                  ..type = TypeReferences.string,
-              ),
-            )
+            ..name = subName
+            ..returns = _collectionType(schemaType, sub)
+            ..optionalParameters.addAll([
+              for (var i = 0; i < wildcards.length; i++)
+                Parameter(
+                  (p) => p
+                    ..name = 'p${i + 1}'
+                    ..type = TypeReferences.nullableString,
+                ),
+            ])
             ..body = _collectionInstance(
               schemaType,
-              root,
-              _literalPath(root.path),
-            ).property('doc').call([refer('id')]).code,
+              sub,
+              _literalPath(sub.path),
+              pathOverride: _interpolate(sub.path),
+            ).code,
         ),
       );
-      return methods;
     }
-
-    if (subs.isEmpty) return methods;
-
-    final maxWildcards = _wildcards(subs.last.path).length;
-    methods.add(
-      Method(
-        (m) => m
-          ..name = name
-          ..returns = _collectionType(schemaType, subs.first)
-          ..optionalParameters.addAll([
-            for (var i = 0; i < maxWildcards; i++)
-              Parameter(
-                (p) => p
-                  ..name = 'p${i + 1}'
-                  ..type = TypeReferences.string,
-              ),
-          ])
-          ..body = _collectionInstance(
-            schemaType,
-            subs.first,
-            _literalPath(subs.first.path),
-            pathOverride: refer(
-              '_${name}Path',
-            ).call([for (var i = 0; i < maxWildcards; i++) refer('p${i + 1}')]),
-          ).code,
-      ),
-    );
     return methods;
   }
 
@@ -262,7 +204,20 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
           ..body = refer('value').property('toJson').call(const []).code,
       ).closure;
     }
-    return refer('${modelType.element.name}ToJson');
+    // Generated converters are null-tolerant (nullable instance + nullable
+    // result); the ODM always has a full model, so unwrap the null case.
+    final name = '${modelType.element.name}ToJson';
+    return Method(
+      (m) => m
+        ..requiredParameters.add(
+          Parameter(
+            (p) => p
+              ..name = 'value'
+              ..type = modelType.reference,
+          ),
+        )
+        ..body = Code('return $name(value) ?? const <String, dynamic>{};'),
+    ).closure;
   }
 
   Expression _fromJsonRef(InterfaceType modelType) {
@@ -277,25 +232,14 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
     SchemaCollectionInfo c,
   ) {
     final modelName = c.modelType.element.name;
+    final typeArgs = c.modelType.typeArguments.map((t) => t.reference).toList();
     return generic('FirestoreCollection', [
       schemaType.reference,
       c.modelType.reference,
-      refer('${modelName}PatchBuilder'),
-      refer('${modelName}FilterBuilder'),
-      refer('${modelName}OrderByBuilder'),
-      refer('${modelName}AggregateBuilder'),
-    ]);
-  }
-
-  TypeReference _documentType(
-    InterfaceType schemaType,
-    SchemaCollectionInfo c,
-  ) {
-    final modelName = c.modelType.element.name;
-    return generic('FirestoreDocument', [
-      schemaType.reference,
-      c.modelType.reference,
-      refer('${modelName}PatchBuilder'),
+      generic('${modelName}PatchBuilder', typeArgs),
+      generic('${modelName}FilterBuilder', typeArgs),
+      generic('${modelName}OrderByBuilder', typeArgs),
+      generic('${modelName}AggregateBuilder', typeArgs),
     ]);
   }
 
@@ -353,10 +297,17 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
 
   void _validate(List<SchemaCollectionInfo> collections) {
     final paths = <String>{};
+    final names = <String>{};
     for (final c in collections) {
       if (!paths.add(c.path)) {
         throw InvalidGenerationSourceError(
           'Duplicate @Collection path: ${c.path}',
+        );
+      }
+      final name = _accessorName(c);
+      if (c.isSubcollection && !names.add(name)) {
+        throw InvalidGenerationSourceError(
+          'Subcollection accessor name collision: $name (${c.path})',
         );
       }
       if (!_isValidPath(c.path)) {
@@ -384,8 +335,21 @@ class SchemaGenerator2 extends GeneratorForAnnotation<Schema> {
   List<String> _wildcards(String path) =>
       path.split('/').where((s) => s == '*').toList();
 
-  String _accessorName(String path) =>
-      path.split('/').last.camelCase().lowerFirst();
+  String _accessorName(SchemaCollectionInfo c) => c.isSubcollection
+      ? _subAccessorName(c.path)
+      : c.path.split('/').last.camelCase().lowerFirst();
+
+  /// Subcollection accessor name from the full path:
+  /// 'users/*/posts' -> 'usersPosts'; 'users/*/posts/*/comments' ->
+  /// 'usersPostsComments'.
+  String _subAccessorName(String path) {
+    final segments = path
+        .split('/')
+        .where((s) => s != '*')
+        .map((s) => s.camelCase())
+        .toList();
+    return segments.join('').lowerFirst();
+  }
 }
 
 /// Collection metadata extracted from a `@Collection` annotation.
@@ -407,5 +371,13 @@ abstract final class TypeReferences {
     (b) => b
       ..symbol = 'String'
       ..url = 'dart:core',
+  );
+
+  /// Nullable String (`String?`).
+  static final nullableString = TypeReference(
+    (b) => b
+      ..symbol = 'String'
+      ..url = 'dart:core'
+      ..isNullable = true,
   );
 }

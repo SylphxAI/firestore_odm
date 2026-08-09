@@ -13,6 +13,11 @@ import '../utils/reference_utils.dart';
 import '../utils/type_analyzer.dart';
 import 'converter_generator.dart';
 
+Expression _body(Expression expr) {
+  final emitter = DartEmitter(useNullSafetySyntax: true);
+  return CodeExpression(Code('return ${expr.accept(emitter)};'));
+}
+
 /// Generates `<Model>PatchBuilder` for [type].
 Class generatePatchBuilder(InterfaceType type) {
   final modelName = type.element.name;
@@ -31,9 +36,7 @@ Class generatePatchBuilder(InterfaceType type) {
       ..extend = generic('PatchBuilder', [type.element.thisType.reference])
       ..constructors.add(
         Constructor(
-          (b) => b
-            ..constant = typeParams.isEmpty
-            ..docs.add('/// Creates a patch builder for `$modelName`.'),
+          (b) => b..docs.add('/// Creates a patch builder for `$modelName`.'),
         ),
       )
       ..fields.addAll(fields),
@@ -60,31 +63,40 @@ Field _generateField(InterfaceType model, FieldInfo field) {
   );
 
   final String updateType;
+  TypeReference? listElementType;
   final Map<String, Expression> args = {
     'field': fieldNode,
     'toJson': Method(
       (m) => m
         ..requiredParameters.add(Parameter((p) => p..name = 'value'))
-        ..body = toJson.code,
+        ..body = _body(toJson).code,
     ).closure,
   };
+
+  final needsElementConverter =
+      TypeAnalyzer.isIterable(type) &&
+      !TypeAnalyzer.isMap(type) &&
+      !type.isNullable;
 
   if (TypeAnalyzer.isDateTime(type) && !_isTimestamp(type)) {
     updateType = 'DateTimeFieldUpdate';
   } else if (TypeAnalyzer.isNumeric(type) && !type.isNullable) {
     updateType = 'NumericFieldUpdate';
-  } else if (TypeAnalyzer.isIterable(type) && !TypeAnalyzer.isMap(type)) {
+  } else if (needsElementConverter) {
     updateType = 'ListFieldUpdate';
     final elementType = TypeAnalyzer.iterableElementType(type);
     args['elementToJson'] = Method(
       (m) => m
         ..requiredParameters.add(Parameter((p) => p..name = 'value'))
-        ..body = toJsonValue(
-          elementType,
-          refer('value'),
-          modelName: model.element.name,
+        ..body = _body(
+          toJsonValue(
+            elementType,
+            refer('value'),
+            modelName: model.element.name,
+          ),
         ).code,
     ).closure;
+    listElementType = elementType.reference;
   } else {
     updateType = 'FieldUpdate';
   }
@@ -95,7 +107,11 @@ Field _generateField(InterfaceType model, FieldInfo field) {
       ..name = name
       ..modifier = FieldModifier.final$
       ..late = true
-      ..type = generic(updateType, [type.reference])
+      ..type = switch (updateType) {
+        'DateTimeFieldUpdate' => refer(updateType),
+        'ListFieldUpdate' => generic(updateType, [listElementType!]),
+        _ => generic(updateType, [type.reference]),
+      }
       ..assignment = refer(updateType).newInstance([], args).code,
   );
 }

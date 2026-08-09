@@ -67,6 +67,9 @@ class FirestoreCollection<
   JsonDeserializer<T> get fromJson => _fromJson;
 
   /// A typed document handle for [id].
+  FirestoreDocument<S, T, P> call(String id) => doc(id);
+
+  /// A typed document handle for [id].
   FirestoreDocument<S, T, P> doc(String id) => FirestoreDocument<S, T, P>(
     ref: ref.doc(id),
     toJson: _toJson,

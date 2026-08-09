@@ -11,6 +11,11 @@ import '../utils/reference_utils.dart';
 import '../utils/type_analyzer.dart';
 import 'converter_generator.dart';
 
+Expression _body(Expression expr) {
+  final emitter = DartEmitter(useNullSafetySyntax: true);
+  return CodeExpression(Code('return ${expr.accept(emitter)};'));
+}
+
 enum SelectorKind { filter, orderBy, aggregate, pipeline }
 
 /// Generates `<Model><Kind>Builder` (or `PipelineSelector`) for [type].
@@ -148,7 +153,6 @@ Constructor _constructor(
   }
   return Constructor(
     (b) => b
-      ..constant = typeParams.isEmpty
       ..optionalParameters.addAll(optional)
       ..initializers.addAll(
         kind == SelectorKind.orderBy || kind == SelectorKind.aggregate
@@ -216,11 +220,13 @@ Expression _fieldToJson(
   return Method(
     (m) => m
       ..requiredParameters.add(Parameter((p) => p..name = 'value'))
-      ..body = toJsonValue(
-        dartType,
-        refer('value'),
-        customConverter: customConverter,
-        modelName: modelName,
+      ..body = _body(
+        toJsonValue(
+          dartType,
+          refer('value'),
+          customConverter: customConverter,
+          modelName: modelName,
+        ),
       ).code,
   ).closure;
 }
@@ -234,7 +240,9 @@ Field _generateField(InterfaceType model, SelectorKind kind, FieldInfo field) {
 
   // Nested model: reference the nested model's selector class.
   if (isNested) {
-    final nestedName = '${dartType.element.name!}${_kindSuffix(kind)}';
+    final nestedName = kind == SelectorKind.pipeline
+        ? '${dartType.element.name!}PipelineSelector'
+        : '${dartType.element.name!}${_kindSuffix(kind)}';
     final nestedType = generic(
       nestedName,
       dartType.typeArguments.map((t) => t.reference).toList(),
