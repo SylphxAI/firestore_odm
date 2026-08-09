@@ -303,8 +303,10 @@ jobs:
   # cannot model Timestamp storage, index errors or real query semantics; this
   # lane is the deploy-layer behavior gate.
   e2e-emulator:
-    # macOS: cloud_firestore has macOS (and Windows) platform support; the
-    # Linux desktop target has no cloud_firestore implementation.
+    # Visibility lane only; the authoritative emulator gate runs in
+    # release.yml (e2e-gate) and blocks publishing. Hosted runners cannot
+    # foreground macOS GUI apps, so this lane is informational.
+    continue-on-error: true
     runs-on: macos-latest
     needs: [quality]
     steps:
