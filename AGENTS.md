@@ -5,7 +5,7 @@ Static engineering and delivery standards load from the active Skills runtime
 SSOT). Doctrine and Mission Control are retired historical lineage and must not
 be loaded as current instruction authority.
 
-Local truth: `PROJECT.md`, `.doctrine/project.json` when present.
+Local truth: `PROJECT.md`.
 
 ## Boundary hazards
 
