@@ -49,9 +49,7 @@ generated downstream APIs cannot be fully undone by source revert.
 
 ## References
 
-- Machine manifest: `.doctrine/project.json`
 - Public docs: `docs/README.md`
 - Package manifests: `packages/*/pubspec.yaml`
 - CI: `.github/workflows/ci.yml`
 - Release: `.github/workflows/release.yml`
-- Doctrine: https://github.com/SylphxAI/doctrine
