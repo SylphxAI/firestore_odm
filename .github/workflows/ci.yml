@@ -206,7 +206,14 @@ jobs:
         run: melos run generate
 
       - name: ⚡ Performance Benchmarks
-        run: melos exec --scope="flutter_example" -- flutter test --dart-define=PERFORMANCE_TEST=true --concurrency=1
+        run: melos exec --scope="flutter_example" -- flutter test test/benchmarks_test.dart --concurrency=1 2>&1 | tee /tmp/benchmarks.txt
+
+      - name: 📦 Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: /tmp/benchmarks.txt
+          retention-days: 30
 
   # Security scanning
   security:
@@ -215,7 +222,7 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter & Bootstrap
+      - name: 🐦 Setup Flutter & Bootstrap (produces pubspec.lock files)
         run: |
           # These self-hosted runners intermittently produce an incomplete
           # Flutter checkout (empty bin/internal/engine.version), which yields a
@@ -242,12 +249,22 @@ jobs:
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
+      - name: 🔒 Known-Vulnerability Scan
+        run: |
+          curl -fsSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 \
+            -o /tmp/osv-scanner
+          chmod +x /tmp/osv-scanner
+          /tmp/osv-scanner --lockfile=apps/flutter_example/pubspec.lock \
+            --lockfile=packages/firestore_odm/pubspec.lock \
+            --lockfile=packages/firestore_odm_annotation/pubspec.lock \
+            --lockfile=packages/firestore_odm_builder/pubspec.lock
+
       - name: 🔒 Security Audit
         run: |
-          # Check outdated dependencies
+          # Check outdated dependencies (informational).
           melos run deps:outdated --no-select || true
 
-          # Check for known security vulnerabilities
+          # Package scoring (informational).
           dart pub global activate pana
           melos exec -- "dart pub global run pana --no-warning ."
 
@@ -289,10 +306,54 @@ jobs:
         run: |
           melos exec --scope="firestore_odm*" -- "dart doc --validate-links"
 
+  # Live semantics e2e against the Firestore emulator (ADR-0002). The fake
+  # cannot model Timestamp storage, index errors or real query semantics; this
+  # lane is the deploy-layer behavior gate.
+  e2e-emulator:
+    # Visibility lane; the authoritative emulator gate runs in release.yml
+    # (e2e-gate) and blocks publishing. Windows: cloud_firestore has Windows
+    # platform support and the owned Windows runner can run GUI apps.
+    continue-on-error: true
+    runs-on: [self-hosted, sylphx, windows, standard]
+    needs: [quality]
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java (emulator runtime; firebase-tools requires 21+)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          cache: true
+
+      - name: 🔧 Setup Melos & Bootstrap
+        run: |
+          dart pub global activate melos
+          melos bootstrap
+
+      - name: 🏗️ Generate Code
+        run: melos run generate
+
+      - name: 🔥 Run Emulator E2E
+        working-directory: apps/flutter_example
+        shell: bash
+        run: |
+          npx --yes firebase-tools@latest emulators:exec \
+            --only firestore --project demo-project \
+            "flutter test integration_test -d windows --timeout 5m"
+
   # CI results summary
   ci-success:
     runs-on: sylphx-linux-standard
-    needs: [quality, test, coverage, security, docs]
+    # e2e-emulator is the RELEASE gate (ADR-0001/0002): it runs on every CI
+    # run for visibility, but release.yml re-runs it and gates publishing.
+    needs: [quality, test, coverage, security, docs, performance]
     if: always()
     steps:
       - name: 📊 CI Results Summary
@@ -334,7 +395,8 @@ jobs:
           echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
       - name: ❌ Fail if any job failed
-        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' }}
+        # performance only runs on pull requests; a skipped result is OK.
+        if: ${{ needs.quality.result != 'success' || needs.test.result != 'success' || needs.coverage.result != 'success' || needs.security.result != 'success' || needs.docs.result != 'success' || (needs.performance.result != 'success' && needs.performance.result != 'skipped') }}
         run: exit 1
 
       - name: ✅ All CI Checks Passed

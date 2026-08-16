@@ -1,47 +1,38 @@
 # Schema Definition
 
-The foundation of the ODM is the **Schema**. The schema is a central definition of your database structure, telling the ODM which collections exist and what data models they use.
-
-## How to Define a Schema
-
-You create a single schema file that defines all your collections. You do this by creating a top-level variable and annotating it with `@Schema()` and one or more `@Collection<Model>(collectionPath)` annotations.
+The schema is the source of truth for generated collection accessors. Declare
+the schema type by hand so it is resolvable before code generation:
 
 ```dart
-// lib/schema.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'models/user.dart';
-import 'models/post.dart';
+import 'package:firestore_odm/firestore_odm.dart';
 
-part 'schema.odm.dart';
+part 'schema.g.dart';
+
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
 
 @Schema()
-@Collection<User>("users")
-@Collection<Post>("posts")
-final firestoreDatabase = _$FirestoreDatabase; // The variable name can be anything
+@Collection<User>('users')
+@Collection<Post>('posts')
+const appSchema = AppSchema();
 ```
 
-After defining your schema and models, run the build runner:
+Run the generator:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-This generates the necessary code to create a type-safe API for your database.
-
-## Using the ODM Instance
-
-You then create an instance of your ODM, which gives you access to your collections.
+The generated `<library>.g.dart` extension exposes typed collection getters
+and callable document handles:
 
 ```dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_odm/firestore_odm.dart';
-import 'schema.dart'; // Your schema file
+final db = FirestoreODM(appSchema, firestore: FirebaseFirestore.instance);
+final users = db.users;
+final user = db.users('user-1');
+```
 
-final firestore = FirebaseFirestore.instance;
-
-// Create the ODM instance
-final db = FirestoreODM(firestoreDatabase, firestore: firestore);
-
-// Now you can access your collections with type-safety
-final usersCollection = db.users;
-final postsCollection = db.posts;
+Multiple schema instances are supported. Each `FirestoreODM` instance owns its
+schema and Firestore client; no global singleton or generated service registry
+is required.

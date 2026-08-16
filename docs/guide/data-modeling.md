@@ -111,30 +111,23 @@ class Task {
 }
 ```
 
-## Using `fast_immutable_collections`
+## Collection fields
 
-For applications requiring high-performance, truly immutable collections, the ODM seamlessly integrates with the [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections) package. Simply use `IList`, `IMap`, or `ISet` in your models.
+Firestore stores arrays and maps as its native collection types. Model them as
+plain Dart `List`, `Map`, or `Set` fields; the ODM serializes them according to
+the v5 storage contract. There is no `fast_immutable_collections` dependency
+or compatibility adapter in v5.
 
 ```dart
-// lib/models/immutable_user.dart
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'immutable_user.freezed.dart';
-part 'immutable_user.g.dart';
-
 @freezed
-class ImmutableUser with _$ImmutableUser {
-  const factory ImmutableUser({
+class User with _$User {
+  const factory User({
     @DocumentIdField() required String id,
-    required String name,
-    required IList<String> tags,
-    required IMap<String, String> settings,
-    required ISet<String> categories,
-  }) = _ImmutableUser;
+    required List<String> tags,
+    required Map<String, String> settings,
+  }) = _User;
 
-  factory ImmutableUser.fromJson(Map<String, dynamic> json) => _$ImmutableUserFromJson(json);
+  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 }
 ```
 
@@ -178,6 +171,7 @@ class JsonKeyUser {
   factory JsonKeyUser.fromJson(Map<String, dynamic> json) => _$JsonKeyUserFromJson(json);
   Map<String, dynamic> toJson() => _$JsonKeyUserToJson(this);
 }
+```
 
 ## Troubleshooting Nested Object Serialization
 

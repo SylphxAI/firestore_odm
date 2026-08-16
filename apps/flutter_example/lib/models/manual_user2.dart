@@ -4,7 +4,7 @@ import 'package:firestore_odm/firestore_odm.dart';
 part 'manual_user2.g.dart';
 
 @firestoreOdm
-class ManualUser2 with EquatableMixin {
+class ManualUser2 with Equatable {
   const ManualUser2({
     required this.id,
     required this.name,

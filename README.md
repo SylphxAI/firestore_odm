@@ -11,7 +11,7 @@
 [![pub package](https://img.shields.io/pub/v/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
 [![license](https://img.shields.io/github/license/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
 
-**20% faster runtime** • **15% less code** • **Zero reflection** • **Full type safety**
+**Zero reflection** • **Full type safety** • **Native Timestamp** • **Measured performance**
 
 [Documentation](https://SylphxAI.github.io/firestore_odm/) • [Getting Started](https://SylphxAI.github.io/firestore_odm/guide/getting-started.html) • [Examples](#-quick-start)
 
@@ -41,37 +41,52 @@ String name = user.name;  // ✅ IDE autocomplete, compile-time checking
 int age = user.profile.age;  // ✅ Type-safe nested access
 ```
 
-**Result: Zero reflection, 20% faster runtime, eliminate runtime errors.**
+**Result: Zero reflection, exact Firestore semantics, eliminate runtime errors.**
 
 ---
 
-## 🎉 New in Version 4.0
+## 🎉 New in Version 5.0 (clean break, ADR-0002)
 
-Building on 3.0's performance foundation, **4.0 expands type coverage and ergonomics** on top of a fully reworked code generator.
+- **Exact Firestore semantics** - DateTime ↔ native Timestamp both directions;
+  the ODM owns storage serialization.
+- **Honest write verbs** - `create` (returns the generated ID), `set`, `patch`
+  (six FieldValue-shaped ops), `delete`. No sentinels, no `modify()` magic.
+- **One-shot server-side aggregates** - no fake client-side streaming.
+- **Typed bulk writes** - `patchAll` / `deleteAll` chunked to Firestore's
+  500-write batch limit.
+- **Stable pagination** - orderBy with the `$.documentId` tie-breaker selector.
+- **Recorded benchmarks + emulator e2e lane** - measured, not asserted.
 
-### New in 4.0
+## 🔭 Capabilities retained in the v5 contract
+
+These capabilities remain available under the v5 semantics contract:
+
 - ✅ **Enum support** - `@JsonValue` with both string *and* numeric values, enums in `orderBy()`, and default-value generation
-- 🧪 **Firestore Pipelines** *(experimental)* - `collection.pipeline()` for Enterprise-edition pipeline queries (see the [release notes](https://SylphxAI.github.io/firestore_odm/guide/version-4.0-release-notes.html))
+- 🧪 **Firestore Pipelines** *(experimental)* - `collection.pipeline()` for Enterprise-edition pipeline queries (see [ADR-0001](docs/adr/0001-firestore-pipelines.md))
 - ✅ **Automatic nested-class imports** - filter, patch, aggregate, and `orderBy` selectors for nested types need no manual imports
 - ✅ **Stronger nullable handling** - nullable `Map` fields, and nested `fromJson` factories that accept nullable input no longer crash when a field is missing
-- ✅ **Server timestamps on insert** - not only on updates, and honored inside batches
 - ✅ **Batch & transaction patch builders** - atomic patch operations in `runBatch` / `runTransaction`
-- ✅ **Reworked code generator** - cleaner filter/patch/aggregate/orderBy builders and converters on a unified `FieldPath` model
+- ✅ **Unified code generator** - converters and filter/orderBy/aggregate/patch selectors share one generated model surface
 
-### Performance (established in 3.0, retained in 4.0)
+### Performance (measured, not asserted)
 
-| Metric | Improvement | Impact |
-|--------|-------------|--------|
-| **Runtime Performance** | **20% faster** | Optimized code generation |
-| **Generated Code** | **15% smaller** | Extension-based architecture |
-| **Compilation Speed** | **<1 second** | Complex schemas compile instantly |
-| **Runtime Overhead** | **Zero** | All magic at compile time |
+The repo ships a recorded benchmark harness (`apps/flutter_example/test/benchmarks_test.dart`,
+run by the `performance` CI lane). Numbers are recorded per run; claims without
+measurements are not made.
+
+| Metric | How it is measured |
+|--------|--------------------|
+| Serialization round-trip | `BENCH serialization_roundtrip_us_per_op` (Stopwatch, 10k iterations) |
+| Patch operation latency | `BENCH patch_op_ms_per_op` (1000 ops against the test double) |
+| Runtime overhead | Zero reflection — all magic happens at compile time |
 
 ### Carried over from 3.0
-- ✅ **Full generic model support** - Generic classes with type-safe patch operations
-- ✅ **Complete JsonKey & JsonConverter support** - Full serialization control
-- ✅ **Automatic conversion fallbacks** - JsonConverter optional in most cases
-- ✅ **Enhanced map operations** - Comprehensive map field support with atomic ops
+- ✅ **Full generic model support** - generic classes with type-safe patch
+  operations and converter-argument threading (freezed-style `toT`/`fromT`)
+- ✅ **JsonKey subset** (`name`, `ignore`, `includeFromJson`/`includeToJson`)
+  and `@JsonConverter` — documented honestly, no silent partial support
+- ✅ **ODM-owned storage serialization** - native Timestamp both directions;
+  your model's `toJson`/`fromJson` remain for JSON interchange only
 
 ---
 
@@ -83,9 +98,9 @@ Building on 3.0's performance foundation, **4.0 expands type coverage and ergono
 |---------|-------------------|---------------|
 | **Type Safety** | ❌ Map<String, dynamic> | ✅ Strong types throughout |
 | **Query Building** | ❌ String-based, error-prone | ✅ Type-safe with IDE support |
-| **Data Updates** | ❌ Manual map construction | ✅ Two powerful strategies |
+| **Data Updates** | ❌ Manual map construction | ✅ Explicit typed Firestore primitives |
 | **Generic Support** | ❌ No generic handling | ✅ Full generic models |
-| **Aggregations** | ❌ Basic count only | ✅ Comprehensive + streaming |
+| **Aggregations** | ❌ Basic count only | ✅ One-shot count/sum/average (server-side) |
 | **Pagination** | ❌ Manual, risky | ✅ Smart Builder, zero risk |
 | **Transactions** | ❌ Manual read-before-write | ✅ Automatic deferred writes |
 | **Runtime Errors** | ❌ Common | ✅ Eliminated at compile-time |
@@ -93,11 +108,11 @@ Building on 3.0's performance foundation, **4.0 expands type coverage and ergono
 ### Lightning Fast Code Generation
 
 - 🚀 **Inline-first optimized** - Callables and Dart extensions for maximum performance
-- 📦 **15% less generated code** - Smart generation without bloating your project
-- ⚡ **20% performance improvement** - Optimized runtime execution
+- 📦 **Small generated surface** - one unified codegen pipeline per model
+- ⚡ **Measured performance** - recorded benchmark harness in CI
 - 🔄 **Model reusability** - Same model works in collections and subcollections
 - ⏱️ **Sub-second generation** - Complex schemas compile in under 1 second
-- 🎯 **Zero runtime overhead** - All magic happens at compile time
+- 🎯 **Zero runtime overhead** - All magic happens at compile time (no reflection)
 
 ### Revolutionary Features
 
@@ -105,33 +120,32 @@ Building on 3.0's performance foundation, **4.0 expands type coverage and ergono
 ```dart
 // Get first page with ordering
 final page1 = await db.users
-  .orderBy(($) => ($.followers(descending: true), $.name()))
+  .orderBy(($) => ($.followers(descending: true), $.name(), $.documentId()))
   .limit(10)
   .get();
 
 // Get next page with perfect type-safety - zero inconsistency risk
 final page2 = await db.users
-  .orderBy(($) => ($.followers(descending: true), $.name()))
+  .orderBy(($) => ($.followers(descending: true), $.name(), $.documentId()))
   .startAfterObject(page1.last) // Auto-extracts cursor values
   .limit(10)
   .get();
 ```
 
-**Streaming Aggregations** - Real-time aggregation subscriptions:
+**One-shot Server-Side Aggregations** (ADR-0002 — no fake client-side
+streaming; server-side aggregate streams are added only when
+`cloud_firestore` exposes them):
 ```dart
-// Live statistics that update in real-time
-db.users
+final stats = await db.users
   .where(($) => $.isActive(isEqualTo: true))
   .aggregate(($) => (
     count: $.count(),
     averageAge: $.age.average(),
     totalFollowers: $.profile.followers.sum(),
   ))
-  .stream
-  .listen((stats) {
-    print('Live: ${stats.count} users, avg age ${stats.averageAge}');
-  });
-```
+  .get();
+print('${stats.count} users, avg ${stats.averageAge}');
+
 
 ---
 
@@ -151,11 +165,11 @@ final result = await FirebaseFirestore.instance
 ```dart
 // ✅ ODM - Type-safe query builder with IDE support
 final result = await db.users
-  .where(($) => $.and(
-    $.isActive(isEqualTo: true),
-    $.profile.followers(isGreaterThan: 100),
+  .where(($) =>
+    $.isActive(isEqualTo: true) &
+    $.profile.followers(isGreaterThan: 100) &
     $.age(isLessThan: 30),
-  ))
+  )
   .get();
 ```
 
@@ -170,23 +184,24 @@ await userDoc.update({
 ```
 
 ```dart
-// ✅ ODM - Two powerful update strategies
-
-// 1. Patch - Explicit atomic operations (Best Performance)
-await userDoc.patch(($) => [
-  $.profile.followers.increment(1),
-  $.tags.add('verified'),              // Add single element
-  $.tags.addAll(['premium', 'active']), // Add multiple elements
-  $.scores.removeAll([0, -1]),         // Remove multiple elements
-  $.lastLogin.serverTimestamp(),
+// ✅ ODM - Explicit typed patch operations (ADR-0002)
+await userDoc.patch((p) => [
+  p.profile.followers.increment(1),
+  p.age.increment(1),
+  p.tags.arrayUnion(['premium', 'active']), // atomic array union
+  p.scores.arrayRemove([0, -1]),            // atomic array remove
+  p.lastLogin.serverTimestamp(),            // server-set time
+  p.name.set('Renamed'),                    // plain set
+  p.oldField.delete(),                      // field delete
 ]);
-
-// 2. Modify - Smart atomic detection (Read + Auto-detect operations)
-await userDoc.modify((user) => user.copyWith(
-  age: user.age + 1,              // Auto-detects -> FieldValue.increment(1)
-  tags: [...user.tags, 'expert'], // Auto-detects -> FieldValue.arrayUnion()
-  lastLogin: FirestoreODM.serverTimestamp,
-));
+```
+Read-modify-write belongs in transactions, where it is safe:
+```dart
+await db.runTransaction((tx) async {
+  final txUsers = db.users.inTransaction(tx);
+  final user = await txUsers('jane').get();
+  txUsers('jane').patch((p) => [p.age.increment(1)]);
+});
 ```
 
 ---
@@ -292,17 +307,17 @@ import 'schema.dart';
 final firestore = FirebaseFirestore.instance;
 final db = FirestoreODM(appSchema, firestore: firestore);
 
-// Create a user with custom ID
-await db.users.insert(User(
+// Create a user with an explicit ID (full replace)
+await db.users.set(User(
   id: 'jane',
   name: 'Jane Smith',
   email: 'jane@example.com',
   age: 28,
 ));
 
-// Create a user with auto-generated ID
-await db.users.insert(User(
-  id: FirestoreODM.autoGeneratedId,
+// Create a user with a server-generated ID (the ID is returned)
+final id = await db.users.create(User(
+  id: '',
   name: 'John Doe',
   email: 'john@example.com',
   age: 30,
@@ -329,29 +344,24 @@ final youngUsers = await db.users
 @Collection<User>("users")
 @Collection<Post>("posts")
 @Collection<Post>("users/*/posts") // Same Post model, different location
-final appSchema = _$AppSchema;
+final appSchema = AppSchema();
 
-// Access user's posts
-final userPosts = db.users('jane').posts;
-await userPosts.insert(Post(id: 'post1', title: 'Hello World!'));
+// Access a user's posts (path-derived accessor: users/*/posts -> usersPosts)
+final userPosts = db.usersPosts('jane');
+await userPosts.set(Post(id: 'post1', title: 'Hello World!'));
 ```
 
-### Bulk Operations
+### Bulk Operations (chunked to Firestore's 500-write limit)
 ```dart
-// Update all premium users using patch (best performance)
+// Patch every match with the same typed operations
 await db.users
   .where(($) => $.isPremium(isEqualTo: true))
-  .patch(($) => [$.points.increment(100)]);
+  .patchAll([IncrementOperation(const FieldNode(components: ['points']), 100)]);
 
-// Update all premium users using modify (read + auto-detect atomic)
+// Delete every match
 await db.users
-  .where(($) => $.isPremium(isEqualTo: true))
-  .modify((user) => user.copyWith(points: user.points + 100));
-
-// Delete inactive users
-await db.users
-  .where(($) => $.status(isEqualTo: 'inactive'))
-  .delete();
+  .where(($) => $.isActive(isEqualTo: false))
+  .deleteAll();
 ```
 
 ### Smart Transactions
@@ -367,44 +377,40 @@ await db.runTransaction((tx) async {
 });
 ```
 
-### Atomic Batch Operations
+### Atomic Batch Operations (typed create/set/patch/delete)
 ```dart
 // Automatic management - simple and clean
 await db.runBatch((batch) {
-  batch.users.insert(newUser);
-  batch.posts.update(existingPost);
-  batch.users('user_id').posts.insert(userPost);
-  batch.users('old_user').delete();
+  final users = db.users.inBatch(batch);
+  users.set(newUser);
+  db.posts.inBatch(batch).set(existingPost);
+  db.usersPosts('user_id').inBatch(batch).set(userPost);
+  users.delete('old_user');
 });
 
 // Manual management - fine-grained control
 final batch = db.batch();
-batch.users.insert(user1);
-batch.users.insert(user2);
-batch.posts.update(post);
+db.users.inBatch(batch).set(user1);
+db.users.inBatch(batch).set(user2);
+db.posts.inBatch(batch).patch('p1', (p) => [p.likes.increment(1)]);
 await batch.commit();
 ```
 
-### Server Timestamps & Auto-Generated IDs
+### Server Timestamps & Generated IDs (no sentinels, ADR-0002)
 ```dart
-// Server timestamps using patch (best performance)
-await userDoc.patch(($) => [$.lastLogin.serverTimestamp()]);
+// Server timestamps are explicit patch operations
+await userDoc.patch((p) => [p.updatedAt.serverTimestamp()]);
 
-// Server timestamps using modify (read + smart detection)
-await userDoc.modify((user) => user.copyWith(
-  loginCount: user.loginCount + 1,  // Uses current value + auto-detects increment
-  lastLogin: FirestoreODM.serverTimestamp,
-));
-
-// Auto-generated document IDs
-await db.users.insert(User(
-  id: FirestoreODM.autoGeneratedId, // Server generates unique ID
+// Server-generated document IDs come from create()
+final id = await db.users.create(User(
+  id: '',
   name: 'John Doe',
   email: 'john@example.com',
 ));
 ```
 
-**⚠️ Server Timestamp Warning:** `FirestoreODM.serverTimestamp` must be used exactly as-is. Any arithmetic operations (`+`, `.add()`, etc.) will create a regular `DateTime` instead of a server timestamp. See the [Server Timestamps Guide](https://SylphxAI.github.io/firestore_odm/guide/server-timestamps.html) for alternatives.
+Server-set times use the explicit patch op (ADR-0002 — no sentinels):
+`patch((p) => [p.updatedAt.serverTimestamp()])`.
 
 ---
 
@@ -412,12 +418,14 @@ await db.users.insert(User(
 
 ### Optimized Code Generation
 
-| Metric | Value | Benefit |
-|--------|-------|---------|
-| **Runtime Performance** | **+20%** | Optimized execution paths |
-| **Generated Code Size** | **-15%** | Smart generation without bloat |
-| **Compilation Time** | **<1 second** | Complex schemas compile instantly |
-| **Runtime Overhead** | **Zero** | All magic at compile time |
+| Metric | How it is measured |
+|--------|--------------------|
+| Serialization round-trip | recorded `BENCH serialization_roundtrip_us_per_op` |
+| Patch operation latency | recorded `BENCH patch_op_ms_per_op` |
+| Runtime overhead | zero reflection — all magic at compile time |
+
+Claims without measurements are not made; the harness runs in the
+`performance` CI lane (`apps/flutter_example/test/benchmarks_test.dart`).
 
 ### Advanced Capabilities
 - ✅ **Complex logical operations** - `and()` and `or()`
@@ -425,14 +433,14 @@ await db.users.insert(User(
 - ✅ **Range queries** - Proper ordering constraints
 - ✅ **Nested field access** - Full type safety
 - ✅ **Transaction support** - Automatic deferred writes
-- ✅ **Streaming subscriptions** - Real-time updates
+- ✅ **Query/document streams** - Real-time updates
 - ✅ **Error handling** - Meaningful compile-time messages
 - ✅ **Testing support** - `fake_cloud_firestore` integration
 
 ### Flexible Data Modeling
 - **`freezed`** (recommended) - Robust immutable classes
 - **`json_serializable`** - Plain Dart classes with full control
-- **`fast_immutable_collections`** - High-performance `IList`, `IMap`, `ISet`
+- **Plain Dart collections** - Firestore-native `List`, `Map`, and `Set` fields
 
 ---
 
@@ -448,11 +456,11 @@ void main() {
     final firestore = FakeFirebaseFirestore();
     final db = FirestoreODM(appSchema, firestore: firestore);
 
-    await db.users.insert(User(
+    await db.users.set(User(
       id: 'test',
       name: 'Test User',
       email: 'test@example.com',
-      age: 25
+      age: 25,
     ));
 
     final user = await db.users('test').get();
@@ -465,18 +473,18 @@ void main() {
 
 ## 🗺️ Roadmap
 
-**✅ Completed (3.0 → 4.0)**
+**✅ Completed (v5 clean break)**
 - [x] Full generic model support
-- [x] Complete JsonKey & JsonConverter support
-- [x] 20% runtime performance improvement & 15% smaller generated code
+- [x] Honest JsonKey subset + @JsonConverter
+- [x] Recorded benchmark harness (no unmeasured perf claims)
 - [x] Enum support — string & numeric `@JsonValue`, `orderBy`, defaults *(4.0)*
 - [x] Automatic nested-class imports *(4.0)*
 - [x] Batch & transaction patch builders *(4.0)*
-- [x] Server timestamps on insert *(4.0)*
+- [x] Explicit server timestamps through the `patch` operation
 - [x] Production-ready stability
 
 **🚀 Next**
-- [ ] [Firestore Pipelines support](https://github.com/SylphxAI/firestore_odm/issues/6)
+- [ ] Validate Enterprise Firestore Pipeline stages before widening the experimental surface
 - [ ] Full map field filtering, ordering, and aggregation
 - [ ] Nested map support
 - [ ] Enhanced documentation

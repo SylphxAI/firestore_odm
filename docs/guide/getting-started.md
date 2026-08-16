@@ -87,14 +87,22 @@ Group your collections into a schema. This is the single source of truth for you
 import 'package:firestore_odm/firestore_odm.dart';
 import 'models/user.dart';
 
-part 'schema.odm.dart';
+part 'schema.g.dart'; // combined generated part (ODM + json_serializable)
+
+/// The schema class is declared by hand (ADR-0002) so the schema variable's
+/// type is resolvable before code generation.
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
 
 @Schema()
 @Collection<User>("users")
-final appSchema = _$AppSchema;
+const appSchema = AppSchema();
 ```
 
-> **Note:** The `@Schema()` annotation is crucial for the generator to correctly process your collections.
+> **Note:** The `@Schema()` annotation is crucial for the generator to correctly
+> process your collections. The generated code lands in `<library>.g.dart`,
+> which every annotated model file and the schema file declare as a part.
 
 ## 5. Generate Code
 
@@ -118,12 +126,18 @@ void main() async {
   final firestore = FirebaseFirestore.instance;
   final odm = FirestoreODM(appSchema, firestore: firestore);
 
-  // Create a user
-  await odm.users.insert(User(id: 'jane', name: 'Jane Smith', email: 'jane@example.com'));
+  // Create a user with an explicit ID (full replace)
+  await odm.users.set(User(id: 'jane', name: 'Jane Smith', email: 'jane@example.com'));
+
+  // Or create with a server-generated ID (the ID is returned)
+  final id = await odm.users.create(User(id: '', name: 'Jane', email: 'jane@example.com'));
 
   // Get a user
   final user = await odm.users('jane').get();
   print(user?.name); // Prints "Jane Smith"
+
+  // Partial update with typed ops
+  await odm.users.patch('jane', (p) => [p.age.increment(1), p.lastLogin.serverTimestamp()]);
 
   // Query users
   final smiths = await odm.users.where((_) => _.name(isEqualTo: 'Jane Smith')).get();

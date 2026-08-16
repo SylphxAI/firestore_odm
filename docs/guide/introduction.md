@@ -24,12 +24,12 @@ We wanted a solution that provides:
 |---------|-------------------------|---------------|
 | **Type Safety** | ❌ `Map<String, dynamic>` everywhere | ✅ Strong types throughout |
 | **Query Building** | ❌ String-based, error-prone | ✅ Type-safe with IDE support |
-| **Data Updates** | ❌ Manual map construction | ✅ Two powerful update strategies |
+| **Data Updates** | ❌ Manual map construction | ✅ Explicit typed Firestore primitives |
 | **Generic Support** | ❌ No generic handling | ✅ Full generic model support (3.0) |
-| **Aggregations** | ❌ Basic count only | ✅ Comprehensive + streaming |
+| **Aggregations** | ❌ Basic count only | ✅ One-shot count, sum, and average |
 | **Pagination** | ❌ Manual, inconsistency risks | ✅ Smart Builder, zero risk |
 | **Transactions** | ❌ Manual read-before-write | ✅ Automatic deferred writes |
-| **Code Generation** | ❌ None | ✅ Inline-optimized, 15% smaller (3.0) |
+| **Code Generation** | ❌ None | ✅ Unified generated converters and selectors |
 | **Model Reusability** | ❌ N/A | ✅ Same model, multiple collections |
 | **Runtime Errors** | ❌ Common | ✅ Eliminated at compile-time |
 | **Developer Experience** | ❌ Frustrating | ✅ Productive and enjoyable |
@@ -67,4 +67,6 @@ List<User> users = await db.users
   .get();
 ```
 
-Firestore ODM transforms Firestore from a source of frustration into a powerful, type-safe database layer that enhances your Flutter development experience.
+Firestore ODM transforms Firestore from a source of frustration into a
+powerful, type-safe database layer. Version 5 is a clean break: it uses native
+Firestore semantics and does not retain a v4 API compatibility lane.

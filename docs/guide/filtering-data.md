@@ -51,12 +51,10 @@ final engagedUsers = await db.users.where(($) => $.and(
 )).get();
 ```
 
-## Querying Map Fields
+## Map fields
 
-You can query nested fields within a `Map` by using the `.key()` accessor.
-
-```dart
-// Find users who have a 'dark' theme setting
-final darkThemeUsers = await db.users
-  .where(($) => $.settings.key('theme')(isEqualTo: 'dark'))
-  .get();
+Generated selectors cover declared model fields and nested model fields. A
+dynamic key inside a `Map` has no compile-time type contract, so query it through
+the underlying `cloud_firestore` reference when necessary; do not invent a
+second generated map DSL. Prefer a nested model when the keys are part of the
+application contract.

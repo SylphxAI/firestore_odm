@@ -18,8 +18,11 @@ Here is the standard pagination flow:
 4.  **Fetch the next page**: Use a pagination method like `.startAfterObject()` with the cursor document.
 
 ```dart
-// 1. Create a query, ordered by follower count
-final query = db.users.orderBy(($) => ($.profile.followers(descending: true),));
+// 1. Create a query, ordered by follower count and the document ID tie-breaker
+final query = db.users.orderBy(($) => (
+  $.profile.followers(descending: true),
+  $.documentId(),
+));
 
 // 2. Fetch the first page of 20 users
 final firstPage = await query.limit(20).get();
@@ -56,10 +59,10 @@ If you need more control, you can provide the cursor values manually. The ODM wi
 - `endBefore(O cursorValues)`
 
 ```dart
-// Manually providing a cursor value.
-// The type signature of orderBy is (int,), so startAfter expects an int tuple.
+// Manually providing cursor values. The type signature matches both orderBy
+// terms, including the document ID tie-breaker.
 final nextPage = await db.users
-  .orderBy(($) => ($.profile.followers(descending: true),))
-  .startAfter((1000,)) // Manually provide the follower count to start after
+  .orderBy(($) => ($.profile.followers(descending: true), $.documentId()))
+  .startAfter((1000, 'user-123'))
   .limit(20)
   .get();

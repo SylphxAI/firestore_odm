@@ -36,13 +36,21 @@ Public surfaces:
 
 ## Delivery
 
-Current CI model: `legacy-ci`. Required contexts are `quality`, `security`,
-`docs`, `performance`, `coverage`, and `ci-success`.
+Current CI model: agent-native Fast Trunk on Sylphx self-hosted runners. The
+workflow checks `quality`, `test`, `security`, `docs`, `coverage`, and
+`ci-success`; `performance` runs on pull requests, while the emulator lane is
+visibility-only in CI and an authoritative release gate.
 
-Release path: tag or manual release workflow dry-runs/publishes packages to
-pub.dev, creates a GitHub release, and verifies publication. Production proof
-must include required CI, dry-run/publish output, pub.dev readback, docs
-readback, and generated-code smoke tests.
+Release path: a tag or manual release workflow runs the emulator gate, enforces
+stable package versions, dry-runs and publishes the three packages to pub.dev,
+then verifies each exact version endpoint. A tag also creates the GitHub
+release. This repository has no hosted application or serverless runtime;
+Platform deploy/health surfaces are not part of its delivery boundary.
+
+Production proof must keep source, CI, release, and live layers distinct:
+required CI, release-gate e2e, dry-run/publish output, exact pub.dev readback,
+and generated-code smoke tests are required for a package release. Documentation
+is checked in CI; a docs-site live claim requires separate readback.
 
 Recovery class: `forward-fix-only`, because pub.dev package versions and
 generated downstream APIs cannot be fully undone by source revert.
@@ -50,6 +58,7 @@ generated downstream APIs cannot be fully undone by source revert.
 ## References
 
 - Public docs: `docs/README.md`
+- v5 semantics contract: `docs/adr/0002-semantics-contract-v5.md`
 - Package manifests: `packages/*/pubspec.yaml`
 - CI: `.github/workflows/ci.yml`
 - Release: `.github/workflows/release.yml`

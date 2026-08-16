@@ -1,3 +1,7 @@
+> **5.0 note:** examples use the current 5.0 API (create/set/patch/delete, no
+> sentinels, no modify). For the v4→5.0 migration map see
+> [migration-guide-5](./migration-guide-5).
+>
 # Migration Guide: From cloud_firestore to Firestore ODM
 
 This comprehensive guide will walk you through migrating from the standard `cloud_firestore` package to Firestore ODM, feature by feature. Each section includes detailed comparisons, benefits, and step-by-step migration instructions.
@@ -9,7 +13,8 @@ The standard `cloud_firestore` package has several fundamental limitations:
 - **Runtime errors** - Field name typos cause crashes in production
 - **Manual serialization** - Tedious and error-prone data conversion
 - **Complex queries** - Difficult to write and maintain
-- **Limited features** - No streaming aggregations, smart pagination, or atomic update helpers
+- **Limited features** - No type-safe one-shot aggregations, stable pagination,
+  or typed patch helpers
 
 Firestore ODM solves all these problems while maintaining full compatibility with your existing Firestore database.
 
@@ -172,10 +177,10 @@ await usersCollection.doc('user123').update({
 });
 ```
 
-### After (Type-Safe Operations)
+### After (Type-Safe Operations, 5.0 API)
 ```dart
-// Create a document - type-safe model
-await db.users.insert(User(
+// Create a document - type-safe model (explicit ID = full replace)
+await db.users.set(User(
   id: 'user123',
   name: 'John Doe',
   email: 'john@example.com',
@@ -183,36 +188,36 @@ await db.users.insert(User(
   isActive: true,
 ));
 
-// Update with two powerful strategies:
-
-// 1. Patch - Explicit atomic operations
-await db.users('user123').patch(($) => [
-  $.age.increment(1),
-  $.tags.add('premium'),
-  $.lastLogin.serverTimestamp(),
-]);
-
-// 2. Modify - Smart atomic detection (reads then applies optimized updates)
-await db.users('user123').modify((user) => user.copyWith(
-  age: user.age + 1, // Auto-detects -> FieldValue.increment(1)
-  tags: [...user.tags, 'premium'], // Auto-detects -> FieldValue.arrayUnion()
-  lastLogin: FirestoreODM.serverTimestamp,
+// Or let Firestore generate the ID:
+final id = await db.users.create(User(
+  id: '',
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: 30,
+  isActive: true,
 ));
+
+// Partial update with explicit typed patch operations (ADR-0002)
+await db.users('user123').patch((p) => [
+  p.age.increment(1),
+  p.tags.arrayUnion(['premium']),
+  p.lastLogin.serverTimestamp(),
+]);
 ```
 
 ### Migration Steps:
-1. **Replace `set()` operations** with `insert()` or `upsert()`
+1. **Replace `insert()`/`update()`/`upsert()`** with `set()` (explicit ID) or
+   `create()` (generated ID)
 2. **Convert manual maps** to typed model instances
-3. **Choose update strategy**:
-   - Use `patch()` for explicit atomic operations
-   - Use `modify()` for smart automatic detection (reads current values first)
+3. **Use `patch()`** for explicit atomic operations (six FieldValue-shaped ops)
+   — there is no `modify()` in 5.0
 4. **Replace `FieldValue` operations** with ODM equivalents
 
 ### Benefits After Migration:
-- ✅ **Two powerful update strategies** - Choose the best approach for each use case
-- ✅ **Automatic atomic operations** - `modify` detects and optimizes updates
+- ✅ **Explicit typed patch operations** - six FieldValue-shaped ops
+- ✅ **Native Timestamp storage** - DateTime round-trips as Firestore timestamps
 - ✅ **Type-safe field updates** - No more string-based field names
-- ✅ **Server timestamp helpers** - Easy server timestamp handling
+- ✅ **Explicit server timestamps** - via the `serverTimestamp()` patch op
 
 ## 5. Batch Operations Migration
 
@@ -243,29 +248,28 @@ await batch.commit();
 // Manual error handling for batch limits
 ```
 
-### After (Type-Safe Batch Operations)
+### After (Type-Safe Batch Operations, 5.0)
 ```dart
 // Automatic batch management - simple and clean
 await db.runBatch((batch) {
-  // Type-safe operations with models
-  batch.users.insert(User(
+  final users = db.users.inBatch(batch);
+
+  // Type-safe writes with models
+  users.set(User(
     id: 'user1',
     name: 'John Doe',
     email: 'john@example.com',
     age: 30,
   ));
-  
-  // Atomic operations with type safety
-  batch.users('user2').patch(($) => [
-    $.age.increment(1),
-    $.tags.add('premium'),
-  ]);
-  
+
+  // Typed patch operations
+  users.patch('user2', (p) => [p.age.increment(1), p.tags.arrayUnion(['premium'])]);
+
   // Delete operations
-  batch.users('user3').delete();
-  
-  // Subcollection support
-  batch.users('user1').posts.insert(Post(
+  users.delete('user3');
+
+  // Subcollection support (path-derived accessor)
+  db.usersPosts('user1').inBatch(batch).set(Post(
     id: 'post1',
     title: 'My First Post',
     content: 'Hello world!',
@@ -274,9 +278,9 @@ await db.runBatch((batch) {
 
 // Manual batch management for fine-grained control
 final batch = db.batch();
-batch.users.insert(user1);
-batch.users.insert(user2);
-batch.posts.update(post);
+db.users.inBatch(batch).set(user1);
+db.users.inBatch(batch).set(user2);
+db.posts.inBatch(batch).patch('p1', (p) => [p.likes.increment(1)]);
 await batch.commit();
 ```
 
@@ -437,7 +441,7 @@ AggregateQuerySnapshot countSnapshot = await usersCollection
 int count = countSnapshot.count;
 
 // No sum/average support
-// No streaming aggregations
+// Aggregates are one-shot server operations; there is no fake client stream.
 // Manual calculation required for complex stats
 ```
 
@@ -457,25 +461,23 @@ print('Count: ${stats.count}');
 print('Average age: ${stats.averageAge}');
 print('Total followers: ${stats.totalFollowers}');
 
-// Streaming aggregations (unique feature!)
-db.users
+// One-shot server-side aggregation (ADR-0002)
+final result = await db.users
   .where(($) => $.isActive(isEqualTo: true))
   .aggregate(($) => (count: $.count()))
-  .stream
-  .listen((result) {
-    print('Live count: ${result.count}');
-  });
+  .get();
+print('Count: ${result.count}');
 ```
 
 ### Migration Steps:
 1. **Replace basic `count()` calls** with ODM aggregate syntax
 2. **Combine multiple aggregations** in single requests for efficiency
-3. **Add streaming subscriptions** for real-time statistics
+3. **Use one-shot server-side aggregates** (no client-side streaming)
 4. **Use typed aggregate results** instead of manual calculations
 
 ### Benefits After Migration:
 - ✅ **Multiple aggregations** - count, sum, average in one request
-- ✅ **Streaming aggregations** - Real-time statistics (unique feature)
+- ✅ **One-shot aggregations** - server-side count/sum/average
 - ✅ **Type-safe results** - Strongly typed aggregate responses
 - ✅ **Efficient queries** - Server-side calculations
 
@@ -524,14 +526,10 @@ await db.runTransaction((tx) async {
     throw Exception('Insufficient funds');
   }
   
-  // Writes are automatically deferred until the end
-  await tx.users('user1').modify((user) => user.copyWith(
-    balance: user.balance - 100, // Becomes atomic decrement
-  ));
-  
-  await tx.users('user2').modify((user) => user.copyWith(
-    balance: user.balance + 100, // Becomes atomic increment
-  ));
+  // Writes are automatically deferred until the end (explicit ops)
+  final txUsers = db.users.inTransaction(tx);
+  txUsers('user1').patch((p) => [p.balance.increment(-100)]);
+  txUsers('user2').patch((p) => [p.balance.increment(100)]);
 });
 ```
 
@@ -579,13 +577,13 @@ List<Map<String, dynamic>> posts = postsSnapshot.docs
 @Collection<Comment>("users/*/posts/*/comments")
 final appSchema = _$AppSchema;
 
-// Type-safe subcollection access
-final userPosts = db.users('user123').posts;
-final postComments = db.users('user123').posts('post456').comments;
+// Type-safe subcollection access (path-derived accessors, ADR-0002)
+final userPosts = db.usersPosts('user123');
+final postComments = db.usersPostsComments('user123', 'post456');
 
 // Fully typed operations
 List<Post> posts = await userPosts.get();
-await userPosts.insert(Post(
+await userPosts.set(Post(
   id: 'new-post',
   title: 'My New Post',
   content: 'Post content...',
@@ -675,20 +673,19 @@ try {
 - [ ] Add aggregation operations
 - [ ] Migrate transaction logic
 
-### Phase 4: Optimization
+### Phase 4: Verification and rollout
 - [ ] Add subcollections support
-- [ ] Implement streaming aggregations
-- [ ] Optimize update strategies
+- [ ] Verify one-shot aggregates and the emulator path
 - [ ] Add comprehensive testing
 
 ## Best Practices for Migration
 
 1. **Migrate incrementally** - Start with one collection at a time
-2. **Keep existing code working** - Run both systems in parallel during migration
+2. **Keep the Firestore data contract stable** - v5 changes the client API, not stored document meaning
 3. **Test thoroughly** - Verify data integrity after each migration step
 4. **Use type-safe models** - Take full advantage of compile-time validation
-5. **Leverage new features** - Use streaming aggregations and smart pagination
-6. **Optimize updates** - Choose the right update strategy for each use case
+5. **Leverage native semantics** - Use one-shot aggregates and typed patch operations
+6. **Verify the emulator path** - Exercise the real Firestore behavior before release
 
 ## Conclusion
 
@@ -696,8 +693,8 @@ Migrating from standard `cloud_firestore` to Firestore ODM provides significant 
 
 - **Complete type safety** eliminates runtime errors
 - **Better developer experience** with IDE support and autocomplete
-- **Advanced features** like streaming aggregations and smart pagination
+- **Advanced features** like one-shot server aggregates and stable pagination
 - **Cleaner, more maintainable code** with less boilerplate
-- **Better performance** with optimized update strategies
+- **Clearer writes** with explicit Firestore primitives
 
 The migration process is straightforward and can be done incrementally, allowing you to gradually adopt Firestore ODM's powerful features while maintaining your existing functionality.

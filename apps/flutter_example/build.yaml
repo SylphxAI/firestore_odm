@@ -4,3 +4,9 @@ targets:
       json_serializable:
         options:
           explicit_to_json: true
+      source_gen|combining_builder:
+        options:
+          ignore_for_file:
+            - non_constant_identifier_names
+            - lines_longer_than_80_chars
+            - unnecessary_brace_in_string_interps
