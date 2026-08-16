@@ -25,8 +25,8 @@ point of the release.
   (freezed/json_serializable) remain for JSON interchange only.
 - The schema class is now declared by hand (`class AppSchema extends
   FirestoreSchema`); generated code lands in `<library>.g.dart`.
-- Patch update maps use dotted field paths (unambiguous; Firestore forbids
-  dots in field names).
+- Patch update maps use native `FieldPath` components, preserving literal dots
+  in field names while retaining nested-path semantics.
 - `OrderedQuery` pagination is stable when the orderBy includes the
   `$.documentId` selector (Firestore's recommended tie-breaker).
 

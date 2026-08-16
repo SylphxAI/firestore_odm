@@ -64,8 +64,9 @@ precedence resolution.
 - 15 interface mixin files, `services/` layer, 11-op patch DSL — surface without
   value.
 - `fast_immutable_collections` coupling — Firestore stores plain collections.
-- String `FieldPath` representation chosen for `fake_cloud_firestore` — native
-  `FieldPath` is used; the fake supports it.
+- Dotted-string field paths at native query/write boundaries — production uses
+  native `FieldPath` components. The unit fake does not model every native
+  update-key shape, so those edge cases are covered by the emulator gate.
 - `cloud_firestore_platform_interface` dependency — native types only.
 
 ### Kept

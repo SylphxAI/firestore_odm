@@ -36,6 +36,7 @@ Future<void> clearFirestoreEmulator() async {
     'enumUsers',
     'enumTasks',
     'simpleEnumTasks',
+    'fieldPathContract',
   ];
   for (final name in collections) {
     final snap = await firestore.collection(name).get();

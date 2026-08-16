@@ -7,6 +7,7 @@
 library;
 
 import 'package:firestore_odm/firestore_odm.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_example/models/profile.dart';
 import 'package:flutter_example/models/user.dart';
 import 'package:flutter_example/test_schema.dart';
@@ -24,6 +25,22 @@ void main() {
     await initializeFirebase();
     await clearFirestoreEmulator();
     final odm = FirestoreODM(testSchema);
+
+    // Native FieldPath semantics: a dot within one component is a literal
+    // field-name character, not a nested-path separator.
+    final fieldPathRef = FirebaseFirestore.instance
+        .collection('fieldPathContract')
+        .doc('literal-dot');
+    await fieldPathRef.set({
+      'profile': {'v2.x': 1},
+    });
+    await fieldPathRef.update(
+      operationsToMap([
+        SetOperation(FieldNode(components: ['profile', 'v2.x']), 2),
+      ]),
+    );
+    final fieldPathSnapshot = await fieldPathRef.get();
+    expect(fieldPathSnapshot.get(FieldPath(['profile', 'v2.x'])), 2);
 
     // create returns a generated ID and stores native Timestamps.
     final id = await odm.users.create(

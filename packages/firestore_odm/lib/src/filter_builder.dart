@@ -80,9 +80,9 @@ class FilterField<T, E> {
     List<T>? whereNotIn,
     bool? isNull,
   }) {
-    final field = _field.isDocumentId
-        ? firestore.FieldPath.documentId
-        : _field.components.join('.');
+    // Preserve component boundaries: a literal dot in a field name must not
+    // become a nested path.
+    final field = _field.fieldPath;
     final conditions = [
       isEqualTo,
       isNotEqualTo,

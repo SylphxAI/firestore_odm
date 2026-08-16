@@ -64,7 +64,9 @@ class ServerTimestampOperation extends UpdateOperation {
 Map<Object, Object?> operationsToMap(List<UpdateOperation> operations) {
   final result = <Object, Object?>{};
   for (final op in operations) {
-    result[op.field.components.join('.')] = switch (op) {
+    // The SDK accepts a native FieldPath so literal dots remain literal field
+    // components rather than being interpreted as nested-path separators.
+    result[op.field.fieldPath] = switch (op) {
       SetOperation(:final value) => value,
       DeleteOperation() => firestore.FieldValue.delete(),
       IncrementOperation(:final delta) => firestore.FieldValue.increment(delta),

@@ -17,7 +17,9 @@ class FieldNode {
 
   /// The native field reference: a [FieldPath] for normal paths or
   /// [FieldPath.documentId] (a `FieldPathType`) for the document-ID
-  /// pseudo-field. Acceptable anywhere `cloud_firestore` takes a field.
+  /// pseudo-field. Use it for native query/write APIs that accept a field
+  /// path; aggregate APIs remain string-based because that is their SDK
+  /// contract.
   Object get fieldPath => FieldPath(components);
 
   bool get isDocumentId => false;
