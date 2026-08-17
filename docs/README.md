@@ -78,7 +78,7 @@ Query nextQuery = query.startAfterDocument(lastDoc);
 
 // ✅ ODM - Smart Builder with zero inconsistency risk
 final nextPage = await db.users
-  .orderBy(($) => $.createdAt)
+  .orderBy(($) => $.createdAt())
   .startAfterObject(page1.last) // Type-safe cursor extraction
   .get();
 ```

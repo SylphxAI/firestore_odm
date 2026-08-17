@@ -267,6 +267,7 @@ part 'user.freezed.dart';
 part 'user.g.dart';
 
 @freezed
+@firestoreOdm
 class User with _$User {
   const factory User({
     @DocumentIdField() required String id,
@@ -283,14 +284,18 @@ class User with _$User {
 ### 2. Define Your Schema
 ```dart
 // lib/schema.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
+import 'package:firestore_odm/firestore_odm.dart';
 import 'models/user.dart';
 
-part 'schema.odm.dart';
+part 'schema.g.dart';
+
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
 
 @Schema()
-@Collection<User>("users")
-final appSchema = _$AppSchema;
+@Collection<User>('users')
+const appSchema = AppSchema();
 ```
 
 ### 3. Generate Code
@@ -334,6 +339,41 @@ final youngUsers = await db.users
   .get();
 ```
 
+### Recovering predictably
+
+ODM validation errors are local input errors; fix the input instead of
+retrying the same write. Firestore access errors keep the native
+`FirebaseException.code`, so permission failures and transient availability
+failures can be handled separately:
+
+```dart
+try {
+  await db.users.set(user, id: requestedId);
+} on FirestoreODMValidationException catch (error) {
+  if (error.code == 'invalid_document_id') {
+    // Ask the caller for a valid ID; no retry is useful until it changes.
+    return;
+  }
+  rethrow;
+} on FirebaseException catch (error) {
+  switch (error.code) {
+    case 'permission-denied':
+      // Re-authenticate or surface the missing access; do not retry blindly.
+      rethrow;
+    case 'unavailable':
+    case 'deadline-exceeded':
+      // Retry the whole idempotent operation with bounded backoff if desired.
+      rethrow;
+    default:
+      rethrow;
+  }
+}
+```
+
+`get()` returns `null` for a missing document. A transaction callback may be
+retried by Firestore, so keep external side effects out of the callback and
+queue only ODM reads and writes.
+
 ---
 
 ## 🌟 Advanced Features
@@ -367,13 +407,14 @@ await db.users
 ### Smart Transactions
 ```dart
 await db.runTransaction((tx) async {
-  // All reads happen first automatically
-  final sender = await tx.users('user1').get();
-  final receiver = await tx.users('user2').get();
+  final users = db.users.inTransaction(tx);
+  // All reads happen first; writes are deferred until the callback ends.
+  final sender = await users('user1').get();
+  final receiver = await users('user2').get();
 
   // Writes are automatically deferred until the end
-  tx.users('user1').patch(($) => [$.balance.increment(-100)]);
-  tx.users('user2').patch(($) => [$.balance.increment(100)]);
+  users('user1').patch((p) => [p.age.increment(-1)]);
+  users('user2').patch((p) => [p.age.increment(1)]);
 });
 ```
 
@@ -468,6 +509,10 @@ void main() {
   });
 }
 ```
+
+The fake is useful for serialization and query tests, but it does not model
+every native `FieldPath` update key. Validate patch and transaction paths that
+depend on native Firestore semantics with the Firestore emulator.
 
 ---
 

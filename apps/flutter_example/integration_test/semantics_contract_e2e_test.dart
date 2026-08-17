@@ -66,6 +66,28 @@ void main() {
       doc?.createdAt?.microsecondsSinceEpoch,
       DateTime.utc(2026, 7, 1).microsecondsSinceEpoch,
     );
+    expect(await odm.users('missing').get(), isNull);
+
+    try {
+      await odm.users.set(
+        User(
+          id: 'ignored',
+          name: 'Invalid',
+          email: 'invalid@example.com',
+          age: 1,
+          profile: const Profile(
+            bio: 'b',
+            avatar: 'a',
+            socialLinks: {},
+            interests: ['dart'],
+          ),
+        ),
+        id: 'bad/id',
+      );
+      fail('expected invalid document ID');
+    } on FirestoreODMValidationException catch (error) {
+      expect(error.code, 'invalid_document_id');
+    }
 
     // patch ops (increment/union/serverTimestamp) round-trip.
     await odm.users.patch(

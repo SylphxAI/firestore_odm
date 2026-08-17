@@ -5,10 +5,14 @@ import 'package:meta/meta_meta.dart';
 ///
 /// Used on schema variable declarations to define collections:
 /// ```dart
-/// @Collection<User>("users")
-/// @Collection<Post>("posts")
-/// @Collection<Post>("users/*/posts")
-/// final schema = _$Schema;
+/// class AppSchema extends FirestoreSchema {
+///   const AppSchema();
+/// }
+///
+/// @Schema()
+/// @Collection<User>('users')
+/// @Collection<Post>('posts')
+/// const appSchema = AppSchema();
 /// ```
 ///
 /// Supports both regular collections and subcollections with wildcard syntax:
@@ -43,10 +47,14 @@ class DocumentIdField {
 ///
 /// Used to identify schema variables that contain multiple @Collection annotations:
 /// ```dart
+/// class TestSchema extends FirestoreSchema {
+///   const TestSchema();
+/// }
+///
 /// @Schema()
-/// @Collection<User>("users")
-/// @Collection<Post>("posts")
-/// final testSchema = _$TestSchema;
+/// @Collection<User>('users')
+/// @Collection<Post>('posts')
+/// const testSchema = TestSchema();
 /// ```
 ///
 /// This helps the code generator identify which variables represent complete schemas
