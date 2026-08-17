@@ -33,8 +33,8 @@ class FirestoreDocument<
   final P Function() _patchBuilderFactory;
 
   /// The document data, or null when the document does not exist.
-  Future<T?> get() async {
-    final snapshot = await ref.get();
+  Future<T?> get([firestore.GetOptions? options]) async {
+    final snapshot = await ref.get(options);
     if (!snapshot.exists) return null;
     return processDocumentSnapshot(snapshot, _fromJson, documentIdField);
   }
