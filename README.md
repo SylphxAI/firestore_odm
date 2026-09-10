@@ -269,6 +269,7 @@ part 'user.freezed.dart';
 part 'user.g.dart';
 
 @freezed
+@firestoreOdm
 class User with _$User {
   const factory User({
     @DocumentIdField() required String id,
@@ -285,14 +286,20 @@ class User with _$User {
 ### 2. Define Your Schema
 ```dart
 // lib/schema.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
+import 'package:firestore_odm/firestore_odm.dart';
 import 'models/user.dart';
 
-part 'schema.odm.dart';
+part 'schema.g.dart'; // combined generated part (ODM + json_serializable)
+
+/// The schema class is declared by hand (ADR-0002) so the schema variable's
+/// type is resolvable before code generation.
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
 
 @Schema()
 @Collection<User>("users")
-final appSchema = _$AppSchema;
+const appSchema = AppSchema();
 ```
 
 ### 3. Generate Code

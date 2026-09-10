@@ -15,12 +15,16 @@ In this example, we define a `posts` subcollection that lives under each `user` 
 ```dart
 // lib/schema.dart
 
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
+
 @Schema()
 // Root-level collection
 @Collection<User>("users")
 // Subcollection of users. The '*' is a wildcard for the user ID.
 @Collection<Post>("users/*/posts")
-final appSchema = _$AppSchema;
+const appSchema = AppSchema();
 ```
 
 The generator will automatically detect this relationship and create the necessary accessors.
