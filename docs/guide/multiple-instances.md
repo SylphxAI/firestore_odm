@@ -16,19 +16,27 @@ Create different schema definitions in your application.
 
 ```dart
 // lib/schemas/admin_schema.dart
+class AdminSchema extends FirestoreSchema {
+  const AdminSchema();
+}
+
 @Schema()
 @Collection<User>("users")
 @Collection<AuditLog>("audit_logs")
-final adminSchema = _$AdminSchema;
+const adminSchema = AdminSchema();
 
 // lib/schemas/user_schema.dart
+class UserSchema extends FirestoreSchema {
+  const UserSchema();
+}
+
 @Schema()
 @Collection<User>("users")
 @Collection<Post>("posts")
-final userSchema = _$UserSchema;
+const userSchema = UserSchema();
 ```
 
-After running the build runner, this will generate `adminSchema.odm.dart` and `userSchema.odm.dart`.
+After running the build runner, the generated extensions land in `admin_schema.g.dart` and `user_schema.g.dart` (each schema file declares its part).
 
 ### 2. Create Separate ODM Instances
 

@@ -54,6 +54,8 @@ Create your data model. We recommend using packages like `freezed` for robust, i
 
 Crucially, you must tell the ODM which field holds the document's ID by annotating it with `@DocumentIdField()`. For more details, see the [Document ID Handling](/guide/document-id.html) guide.
 
+Every model that appears in a `@Collection` must also carry the `@firestoreOdm` annotation; that is what makes the generator emit the model's converters and patch/filter/orderBy selectors.
+
 ```dart
 // lib/models/user.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -64,6 +66,7 @@ part 'user.freezed.dart';
 part 'user.g.dart';
 
 @freezed
+@firestoreOdm
 class User with _$User {
   const factory User({
     // This field is automatically populated with the document ID

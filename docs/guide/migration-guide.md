@@ -570,11 +570,15 @@ List<Map<String, dynamic>> posts = postsSnapshot.docs
 ### After (Type-Safe Subcollection Access)
 ```dart
 // Schema definition with subcollections
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
+
 @Schema()
 @Collection<User>("users")
 @Collection<Post>("users/*/posts")
 @Collection<Comment>("users/*/posts/*/comments")
-final appSchema = _$AppSchema;
+const appSchema = AppSchema();
 
 // Type-safe subcollection access (path-derived accessors, ADR-0002)
 final userPosts = db.usersPosts('user123');
