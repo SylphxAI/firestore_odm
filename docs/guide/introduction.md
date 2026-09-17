@@ -34,6 +34,39 @@ We wanted a solution that provides:
 | **Runtime Errors** | ❌ Common | ✅ Eliminated at compile-time |
 | **Developer Experience** | ❌ Frustrating | ✅ Productive and enjoyable |
 
+## Dart and Flutter, not Firebase Admin
+
+Firestore ODM wraps the client SDK: it generates code on top of
+[`cloud_firestore`](https://pub.dev/packages/cloud_firestore) and its model
+converter runs wherever that package runs. `firestore_odm` and
+`firestore_odm_builder` declare `flutter` in `topics`, the runtime package
+declares `environment: flutter`, and its tests are `flutter_test` suites, so the
+packages are published as Flutter packages and consumed by Flutter/Dart apps.
+
+That means the ODM is **not** a server-side library today:
+
+- **Cloud Run / Cloud Functions (Firebase Admin SDK)**. The Admin SDK exposes
+  `firebase_admin` (Dart) / `firebase-admin` (Node, Python, Go, Java), which
+  talks to Firestore with an admin credential rather than a client app. The ODM
+  does not generate against that surface, so the same annotations are not
+  currently usable from a Cloud Run service or a Node function.
+- **Pure Dart (no Flutter SDK)**. The generated code itself is plain Dart; the
+  constraint is the package's own `flutter` dependency and `flutter_test` dev
+  dependency, which a pure-Dart (server/CLI) consumer would have to pull in.
+
+Supporting the Admin SDK or pure Dart is a product-direction decision, not a
+mechanical refactor: it changes the declared platform, the tested surface, and
+the packages' "Flutter package" identity. Firestore ODM is in the Maintain
+lifecycle ([company register](https://github.com/SylphxAI/owner/blob/main/PORTFOLIO.md)),
+which responds to concrete requests rather than manufacturing improvement work;
+a request to add a server-side generation target is tracked as
+[issue #44](https://github.com/SylphxAI/firestore_odm/issues/44) and stays open
+until that direction is decided.
+
+Dart/Flutter code that runs in a server context today can still use the ODM by
+talking to Firestore through a client credential, or by keeping the ODM on the
+client and calling a server API in front of Firestore.
+
 ## Ready to Migrate?
 
 If you're currently using the standard `cloud_firestore` package and want to experience these benefits, check out our comprehensive **[Migration Guide](/guide/migration-guide)** that walks you through migrating every feature step-by-step with detailed before/after examples.
