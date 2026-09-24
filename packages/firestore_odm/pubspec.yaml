@@ -23,12 +23,12 @@ dependencies:
   cloud_firestore: ^6.4.0
   cloud_firestore_platform_interface: ^8.0.0
   meta: ^1.9.1
-  firestore_odm_annotation: ^4.0.0
+  firestore_odm_annotation: ^5.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   test: ^1.24.0
-  very_good_analysis: ^9.0.0
+  very_good_analysis: ^11.0.0
 
 # Publishing to pub.dev (default when omitted)

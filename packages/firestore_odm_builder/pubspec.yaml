@@ -22,14 +22,14 @@ dependencies:
   # Wide range: the builder code targets the analyzer 8+ "new element model".
   # Kept open to <14 so downstreams can use current analyzer; consumers that also
   # use freezed (which currently caps <11) will resolve to analyzer 10.x.
-  analyzer: '>=9.0.0 <14.0.0'
+  analyzer: '<15.0.0'
   fast_immutable_collections: ^11.0.4
   json_annotation: ^4.9.0
-  firestore_odm_annotation: ^4.0.0
+  firestore_odm_annotation: ^5.0.0
   code_builder: ^4.11.1
 
 dev_dependencies:
   build_runner: ^2.15.0
-  very_good_analysis: ^9.0.0
+  very_good_analysis: ^11.0.0
 
 # Publishing to pub.dev (default when omitted)
