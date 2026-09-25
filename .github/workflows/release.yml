@@ -19,14 +19,8 @@ on:
 permissions:
   contents: read
 
-# Least privilege: jobs that need more request it explicitly.
-permissions:
-  contents: read
-
 jobs:
   release:
-    permissions:
-      contents: write  # actions/create-release on tag pushes
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release
