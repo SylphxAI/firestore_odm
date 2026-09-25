@@ -10,6 +10,8 @@ export default defineConfig({
   description,
   base: '/firestore_odm/',
   lang: 'en',
+  // Extensionless page URLs, matching the links in the README and on pub.dev.
+  cleanUrls: true,
   // Decision records stay in the repository, not on the site.
   srcExclude: ['adr/**'],
   sitemap: { hostname: site },
@@ -23,10 +25,12 @@ export default defineConfig({
     const pageTitle = pageData.frontmatter.title ?? pageData.title ?? title
     const pageDescription = pageData.frontmatter.description ?? description
     pageData.frontmatter.head ??= []
+    const pageUrl = site + pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '')
     pageData.frontmatter.head.push(
+      ['link', { rel: 'canonical', href: pageUrl }],
       ['meta', { property: 'og:title', content: pageTitle }],
       ['meta', { property: 'og:description', content: pageDescription }],
-      ['meta', { property: 'og:url', content: site + pageData.relativePath.replace(/(index)?\.md$/, '') }],
+      ['meta', { property: 'og:url', content: pageUrl }],
     )
   },
   themeConfig: {
