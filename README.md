@@ -98,8 +98,10 @@ versions, and goes further:
   Fields added later with a default read fine from older documents.
 - **Bulk writes**: `patchAll` and `deleteAll` over a query, chunked to
   Firestore's 500-write batch limit.
-- **Fast builds**: see the
-  [code generation benchmarks](https://sylphxai.github.io/firestore_odm/guide/benchmarks).
+- **Fast builds**: after a model edit, 20 models rebuild in 1.5 seconds,
+  against 17 seconds with cloud_firestore_odm; runtime cost stays within a few
+  microseconds of raw `cloud_firestore`
+  ([benchmarks](https://sylphxai.github.io/firestore_odm/guide/benchmarks)).
 - **Firestore Pipelines** (Enterprise edition, experimental) with typed stages.
 
 ## Install

@@ -10,13 +10,13 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../harness.dart';
 
 Movie movie(int i) => Movie(
-      id: 'm$i',
-      title: 'Movie $i',
-      year: 1950 + i % 70,
-      likes: i,
-      rating: (i % 50) / 10,
-      genres: const ['drama', 'comedy'],
-    );
+  id: 'm$i',
+  title: 'Movie $i',
+  year: 1950 + i % 70,
+  likes: i,
+  rating: (i % 50) / 10,
+  genres: const ['drama', 'comedy'],
+);
 
 void main() {
   test('raw cloud_firestore', () async {

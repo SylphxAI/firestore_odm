@@ -5,7 +5,44 @@ at runtime compared with using `cloud_firestore` directly?
 
 ## Results
 
-RESULTS
+Measured on 2026-09-25 by the [Benchmarks workflow](https://github.com/SylphxAI/firestore_odm/actions/runs/36135378039)
+(GitHub-hosted Ubuntu runner, 4 CPUs, Flutter 3.44.2).
+
+### Code generation
+
+20 models; seconds; lower is better.
+
+| | firestore_odm | cloud_firestore_odm |
+| --- | ---: | ---: |
+| First build (includes compiling the build script) | 28.6 | 26.7 |
+| Rebuild after editing every model | 1.6 | 17.2 |
+| Rebuild after editing one model | 1.5 | 17.3 |
+
+The first build is dominated by compiling the build script and costs about the
+same for both. After that, firestore_odm rebuilds in about 1.5 seconds and
+cloud_firestore_odm in about 17, so the edit-and-rebuild loop is roughly 11
+times faster.
+
+### Runtime
+
+Microseconds per operation, median of 7 rounds, on an in-memory Firestore;
+lower is better. Compare each ODM with the raw `cloud_firestore` baseline in
+the column next to it.
+
+| Operation | firestore_odm | raw cloud_firestore 6 | cloud_firestore_odm | raw cloud_firestore 5 |
+| --- | ---: | ---: | ---: | ---: |
+| set | 36.71 | 45.54 | 33.21 | 45.23 |
+| get | 26.03 | 20.68 | 21.64 | 21.03 |
+| query (100 results) | 13,203.65 | 14,225.05 | 14,439.75 | 15,016.60 |
+| update | 34.97 | 33.28 | 31.52 | 34.19 |
+| mapping (model to map to model) | 0.41 | 0.49 | 0.49 | 0.52 |
+
+Both ODMs stay within a few microseconds of raw `cloud_firestore` per
+operation. Single-document reads cost firestore_odm about 5 µs more than the
+baseline (it copies the document map to add the ID field). Its generated
+converters map a document faster than json_serializable. A real Firestore
+read takes milliseconds over the network, so the ODM's share of it is well
+under 1%.
 
 ## Method
 

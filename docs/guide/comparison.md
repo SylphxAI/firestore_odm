@@ -28,6 +28,7 @@ raw `cloud_firestore` typed through `withConverter`. Versions: firestore_odm
 | Firestore Pipelines (Enterprise edition) | typed, experimental | no | untyped |
 | Flutter widget | use `StreamBuilder` | `FirestoreBuilder` | use `StreamBuilder` |
 | Field validators | no (validate in the constructor) | `@Min`, `@Max` | no |
+| Rebuild after editing one of 20 models | 1.5 s | 17.3 s | no code generation |
 | Migration tool | [codemod from cloud_firestore_odm](/guide/migrate-from-cloud-firestore-odm) | | |
 
 Code generation and runtime cost are measured in [Benchmarks](/guide/benchmarks).
