@@ -25,6 +25,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
+# Least privilege: jobs that need more request it explicitly.
+permissions:
+  contents: read
+
 jobs:
   # Code quality checks
   quality:
