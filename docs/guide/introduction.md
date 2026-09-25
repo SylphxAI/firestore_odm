@@ -1,70 +1,70 @@
-# What is Firestore ODM?
+# What is firestore_odm?
 
-This project is a type-safe Object Document Mapper (ODM) for [Cloud Firestore](https://firebase.google.com/docs/firestore) on Dart and Flutter. It's designed from the ground up to solve the common frustrations of working with Firestore in a type-safe language, allowing you to build amazing apps faster and with fewer runtime errors.
+firestore_odm is a type-safe object document mapper (ODM) for
+[Cloud Firestore](https://firebase.google.com/docs/firestore) in Flutter and
+Dart. You describe your documents as Dart classes and list your collections in
+a schema; a code generator then gives every collection typed queries,
+updates, aggregates, transactions, batches and streams.
 
-## Why We Built This
+It is the maintained successor to the official `cloud_firestore_odm`, which
+has had no release since October 2024 and does not work with
+`cloud_firestore` 6.
 
-If you've worked with the standard `cloud_firestore` package, you know the pain:
+## What it fixes
 
--   **No Type Safety**: You refer to fields using strings (`'isActive'`, `'profile.followers'`), which the compiler can't check. A simple typo can lead to a runtime error that's hard to find.
--   **Manual Serialization**: You have to manually convert `DocumentSnapshot` objects to your data models and back again, which is tedious and error-prone.
--   **Complex Queries**: Writing complex queries with nested logic can be difficult and hard to read.
--   **Incomplete Solutions**: Other ODMs for Flutter are often incomplete or not actively maintained.
+With plain `cloud_firestore`, field names are strings and documents are
+`Map<String, dynamic>`:
 
-We wanted a solution that provides:
-✅ Complete, end-to-end type safety.
-✅ Intuitive, readable, and chainable APIs.
-✅ Automatic, seamless serialization.
-✅ Powerful features that solve real-world problems.
-✅ Active maintenance and a focus on the Flutter ecosystem.
-
-## Firestore ODM vs Standard cloud_firestore
-
-| Feature | Standard cloud_firestore | Firestore ODM |
-|---------|-------------------------|---------------|
-| **Type Safety** | ❌ `Map<String, dynamic>` everywhere | ✅ Strong types throughout |
-| **Query Building** | ❌ String-based, error-prone | ✅ Type-safe with IDE support |
-| **Data Updates** | ❌ Manual map construction | ✅ Two powerful update strategies |
-| **Generic Support** | ❌ No generic handling | ✅ Full generic model support (3.0) |
-| **Aggregations** | ❌ Basic count only | ✅ Comprehensive + streaming |
-| **Pagination** | ❌ Manual, inconsistency risks | ✅ Smart Builder, zero risk |
-| **Transactions** | ❌ Manual read-before-write | ✅ Automatic deferred writes |
-| **Code Generation** | ❌ None | ✅ Inline-optimized, 15% smaller (3.0) |
-| **Model Reusability** | ❌ N/A | ✅ Same model, multiple collections |
-| **Runtime Errors** | ❌ Common | ✅ Eliminated at compile-time |
-| **Developer Experience** | ❌ Frustrating | ✅ Productive and enjoyable |
-
-## Ready to Migrate?
-
-If you're currently using the standard `cloud_firestore` package and want to experience these benefits, check out our comprehensive **[Migration Guide](/guide/migration-guide)** that walks you through migrating every feature step-by-step with detailed before/after examples.
-
-## Quick Example
-
-Here's a taste of what Firestore ODM looks like in action:
-
-**Before (cloud_firestore):**
 ```dart
-// String-based, error-prone
 final snapshot = await FirebaseFirestore.instance
-  .collection('users')
-  .where('isActive', isEqualTo: true)
-  .where('age', isGreaterThan: 18)
-  .get();
+    .collection('users')
+    .where('isActive', isEqualTo: true)
+    .where('age', isGreaterThan: 18)
+    .get();
+final names = snapshot.docs.map((d) => d.data()['name'] as String);
 
-List<Map<String, dynamic>> users = snapshot.docs
-  .map((doc) => doc.data())
-  .toList();
+await FirebaseFirestore.instance.doc('users/kim').update({
+  'profile.followers': FieldValue.increment(1),
+});
 ```
 
-**After (Firestore ODM):**
+A typo in `'isActive'` or `'profile.followers'`, or a value of the wrong type,
+fails at runtime or silently writes a bad document. With firestore_odm the
+compiler checks both:
+
 ```dart
-// Type-safe, IDE-supported
-List<User> users = await db.users
-  .where(($) => $.and(
-    $.isActive(isEqualTo: true),
-    $.age(isGreaterThan: 18),
-  ))
-  .get();
+final users = await db.users
+    .where(($) => $.isActive(isEqualTo: true) & $.age(isGreaterThan: 18))
+    .get(); // List<User>
+final names = users.map((u) => u.name);
+
+await db.users('kim').patch(($) => [$.profile.followers.increment(1)]);
 ```
 
-Firestore ODM transforms Firestore from a source of frustration into a powerful, type-safe database layer that enhances your Flutter development experience.
+## How it works
+
+- **Models** are plain Dart classes, freezed classes or json_serializable
+  classes annotated with `@firestoreOdm`.
+- **The schema** lists collections with `@Collection<T>('path')`;
+  `users/*/posts` declares a subcollection.
+- **`build_runner`** generates the Firestore converters and a `$` selector per
+  model, which the query, update and aggregate APIs take as a callback.
+- **At runtime** each call maps to one `cloud_firestore` call. There is no
+  reflection and no client-side emulation: an aggregate is a server-side
+  aggregate query, a transaction is a Firestore transaction.
+
+## Where it runs
+
+Android, iOS, macOS, Windows and web: the platforms `cloud_firestore`
+supports. It needs Dart 3.8 or later and `cloud_firestore` 6.
+
+The Firebase Admin SDK for server-side Dart is not a target: firestore_odm
+wraps the client SDK and depends on Flutter.
+
+## Next
+
+- [Getting started](/guide/getting-started)
+- [Comparison](/guide/comparison) with cloud_firestore_odm, raw
+  cloud_firestore and other packages
+- [Migrate from cloud_firestore_odm](/guide/migrate-from-cloud-firestore-odm)
+- [Benchmarks](/guide/benchmarks)

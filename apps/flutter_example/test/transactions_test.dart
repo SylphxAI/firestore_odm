@@ -1,5 +1,5 @@
 /// Transactions: read-before-write ordering via deferred writes, document
-/// caching, and all four write verbs (ADR-0002).
+/// caching, and all four write verbs.
 library;
 
 import 'package:flutter_test/flutter_test.dart';

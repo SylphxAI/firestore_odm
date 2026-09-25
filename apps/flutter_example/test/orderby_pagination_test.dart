@@ -1,4 +1,4 @@
-/// Typed orderBy + object/value cursor pagination (ADR-0002).
+/// Typed orderBy + object/value cursor pagination.
 library;
 
 import 'package:firestore_odm/firestore_odm.dart';

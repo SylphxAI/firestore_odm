@@ -1,3 +1,7 @@
+## 5.1.0
+
+- Released with firestore_odm 5.1.0; no API changes.
+
 ## 5.0.0
 
 - **Stable release of the 5.0 clean break (ADR-0002)** — exact Firestore

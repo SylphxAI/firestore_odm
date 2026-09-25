@@ -4,6 +4,8 @@
 /// type rewriting. These helpers only splice the document ID field in/out.
 library;
 
+import 'dart:convert' show utf8;
+
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
 import 'exceptions.dart';
@@ -88,9 +90,9 @@ T processDocumentSnapshot<T>(
 
 /// Validates a document ID against Firestore's ID rules.
 ///
-/// Firestore document IDs must be non-empty, at most 1500 bytes, and must not
-/// contain `/` or the lone `*`/`.` characters (`.` alone is illegal, and `..`
-/// as a segment is illegal).
+/// Firestore document IDs must be non-empty, at most 1500 bytes of UTF-8,
+/// must not contain `/`, must not be `.` or `..`, and must not match
+/// `__.*__` (reserved).
 void validateDocumentId(String id) {
   if (id.isEmpty) {
     throw FirestoreODMValidationException(
@@ -110,7 +112,13 @@ void validateDocumentId(String id) {
       code: 'invalid_document_id',
     );
   }
-  if (id.length * 4 > 1500) {
+  if (id.length >= 4 && id.startsWith('__') && id.endsWith('__')) {
+    throw FirestoreODMValidationException(
+      'Document IDs matching __.*__ are reserved by Firestore',
+      code: 'invalid_document_id',
+    );
+  }
+  if (utf8.encode(id).length > 1500) {
     throw FirestoreODMValidationException(
       'Document ID exceeds Firestore limit of 1500 bytes',
       code: 'invalid_document_id',

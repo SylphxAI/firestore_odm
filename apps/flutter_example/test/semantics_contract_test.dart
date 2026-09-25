@@ -1,4 +1,4 @@
-/// Type mapping contract (ADR-0002): Duration as µs int, enums via
+/// Type mapping contract: Duration as µs int, enums via
 /// @JsonValue/name, nested models, maps/lists, and document-ID handling.
 library;
 

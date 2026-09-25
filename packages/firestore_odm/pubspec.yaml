@@ -1,6 +1,6 @@
 name: firestore_odm
-description: "Type-safe Firestore ODM with code generation. Exact Firestore semantics: native Timestamp, create/set/patch/delete writes, typed queries, aggregates, transactions, batches and Pipelines."
-version: 5.0.0
+description: "Type-safe Firestore ODM for Flutter and Dart — the maintained successor to cloud_firestore_odm."
+version: 5.1.0
 homepage: https://github.com/SylphxAI/firestore_odm
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
@@ -9,7 +9,7 @@ documentation: https://SylphxAI.github.io/firestore_odm/
 topics:
   - firestore
   - odm
-  - database
+  - firebase
   - flutter
   - code-generation
 

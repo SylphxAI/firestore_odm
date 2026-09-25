@@ -1,0 +1,27 @@
+name: firestore_odm_benchmark
+description: Runtime and code generation benchmark of firestore_odm and raw cloud_firestore.
+publish_to: none
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cloud_firestore: ^6.4.0
+  firestore_odm:
+    path: ../../packages/firestore_odm
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  build_runner: ^2.4.13
+  fake_cloud_firestore: ^4.1.0
+  firestore_odm_builder:
+    path: ../../packages/firestore_odm_builder
+  flutter_test:
+    sdk: flutter
+  json_serializable: ^6.9.5
+
+dependency_overrides:
+  firestore_odm_annotation:
+    path: ../../packages/firestore_odm_annotation

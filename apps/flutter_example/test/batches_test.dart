@@ -1,4 +1,4 @@
-/// Typed batches: create/set/patch/delete committed atomically (ADR-0002).
+/// Typed batches: create/set/patch/delete committed atomically.
 library;
 
 import 'package:flutter_test/flutter_test.dart';

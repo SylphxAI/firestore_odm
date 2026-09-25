@@ -47,8 +47,10 @@ abstract class _QueryOperations<
 
   firestore.Query<Map<String, dynamic>> get nativeQuery => _query;
 
-  Future<List<T>> get() async {
-    final snapshot = await _query.get();
+  /// Runs the query once. Pass [options] to read from the cache or the
+  /// server only (for example `GetOptions(source: Source.cache)`).
+  Future<List<T>> get([firestore.GetOptions? options]) async {
+    final snapshot = await _query.get(options);
     return processQuerySnapshot(snapshot, _fromJson, _documentIdField);
   }
 

@@ -1,7 +1,8 @@
 /// v5 write verbs: create (returns generated ID), set, patch (six ops),
-/// delete, and document-ID validation (ADR-0002).
+/// delete, and document-ID validation.
 library;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -38,6 +39,19 @@ void main() {
       final (_, odm) = newDb();
       await expectValidationError(() => odm.users.set(sampleUser(), id: 'a/b'));
       await expectValidationError(() => odm.users.set(sampleUser(), id: ''));
+      await expectValidationError(
+        () => odm.users.set(sampleUser(), id: '__reserved__'),
+      );
+      await expectValidationError(
+        () => odm.users.set(sampleUser(), id: 'é' * 751), // 1502 bytes
+      );
+    });
+
+    test('accepts IDs up to 1500 bytes', () async {
+      final (_, odm) = newDb();
+      final id = 'a' * 1500;
+      await odm.users.set(sampleUser(), id: id);
+      expect(await odm.users(id).get(), isNotNull);
     });
 
     test('rejects a model without a usable ID', () async {
@@ -78,6 +92,57 @@ void main() {
         expect(user?.updatedAt, isA<DateTime>());
       },
     );
+
+    test('nested model fields patch by path', () async {
+      final (fake, odm) = newDb();
+      await odm.users.set(sampleUser(id: 'u1', age: 30)); // followers: 400
+      await odm
+          .users('u1')
+          .patch(
+            ($) => [
+              $.profile.followers.increment(5),
+              $.profile.interests.arrayUnion(['flutter']),
+              $.profile.bio.set('updated'),
+            ],
+          );
+      final user = await odm.users('u1').get();
+      expect(user?.profile.followers, 405);
+      expect(user?.profile.interests, ['dart', 'firestore', 'flutter']);
+      expect(user?.profile.bio, 'updated');
+      expect(user?.profile.avatar, 'avatar-u1'); // untouched sibling
+
+      await odm.users.patch(
+        'u1',
+        ($) => [
+          $.profile.set(
+            const Profile(
+              bio: 'new',
+              avatar: 'a',
+              socialLinks: {},
+              interests: [],
+            ),
+          ),
+        ],
+      );
+      expect((await odm.users('u1').get())?.profile.bio, 'new');
+
+      await odm.users.patch('u1', ($) => [$.profile.story.delete()]);
+      final raw = await fake.doc('users/u1').get();
+      expect((raw.data()!['profile'] as Map).containsKey('story'), isFalse);
+    });
+
+    test('DateTime inside a nested model round-trips as a Timestamp', () async {
+      final (fake, odm) = newDb();
+      final lastActive = DateTime.utc(2026, 9, 1, 12);
+      final user = sampleUser(id: 'u1');
+      await odm.users.set(
+        user.copyWith(profile: user.profile.copyWith(lastActive: lastActive)),
+      );
+      final raw = await fake.doc('users/u1').get();
+      expect((raw.data()!['profile'] as Map)['lastActive'], isA<Timestamp>());
+      final read = await odm.users('u1').get();
+      expect(read?.profile.lastActive?.toUtc(), lastActive);
+    });
 
     test('no-op patch leaves the document untouched', () async {
       final (_, odm) = newDb();

@@ -8,6 +8,7 @@ import 'package:flutter_example/models/manual_user.dart';
 import 'package:flutter_example/models/manual_user2.dart';
 import 'package:flutter_example/models/manual_user3.dart';
 import 'package:flutter_example/models/nullable_types_test.dart';
+import 'package:flutter_example/models/place.dart';
 import 'package:flutter_example/models/post.dart';
 import 'package:flutter_example/models/shared_post.dart';
 import 'package:flutter_example/models/simple_generic.dart';
@@ -18,7 +19,7 @@ import 'package:flutter_example/models/user.dart';
 part 'test_schema.g.dart';
 
 /// The schema class for this example app. Declared by hand so the schema
-/// variable's type is resolvable before code generation (ADR-0002).
+/// variable's type is resolvable before code generation.
 class TestSchema extends FirestoreSchema {
   const TestSchema();
 }
@@ -63,4 +64,5 @@ class TestSchema extends FirestoreSchema {
 @Collection<NullableTypesTestModel>('nullableTypesTests') // Nullable types test
 @Collection<NestedData>('nestedData') // Nested data for issue #3 testing
 @Collection<OrderWithDefault>('orderWithDefaults') // Issue #5 nullable-input
+@Collection<Place>('places') // GeoPoint; library imports cloud_firestore
 const TestSchema testSchema = TestSchema();

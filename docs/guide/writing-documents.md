@@ -1,79 +1,126 @@
 # Writing Documents
 
-5.0 write verbs map 1:1 to Firestore primitives (ADR-0002). There is no
-`insert`/`update`/`upsert` triad and no `modify()` magic.
+There are four writes. Each one is a single Firestore call.
 
-## create — server-generated ID
+| Method | Firestore call | Use it to |
+|---|---|---|
+| `create(model)` | `add` | store a new document with a generated ID |
+| `set(model)` | `set` | store or fully replace a document |
+| `patch(id, ops)` | `update` | change some fields of an existing document |
+| `delete(id)` | `delete` | remove a document |
 
-`create` stores the document with a Firestore-generated ID and returns it:
+## create
+
+`create` stores the model under a Firestore-generated ID and returns that ID.
+The model's ID field is ignored.
 
 ```dart
-final id = await db.users.create(User(
-  id: '', // not stored; the real ID is returned
-  name: 'Jane',
-  email: 'jane@example.com',
-));
-
-print(id); // the generated document ID
+final id = await odm.users.create(
+  User(
+    id: '',
+    name: 'Jane',
+    email: 'jane@example.com',
+    age: 30,
+    profile: const Profile(bio: 'Hi'),
+  ),
+);
 ```
 
-## set — full replace
+## set
 
-`set` writes the whole document. The ID comes from the model's document ID
-field, or an explicit `id:` argument:
+`set` writes the whole document. Stored fields that are not in the model are
+removed. The ID comes from the model's ID field, from the
+`id:` argument, or from a document handle:
 
 ```dart
-await db.users.set(user);               // id from user.id
-await db.users.set(user, id: 'custom'); // explicit ID
-await db.users('custom').set(user);     // document handle
+await odm.users.set(user);               // ID from user.id
+await odm.users.set(user, id: 'custom'); // explicit ID
+await odm.users('jane').set(user);       // document handle
 ```
 
-`set` replaces the document; missing fields in the model are removed from the
-stored document.
+## patch
 
-## patch — partial update with typed ops
-
-`patch` applies exactly six FieldValue-shaped operations:
-
-| Operation | Example |
-|---|---|
-| set | `p.name.set('Renamed')` |
-| delete | `p.lastLogin.delete()` |
-| increment | `p.age.increment(1)` |
-| arrayUnion | `p.tags.arrayUnion(['new'])` |
-| arrayRemove | `p.tags.arrayRemove(['old'])` |
-| serverTimestamp | `p.updatedAt.serverTimestamp()` |
+`patch` changes only the fields you list. The document must already exist;
+otherwise Firestore throws a `not-found` error.
 
 ```dart
-await db.users('jane').patch((p) => [
-  p.age.increment(1),
-  p.updatedAt.serverTimestamp(),
+await odm.users.patch('jane', ($) => [
+  $.name.set('Jane Doe'),
+  $.age.increment(1),
+  $.tags.arrayUnion(['admin']),
+  $.updatedAt.serverTimestamp(),
+]);
+
+// The same on a document handle
+await odm.users('jane').patch(($) => [$.lastLogin.delete()]);
+```
+
+The builder offers these operations:
+
+| Operation | Available on | Example |
+|---|---|---|
+| `set(value)` | every field | `$.name.set('Jane')` |
+| `delete()` | every field | `$.lastLogin.delete()` |
+| `increment(n)` | non-nullable `int`, `double`, `num` | `$.age.increment(1)` |
+| `arrayUnion(values)` | non-nullable `List` | `$.tags.arrayUnion(['a'])` |
+| `arrayRemove(values)` | non-nullable `List` | `$.tags.arrayRemove(['b'])` |
+| `serverTimestamp()` | `DateTime` and `DateTime?` | `$.updatedAt.serverTimestamp()` |
+
+`increment`, `arrayUnion`, `arrayRemove` and `serverTimestamp` run on the
+server, so concurrent writers do not overwrite each other.
+
+A nested model field has the same handles, by path, so you can update one
+nested field without touching its siblings. Replace or remove the whole
+nested value with `set` and `delete`:
+
+```dart
+await odm.users('jane').patch(($) => [
+  $.profile.followers.increment(1),        // updates profile.followers only
+  $.profile.interests.arrayUnion(['dart']),
+]);
+
+await odm.users('jane').patch(($) => [
+  $.profile.set(const Profile(bio: 'Updated', followers: 10)),
 ]);
 ```
+
+An empty list of operations writes nothing.
 
 ## delete
 
 ```dart
-await db.users('jane').delete();
+await odm.users.delete('jane');
+await odm.users('jane').delete(); // same
 ```
 
-## Validation
+Deleting a document does not delete its subcollections.
 
-Document IDs are validated against Firestore's rules (non-empty, no `/`,
-not `.`/`..`, ≤1500 bytes) before every write; violations raise
-`FirestoreODMValidationException` with code `invalid_document_id`.
+## Read, then write
 
-## Read-modify-write
-
-If you need the current value to decide the next write, do it in a
-transaction — that is where read-modify-write is safe:
+When a write depends on what the document holds now, use a
+[transaction](/guide/transactions). Firestore retries it if the document
+changes between the read and the write.
 
 ```dart
-await db.runTransaction((tx) async {
-  final txUsers = db.users.inTransaction(tx);
-  final user = await txUsers('jane').get();
-  if (user != null) {
-    txUsers('jane').patch((p) => [p.age.increment(1)]);
+await odm.runTransaction((tx) async {
+  final users = odm.users.inTransaction(tx);
+  final user = await users('jane').get();
+  // Only upgrade users who are active and not premium yet.
+  if (user != null && user.isActive && !user.isPremium) {
+    users('jane').patch(($) => [
+      $.isPremium.set(true),
+      $.tags.arrayUnion(['upgraded']),
+    ]);
   }
 });
 ```
+
+## Errors
+
+`set`, `patch` and `delete` check the document ID first and throw
+`FirestoreODMValidationException` (code `invalid_document_id`) for an invalid
+ID. See [Document ID](/guide/document-id#validation).
+
+To write many documents at once, see
+[Batch Operations](/guide/batch-operations) and
+[Bulk Operations](/guide/bulk-operations).

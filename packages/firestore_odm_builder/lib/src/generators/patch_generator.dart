@@ -1,6 +1,6 @@
 /// Generates the per-model `PatchBuilder` with typed field-update handles.
 ///
-/// Field handles map 1:1 to the six patch operations (ADR-0002): set/delete
+/// Field handles map 1:1 to the six patch operations: set/delete
 /// on every field; increment on numerics; serverTimestamp on DateTime;
 /// arrayUnion/arrayRemove on lists.
 library;
@@ -29,6 +29,45 @@ Class generatePatchBuilder(InterfaceType type) {
     fields.add(_generateField(type, field));
   }
 
+  // A non-generic model can be patched as a nested field: `$.profile.set(p)`
+  // replaces it and `$.profile.delete()` removes it.
+  final methods = typeParams.isNotEmpty
+      ? const <Method>[]
+      : [
+          Method(
+            (m) => m
+              ..docs.add('/// Replaces the whole `$modelName` at [field].')
+              ..name = 'set'
+              ..returns = refer('SetOperation')
+              ..requiredParameters.add(
+                Parameter(
+                  (p) => p
+                    ..name = 'value'
+                    ..type = type.element.thisType.reference,
+                ),
+              )
+              ..lambda = true
+              ..body = refer('SetOperation').newInstance([
+                refer('field'),
+                toJsonValue(
+                  type.element.thisType,
+                  refer('value'),
+                  modelName: modelName,
+                ),
+              ]).code,
+          ),
+          Method(
+            (m) => m
+              ..docs.add('/// Deletes the field at [field].')
+              ..name = 'delete'
+              ..returns = refer('DeleteOperation')
+              ..lambda = true
+              ..body = refer(
+                'DeleteOperation',
+              ).newInstance([refer('field')]).code,
+          ),
+        ];
+
   final builder = Class(
     (b) => b
       ..name = '${modelName}PatchBuilder'
@@ -36,9 +75,19 @@ Class generatePatchBuilder(InterfaceType type) {
       ..extend = generic('PatchBuilder', [type.element.thisType.reference])
       ..constructors.add(
         Constructor(
-          (b) => b..docs.add('/// Creates a patch builder for `$modelName`.'),
+          (b) => b
+            ..docs.add('/// Creates a patch builder for `$modelName`.')
+            ..optionalParameters.add(
+              Parameter(
+                (p) => p
+                  ..name = 'field'
+                  ..toSuper = true
+                  ..named = true,
+              ),
+            ),
         ),
       )
+      ..methods.addAll(methods)
       ..fields.addAll(fields),
   );
 
@@ -49,11 +98,32 @@ Field _generateField(InterfaceType model, FieldInfo field) {
   final type = field.type;
   final name = field.parameterName;
   final jsonName = field.jsonName;
-  final fieldNode = refer('FieldNode').constInstance([], {
-    'components': literalConstList([
-      for (final c in jsonName.split('.')) literalString(c),
-    ]),
-  });
+  Expression fieldNode = refer('field');
+  for (final c in jsonName.split('.')) {
+    fieldNode = fieldNode.property('append').call([literalString(c)]);
+  }
+
+  // A nested non-generic model gets its own builder at this path.
+  if (isUserType(type) &&
+      !TypeAnalyzer.isEnum(type) &&
+      type is InterfaceType &&
+      type.typeArguments.isEmpty &&
+      field.customConverter == null) {
+    final nestedBuilder = '${type.element.name}PatchBuilder';
+    return Field(
+      (b) => b
+        ..docs.add(
+          '/// Patch handles for `$name` (document field `$jsonName`).',
+        )
+        ..name = name
+        ..modifier = FieldModifier.final$
+        ..late = true
+        ..type = refer(nestedBuilder)
+        ..assignment = refer(
+          nestedBuilder,
+        ).newInstance([], {'field': fieldNode}).code,
+    );
+  }
 
   final Expression toJson = toJsonValue(
     type,

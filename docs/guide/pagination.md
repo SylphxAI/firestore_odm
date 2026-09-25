@@ -1,65 +1,58 @@
 # Pagination
 
-The ODM provides a fully type-safe pagination API that eliminates an entire class of common Firestore bugs.
+Pagination uses the cursor methods of an ordered query. The `orderBy` record
+sets the cursor's shape, so a cursor that does not match the ordering is a
+compile error.
 
-## The Concept
+## Page through results
 
-Traditional Firestore pagination is error-prone because the sorting logic (`orderBy`) and the pagination cursor (`startAfter`) are defined separately. If they don't match perfectly in the number, order, and type of fields, you get a runtime error.
-
-This ODM solves this by making the `orderBy` clause the single source of truth. The methods you use for pagination, like `startAfterObject`, use the information from the `orderBy` clause to automatically and safely construct the correct cursor.
-
-## How to Paginate
-
-Here is the standard pagination flow:
-
-1.  **Create an ordered query**: You must use `.orderBy()` to define the sorting for your pagination.
-2.  **Fetch the first page**: Use `.limit()` to get the first batch of documents.
-3.  **Get the cursor**: The last document of the first page will serve as the cursor for the next page.
-4.  **Fetch the next page**: Use a pagination method like `.startAfterObject()` with the cursor document.
+Use the last model of one page as the cursor for the next:
 
 ```dart
-// 1. Create a query, ordered by follower count
-final query = db.users.orderBy(($) => ($.profile.followers(descending: true),));
+final query = odm.users.orderBy(($) => ($.age(), $.documentId()));
 
-// 2. Fetch the first page of 20 users
-final firstPage = await query.limit(20).get();
+final page1 = await query.limit(20).get();
 
-// 3. Get the last user from the first page to use as a cursor
-if (firstPage.isNotEmpty) {
-  final lastUser = firstPage.last;
-
-  // 4. Fetch the next page of 20 users
-  // The ODM automatically and safely extracts the 'followers' value from `lastUser`
-  // to use as the cursor.
-  final nextPage = await query.startAfterObject(lastUser).limit(20).get();
+if (page1.isNotEmpty) {
+  final page2 = await query.startAfterObject(page1.last).limit(20).get();
 }
 ```
 
-## Pagination Methods
+`startAfterObject` reads the ordered fields (here `age` and the document ID)
+from the model. Ending the `orderBy` with `$.documentId()` gives every document
+a unique position, so no document is skipped or repeated when several share
+the same value.
 
-### Object-Based Cursors (Recommended)
+## Cursor methods
 
-These methods are the safest and easiest to use. They automatically extract the correct cursor values from a model object you provide.
+With a model:
 
-- `startAtObject(T object)`
-- `startAfterObject(T object)`
-- `endAtObject(T object)`
-- `endBeforeObject(T object)`
+- `startAtObject(model)`
+- `startAfterObject(model)`
+- `endAtObject(model)`
+- `endBeforeObject(model)`
 
-### Value-Based Cursors
+With values, as a record of the same shape as the `orderBy` record:
 
-If you need more control, you can provide the cursor values manually. The ODM will still provide type-safety, ensuring the values you provide match the type signature of your `orderBy` clause.
-
-- `startAt(O cursorValues)`
-- `startAfter(O cursorValues)`
-- `endAt(O cursorValues)`
-- `endBefore(O cursorValues)`
+- `startAt(values)`
+- `startAfter(values)`
+- `endAt(values)`
+- `endBefore(values)`
 
 ```dart
-// Manually providing a cursor value.
-// The type signature of orderBy is (int,), so startAfter expects an int tuple.
-final nextPage = await db.users
-  .orderBy(($) => ($.profile.followers(descending: true),))
-  .startAfter((1000,)) // Manually provide the follower count to start after
-  .limit(20)
-  .get();
+// orderBy returns (int,), so the cursor is an (int,) record
+final after1000 = await odm.users
+    .orderBy(($) => ($.profile.followers(descending: true),))
+    .startAfter((1000,))
+    .limit(20)
+    .get();
+
+// Two fields: (int, String)
+final page = await odm.users
+    .orderBy(($) => ($.age(), $.name()))
+    .startAfter((30, 'Jane'))
+    .get();
+```
+
+Cursor methods return an ordered query, so you can still add `where`, `limit`
+or `limitToLast`, and call `get`, `stream` or `count`.

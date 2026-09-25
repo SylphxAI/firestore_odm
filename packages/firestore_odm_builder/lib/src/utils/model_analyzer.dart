@@ -34,6 +34,10 @@ class FieldInfo {
   final CustomConverter? customConverter;
   final bool isNullable;
 
+  /// Source of the parameter's default value (a Dart default or freezed's
+  /// `@Default(...)`), used when a stored document lacks the field.
+  final String? defaultValueCode;
+
   const FieldInfo({
     required this.parameterName,
     required this.jsonName,
@@ -41,7 +45,21 @@ class FieldInfo {
     required this.isDocumentId,
     required this.customConverter,
     required this.isNullable,
+    this.defaultValueCode,
   });
+}
+
+/// The default of [parameter]: its Dart default value, or the argument of a
+/// freezed `@Default(...)` annotation.
+String? _defaultValueCode(FormalParameterElement parameter) {
+  if (parameter.defaultValueCode case final code?) return code;
+  for (final annotation in parameter.metadata.annotations) {
+    final source = annotation.toSource();
+    if (source.startsWith('@Default(') && source.endsWith(')')) {
+      return source.substring('@Default('.length, source.length - 1);
+    }
+  }
+  return null;
 }
 
 /// Types the ODM handles natively (no generated converter needed).
@@ -51,8 +69,23 @@ bool isHandledType(DartType type) {
       TypeChecker.typeNamed(Map).isAssignableFromType(type) ||
       TypeChecker.typeNamed(DateTime).isExactlyType(type) ||
       TypeChecker.typeNamed(Duration).isExactlyType(type) ||
-      (type is InterfaceType && type.element is EnumElement);
+      (type is InterfaceType && type.element is EnumElement) ||
+      isFirestoreValueType(type);
 }
+
+const _firestoreValueTypes = {
+  'Blob',
+  'DocumentReference',
+  'GeoPoint',
+  'Timestamp',
+};
+
+/// cloud_firestore value types that Firestore stores natively (GeoPoint,
+/// DocumentReference, Blob, Timestamp): passed through as is.
+bool isFirestoreValueType(DartType type) =>
+    type is InterfaceType &&
+    _firestoreValueTypes.contains(type.element.name) &&
+    type.element.library.uri.toString().startsWith('package:cloud_firestore');
 
 /// A user-defined model type requiring a converter.
 bool isUserType(DartType type) {
@@ -128,6 +161,7 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
           : null,
       isNullable:
           parameter.type.nullabilitySuffix == NullabilitySuffix.question,
+      defaultValueCode: _defaultValueCode(parameter),
     );
   }
 
@@ -170,27 +204,4 @@ String? getDocumentIdFieldName(InterfaceType type) {
       .where((p) => p.name == 'id' && p.type.isDartCoreString)
       .firstOrNull;
   return idParam?.name;
-}
-
-/// Whether the model provides its own `toJson()` instance method.
-bool hasOwnToJson(InterfaceType type) {
-  return type.methods.any(
-    (m) => m.name == 'toJson' && !m.isStatic && m.returnType.isDartCoreMap,
-  );
-}
-
-/// Whether the model provides its own `fromJson` factory or static method.
-bool hasOwnFromJson(InterfaceType type) {
-  // Generic models (e.g. freezed `genericArgumentFactories`) need an extra
-  // type-argument converter the ODM cannot supply; their fromJson is always
-  // generated instead.
-  if (type.typeArguments.isNotEmpty) return false;
-  if (type.constructors.any(
-    (c) => c.name == 'fromJson' && c.formalParameters.length == 1,
-  )) {
-    return true;
-  }
-  return type.methods.any(
-    (m) => m.name == 'fromJson' && m.isStatic && m.formalParameters.length == 1,
-  );
 }

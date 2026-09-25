@@ -1,3 +1,42 @@
+## 5.1.0
+
+Upgrade `firestore_odm` and `firestore_odm_builder` together: code generated
+by builder 5.1.0 uses `AggregateFieldSelector`, which is new in this release.
+
+- Nested model fields can be patched by path:
+  `$.profile.followers.increment(1)` updates `profile.followers` only;
+  `$.profile.set(...)` and `$.profile.delete()` still replace or remove the
+  whole value.
+- A field missing from a stored document takes the model's default (a Dart
+  default or freezed's `@Default`) instead of throwing, so adding a field
+  with a default needs no data migration.
+- `get()` on documents, collections and queries accepts `GetOptions`, so you
+  can read from the cache or the server only (`GetOptions` and `Source` are
+  exported).
+- Fixed: a `DateTime` inside a nested json_serializable/freezed model failed
+  to read ("Timestamp is not a subtype of String"); nested models now use the
+  same generated converter for reads as for writes.
+- Fixed: a whole number in a `double` field (for example `5` written by the
+  console or another client) failed to read; it now reads as `5.0`.
+- Fixed: document ID validation rejected valid IDs longer than 375
+  characters; it now checks Firestore's 1,500-byte UTF-8 limit and also
+  rejects the reserved `__.*__` IDs.
+- Fixed: `average()` threw when no document matched; it returns
+  `double.nan`, and `sum()` returns 0.
+- Subcollection accessors take their parent IDs as required `String`
+  parameters (`odm.usersPosts(userId)`); calling one without an ID used to
+  target `users/null/posts`.
+- Fixed: generated aggregate selectors failed to compile ("ambiguous import")
+  in any model file that also imports `cloud_firestore`. The selector class is
+  now `AggregateFieldSelector`; `AggregateField` remains as a deprecated alias.
+- Fixed: `GeoPoint`, `DocumentReference`, `Blob` and `Timestamp` model
+  fields were treated as nested models and did not compile. They are now
+  stored natively and can be filtered, ordered and patched.
+- Collection paths with hyphens (`firestore-example-app`) produce valid
+  accessor names (`firestoreExampleApp`).
+- Documentation: migration guide and codemod from `cloud_firestore_odm`,
+  a comparison table, and code generation and runtime benchmarks.
+
 ## 5.0.0
 
 - **Stable release of the 5.0 clean break (ADR-0002)** — exact Firestore

@@ -1,53 +1,79 @@
 # Schema Definition
 
-The foundation of the ODM is the **Schema**. The schema is a central definition of your database structure, telling the ODM which collections exist and what data models they use.
+A schema lists your collections and the model stored in each one. The code
+generator reads it and adds a typed accessor for every collection to
+`FirestoreODM`.
 
-## How to Define a Schema
+## Define a schema
 
-You create a single schema file that defines all your collections. You do this by declaring the schema class by hand (so the schema variable's type is resolvable before code generation) and annotating a top-level variable of that type with `@Schema()` and one or more `@Collection<Model>(collectionPath)` annotations.
+A schema file has three parts:
+
+1. A schema class that extends `FirestoreSchema`. You write this class
+   yourself.
+2. A top-level constant of that class, annotated with `@Schema()` and one
+   `@Collection<Model>('path')` per collection.
+3. A `part` directive for the generated file.
 
 ```dart
 // lib/schema.dart
 import 'package:firestore_odm/firestore_odm.dart';
-import 'models/user.dart';
+
 import 'models/post.dart';
+import 'models/user.dart';
 
-part 'schema.g.dart'; // combined generated part (ODM + json_serializable)
+part 'schema.g.dart';
 
-/// The schema class is declared by hand (ADR-0002) so the schema variable's
-/// type is resolvable before code generation.
-class FirestoreDatabase extends FirestoreSchema {
-  const FirestoreDatabase();
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
 }
 
 @Schema()
-@Collection<User>("users")
-@Collection<Post>("posts")
-const firestoreDatabase = FirestoreDatabase(); // The variable name can be anything
+@Collection<User>('users')
+@Collection<Post>('posts')
+@Collection<Post>('users/*/posts') // subcollection: one per user
+const appSchema = AppSchema();
 ```
 
-After defining your schema and models, run the build runner:
+Every model used in a `@Collection` must carry `@firestoreOdm` (see
+[Data Modeling](/guide/data-modeling)). A `*` in a path stands for a parent
+document ID (see [Subcollections](/guide/subcollections)).
+
+Then generate the code:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-This generates the necessary code to create a type-safe API for your database.
-
-## Using the ODM Instance
-
-You then create an instance of your ODM, which gives you access to your collections.
+## Create the ODM
 
 ```dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_odm/firestore_odm.dart';
-import 'schema.dart'; // Your schema file
 
-final firestore = FirebaseFirestore.instance;
+import 'schema.dart';
 
-// Create the ODM instance
-final db = FirestoreODM(firestoreDatabase, firestore: firestore);
+final odm = FirestoreODM(appSchema, firestore: FirebaseFirestore.instance);
 
-// Now you can access your collections with type-safety
-final usersCollection = db.users;
-final postsCollection = db.posts;
+final users = odm.users;            // root collection: a getter
+final posts = odm.posts;
+final alicePosts = odm.usersPosts('alice'); // subcollection: a method
+```
+
+`firestore` is optional and defaults to `FirebaseFirestore.instance`. Pass
+another instance to use a second database or an emulator (see
+[Multiple ODM Instances](/guide/multiple-instances)).
+
+## Accessor names
+
+Accessor names come from the collection path. Wildcard segments are dropped
+and the remaining segments are joined in camelCase:
+
+| Path | Accessor |
+|---|---|
+| `users` | `odm.users` |
+| `audit_logs` | `odm.auditLogs` |
+| `users/*/posts` | `odm.usersPosts(userId)` |
+| `users/*/posts/*/comments` | `odm.usersPostsComments(userId, postId)` |
+
+The same model can appear in any number of collections; its generated code is
+shared.

@@ -1,7 +1,7 @@
 /// Generates the `FirestoreODM` extension for a `@Schema` variable: one
 /// accessor per `@Collection` entry.
 ///
-/// Accessor semantics (ADR-0002):
+/// Accessor semantics:
 /// - Root collection `users`      -> getter `users` (collection) and method
 ///   `users(String id)` (document).
 /// - Subcollection `users/*/posts` -> method `posts(String userId)` (collection).
@@ -75,7 +75,7 @@ class SchemaGenerator2 extends Generator {
     );
     specs.add(extension);
 
-    // The schema class is declared by the user (ADR-0002) so the schema
+    // The schema class is declared by the user so the schema
     // variable's type is resolvable before codegen; the generator only emits
     // the extension.
     return Library(
@@ -127,12 +127,12 @@ class SchemaGenerator2 extends Generator {
           (m) => m
             ..name = subName
             ..returns = _collectionType(schemaType, sub)
-            ..optionalParameters.addAll([
+            ..requiredParameters.addAll([
               for (var i = 0; i < wildcards.length; i++)
                 Parameter(
                   (p) => p
                     ..name = 'p${i + 1}'
-                    ..type = TypeReferences.nullableString,
+                    ..type = TypeReferences.string,
                 ),
             ])
             ..body = _collectionInstance(
@@ -192,7 +192,7 @@ class SchemaGenerator2 extends Generator {
   }
 
   Expression _toJsonRef(InterfaceType modelType) {
-    // The ODM always owns storage serialization (native Timestamp, ADR-0002).
+    // The ODM always owns storage serialization (native Timestamp).
     // Generated converters are null-tolerant; the ODM always has a full model.
     final name = '${modelType.element.name}ToJson';
     final args = modelType.typeArguments.isEmpty
@@ -437,13 +437,5 @@ abstract final class TypeReferences {
     (b) => b
       ..symbol = 'String'
       ..url = 'dart:core',
-  );
-
-  /// Nullable String (`String?`).
-  static final nullableString = TypeReference(
-    (b) => b
-      ..symbol = 'String'
-      ..url = 'dart:core'
-      ..isNullable = true,
   );
 }

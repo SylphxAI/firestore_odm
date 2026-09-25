@@ -3,7 +3,7 @@
 /// One-shot `execute()` (no realtime/offline); unsupported by the emulator and
 /// `fake_cloud_firestore`. The `select`/`aggregate` projections are
 /// compile-time type-checked but their runtime behaviour is unverified pending
-/// an Enterprise test database (ADR-0001). Stage building uses the generated
+/// an Enterprise test database. Stage building uses the generated
 /// `$.field` selectors — never string paths.
 library;
 

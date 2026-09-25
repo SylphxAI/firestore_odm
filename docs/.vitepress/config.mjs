@@ -1,85 +1,111 @@
 import { defineConfig } from 'vitepress'
 
-// https://vitepress.dev/reference/site-config
+const title = 'firestore_odm'
+const description =
+  'Type-safe Firestore ODM for Flutter and Dart — the maintained successor to cloud_firestore_odm.'
+const site = 'https://sylphxai.github.io/firestore_odm/'
+
 export default defineConfig({
-  title: "Firestore ODM",
-  description: "A type-safe ODM for Firestore on Dart & Flutter",
+  title,
+  description,
   base: '/firestore_odm/',
+  lang: 'en',
+  // Decision records stay in the repository, not on the site.
+  srcExclude: ['adr/**'],
+  sitemap: { hostname: site },
+  head: [
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: title }],
+    ['meta', { property: 'og:image', content: `${site}og.png` }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+  ],
+  transformPageData(pageData) {
+    const pageTitle = pageData.frontmatter.title ?? pageData.title ?? title
+    const pageDescription = pageData.frontmatter.description ?? description
+    pageData.frontmatter.head ??= []
+    pageData.frontmatter.head.push(
+      ['meta', { property: 'og:title', content: pageTitle }],
+      ['meta', { property: 'og:description', content: pageDescription }],
+      ['meta', { property: 'og:url', content: site + pageData.relativePath.replace(/(index)?\.md$/, '') }],
+    )
+  },
   themeConfig: {
-    search: {
-      provider: 'local'
-    },
+    search: { provider: 'local' },
     nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Guide', link: '/guide/introduction' },
+      { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Migrate from cloud_firestore_odm', link: '/guide/migrate-from-cloud-firestore-odm' },
+      { text: 'Comparison', link: '/guide/comparison' },
+      { text: 'Benchmarks', link: '/guide/benchmarks' },
       {
         text: 'Packages',
         items: [
           { text: 'firestore_odm', link: 'https://pub.dev/packages/firestore_odm' },
           { text: 'firestore_odm_builder', link: 'https://pub.dev/packages/firestore_odm_builder' },
           { text: 'firestore_odm_annotation', link: 'https://pub.dev/packages/firestore_odm_annotation' },
-        ]
-      }
+          { text: 'API reference', link: 'https://pub.dev/documentation/firestore_odm/latest/' },
+        ],
+      },
     ],
-
     sidebar: {
       '/guide/': [
         {
           text: 'Introduction',
           items: [
-            { text: 'What is Firestore ODM?', link: '/guide/introduction' },
-            { text: 'Getting Started', link: '/guide/getting-started' },
-            { text: 'Migration Guide', link: '/guide/migration-guide' },
-          ]
+            { text: 'What is firestore_odm?', link: '/guide/introduction' },
+            { text: 'Getting started', link: '/guide/getting-started' },
+            { text: 'Comparison', link: '/guide/comparison' },
+            { text: 'Benchmarks', link: '/guide/benchmarks' },
+          ],
         },
         {
-          text: 'Core Concepts',
+          text: 'Migration',
           items: [
-            { text: 'Data Modeling', link: '/guide/data-modeling' },
-            { text: 'Schema Definition', link: '/guide/schema-definition' },
+            { text: 'From cloud_firestore_odm', link: '/guide/migrate-from-cloud-firestore-odm' },
+            { text: 'From cloud_firestore', link: '/guide/migration-guide' },
+            { text: 'From firestore_odm 4.x', link: '/guide/migration-guide-5' },
+          ],
+        },
+        {
+          text: 'Models and schema',
+          items: [
+            { text: 'Data modeling', link: '/guide/data-modeling' },
+            { text: 'Schema definition', link: '/guide/schema-definition' },
             { text: 'Document ID', link: '/guide/document-id' },
-            { text: 'Server Timestamps', link: '/guide/server-timestamps' },
-            { text: 'Multiple ODM Instances', link: '/guide/multiple-instances' },
-          ]
+            { text: 'Server timestamps', link: '/guide/server-timestamps' },
+            { text: 'Multiple ODM instances', link: '/guide/multiple-instances' },
+          ],
         },
         {
-          text: 'Working with Documents',
+          text: 'Documents',
           items: [
-            { text: 'Reading Documents', link: '/guide/reading-documents' },
-            { text: 'Writing Documents', link: '/guide/writing-documents' },
-          ]
+            { text: 'Reading documents', link: '/guide/reading-documents' },
+            { text: 'Writing documents', link: '/guide/writing-documents' },
+            { text: 'Subcollections', link: '/guide/subcollections' },
+          ],
         },
         {
-          text: 'Querying',
+          text: 'Queries',
           items: [
-            { text: 'Fetching Data', link: '/guide/fetching-data' },
-            { text: 'Filtering Data', link: '/guide/filtering-data' },
-            { text: 'Ordering & Limiting', link: '/guide/ordering-and-limiting' },
+            { text: 'Fetching data', link: '/guide/fetching-data' },
+            { text: 'Filtering', link: '/guide/filtering-data' },
+            { text: 'Ordering and limiting', link: '/guide/ordering-and-limiting' },
             { text: 'Pagination', link: '/guide/pagination' },
-            { text: 'Bulk Operations', link: '/guide/bulk-operations' },
-          ]
+            { text: 'Aggregations', link: '/guide/aggregations' },
+            { text: 'Bulk operations', link: '/guide/bulk-operations' },
+          ],
         },
         {
-          text: 'Advanced Features',
+          text: 'Atomic writes',
           items: [
             { text: 'Transactions', link: '/guide/transactions' },
-            { text: 'Batch Operations', link: '/guide/batch-operations' },
-            { text: 'Aggregations', link: '/guide/aggregations' },
-            { text: 'Subcollections', link: '/guide/subcollections' },
-          ]
+            { text: 'Batches', link: '/guide/batch-operations' },
+          ],
         },
-        {
-          text: 'Release Notes',
-          items: [
-            { text: 'Version 4.0', link: '/guide/version-4.0-release-notes' },
-            { text: 'Version 3.0', link: '/guide/version-3.0-release-notes' },
-          ]
-        }
-      ]
+      ],
     },
-
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/SylphxAI/firestore_odm' }
-    ]
-  }
+    socialLinks: [{ icon: 'github', link: 'https://github.com/SylphxAI/firestore_odm' }],
+    editLink: {
+      pattern: 'https://github.com/SylphxAI/firestore_odm/edit/main/docs/:path',
+    },
+  },
 })

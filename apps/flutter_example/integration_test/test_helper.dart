@@ -1,4 +1,4 @@
-/// Emulator test bootstrap (ADR-0002). Requires the Firestore emulator on
+/// Emulator test bootstrap. Requires the Firestore emulator on
 /// localhost:8080 (CI service container).
 library;
 

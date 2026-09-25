@@ -1,4 +1,4 @@
-/// The typed document surface: get/stream/set/patch/delete (ADR-0002).
+/// The typed document surface: get/stream/set/patch/delete.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
@@ -32,9 +32,10 @@ class FirestoreDocument<
   final String? documentIdField;
   final P Function() _patchBuilderFactory;
 
-  /// The document data, or null when the document does not exist.
-  Future<T?> get() async {
-    final snapshot = await ref.get();
+  /// The document data, or null when the document does not exist. Pass
+  /// [options] to read from the cache or the server only.
+  Future<T?> get([firestore.GetOptions? options]) async {
+    final snapshot = await ref.get(options);
     if (!snapshot.exists) return null;
     return processDocumentSnapshot(snapshot, _fromJson, documentIdField);
   }
