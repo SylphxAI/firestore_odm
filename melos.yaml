@@ -25,7 +25,7 @@ scripts:
     description: Fail when any file is not formatted.
 
   test:unit:
-    run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
+    run: melos exec --no-flutter --dir-exists="test" -- dart test
     description: Unit tests of the published packages (the migration codemod).
 
   test:integration:

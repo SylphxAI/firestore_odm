@@ -37,7 +37,7 @@ jobs:
       - name: Test (unit, generated code, benchmarks)
         run: melos run test:all --no-select
       - name: API docs
-        run: melos exec --scope="firestore_odm,firestore_odm_annotation,firestore_odm_builder" -- dart doc --validate-links --dry-run
+        run: melos exec -c 1 --scope="firestore_odm,firestore_odm_annotation,firestore_odm_builder" -- 'dart doc --validate-links --output "$(mktemp -d)"'
       - name: Publish dry run
         run: melos run publish:dry-run --no-select
       - name: pub.dev score (pana)
