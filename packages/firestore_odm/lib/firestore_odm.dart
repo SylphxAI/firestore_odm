@@ -4,6 +4,8 @@ library firestore_odm;
 
 export 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
 
+export 'package:cloud_firestore/cloud_firestore.dart' show GetOptions, Source;
+
 export 'src/aggregate.dart';
 export 'src/batch.dart';
 export 'src/exceptions.dart';

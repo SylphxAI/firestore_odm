@@ -1,704 +1,250 @@
-> **5.0 note:** examples use the current 5.0 API (create/set/patch/delete, no
-> sentinels, no modify). For the v4→5.0 migration map see
-> [migration-guide-5](./migration-guide-5).
->
-# Migration Guide: From cloud_firestore to Firestore ODM
+# Migrating from cloud_firestore
 
-This comprehensive guide will walk you through migrating from the standard `cloud_firestore` package to Firestore ODM, feature by feature. Each section includes detailed comparisons, benefits, and step-by-step migration instructions.
+This guide shows common `cloud_firestore` code next to the Firestore ODM
+equivalent. The ODM uses `cloud_firestore` underneath, so you can move one
+collection at a time and keep the rest of your code unchanged.
 
-## Overview: Why Migrate?
+Coming from the `cloud_firestore_odm` package instead? See
+[Migrate from cloud_firestore_odm](/guide/migrate-from-cloud-firestore-odm).
 
-The standard `cloud_firestore` package has several fundamental limitations:
-- **No type safety** - Everything is `Map<String, dynamic>`
-- **Runtime errors** - Field name typos cause crashes in production
-- **Manual serialization** - Tedious and error-prone data conversion
-- **Complex queries** - Difficult to write and maintain
-- **Limited features** - No type-safe one-shot aggregations, smart pagination, or atomic update helpers
+## Before you start: stored data
 
-Firestore ODM solves all these problems while maintaining full compatibility with your existing Firestore database.
+The ODM reads documents into your model classes, so the stored data must match
+the model:
 
-## 1. Basic Setup Migration
+- `DateTime` fields must be stored as `Timestamp` values. Strings are not
+  converted.
+- `Duration` fields are stored as integer microseconds.
+- A field missing from a document takes the model's default (a Dart default
+  or freezed's `@Default`); a missing non-nullable field without a default
+  throws. Make a field nullable or give it a default if older documents lack
+  it.
+- A whole number stored in a `double` field (for example `5` written by the
+  console or another client) reads as `5.0`.
 
-### Before (cloud_firestore)
+A document that does not match its model throws when it is read.
+
+## Setup
+
+Add the packages, write your models and schema, then generate code. See
+[Getting Started](/guide/getting-started), [Data Modeling](/guide/data-modeling)
+and [Schema Definition](/guide/schema-definition).
+
 ```dart
-import 'package:cloud_firestore/cloud_firestore.dart';
+// Before
+final users = FirebaseFirestore.instance.collection('users');
 
-final firestore = FirebaseFirestore.instance;
-final usersCollection = firestore.collection('users');
+// After
+final odm = FirestoreODM(appSchema, firestore: FirebaseFirestore.instance);
+final users = odm.users;
 ```
 
-### After (Firestore ODM)
-```dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_odm/firestore_odm.dart';
-import 'schema.dart'; // Your schema file
+The examples below use the `User` and `Profile` models from
+[Data Modeling](/guide/data-modeling).
 
-final firestore = FirebaseFirestore.instance;
-final db = FirestoreODM(appSchema, firestore: firestore);
-final usersCollection = db.users; // Type-safe collection reference
+## Read a document
+
+```dart
+// Before
+final snap = await users.doc('jane').get();
+final name = snap.exists ? snap.data()!['name'] as String : null;
+
+// After
+final user = await odm.users('jane').get(); // User?
+final name = user?.name;
 ```
 
-### Migration Steps:
-1. **Install Firestore ODM** packages
-2. **Create your data models** using freezed or json_serializable
-3. **Define your schema** with `@Schema()` and `@Collection<T>()` annotations
-4. **Run code generation** with `dart run build_runner build`
-5. **Replace collection references** with ODM instances
-
-### Benefits After Migration:
-- ✅ **Type-safe collection access** - `db.users` instead of `firestore.collection('users')`
-- ✅ **Compile-time validation** - Typos become build errors, not runtime crashes
-- ✅ **IDE autocomplete** - Full IntelliSense support for all operations
-
-## 2. Data Models Migration
-
-### Before (Manual Map Handling)
 ```dart
-// No data model - working directly with maps
-Map<String, dynamic> userData = {
-  'name': 'John Doe',
-  'email': 'john@example.com',
-  'age': 30,
-  'isActive': true,
-};
+// Before
+users.doc('jane').snapshots().listen((snap) { /* ... */ });
 
-// Manual serialization from DocumentSnapshot
-DocumentSnapshot doc = await usersCollection.doc('user123').get();
-Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
-String name = data?['name'] ?? ''; // Unsafe, can cause runtime errors
+// After
+odm.users('jane').stream.listen((User? user) { /* ... */ });
 ```
 
-### After (Type-Safe Models)
+## Write a document
+
 ```dart
-// Strong typed model with automatic serialization
-@freezed
-class User with _$User {
-  const factory User({
-    @DocumentIdField() required String id,
-    required String name,
-    required String email,
-    required int age,
-    required bool isActive,
-  }) = _User;
+// Before
+await users.doc('jane').set({'name': 'Jane', 'email': 'jane@example.com', /* ... */});
+final ref = await users.add({'name': 'Bob', /* ... */});
 
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-}
-
-// Type-safe operations
-User? user = await db.users('user123').get();
-String name = user?.name ?? ''; // Compile-time safe
+// After
+await odm.users.set(jane);                // ID from jane.id
+final id = await odm.users.create(bob);   // generated ID
 ```
 
-### Migration Steps:
-1. **Analyze your existing data structure** in Firestore
-2. **Create freezed or json_serializable models** matching your data
-3. **Add `@DocumentIdField()` annotation** to your ID field
-4. **Generate code** with build_runner
-5. **Replace manual map operations** with model operations
-
-### Benefits After Migration:
-- ✅ **Complete type safety** - No more `Map<String, dynamic>`
-- ✅ **Automatic serialization** - No manual `fromJson`/`toJson` calls
-- ✅ **IDE support** - Autocomplete for all model fields
-- ✅ **Compile-time validation** - Field access errors caught at build time
-
-## 3. Reading Documents Migration
-
-### Before (Manual DocumentSnapshot Handling)
 ```dart
-// Get a single document
-DocumentSnapshot doc = await usersCollection.doc('user123').get();
-if (doc.exists) {
-  Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-  String name = data['name']; // Unsafe - can throw if field missing
-  int age = data['age']; // No type checking
-}
-
-// Stream a document
-Stream<DocumentSnapshot> stream = usersCollection.doc('user123').snapshots();
-stream.listen((doc) {
-  if (doc.exists) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    // Manual data extraction every time
-  }
-});
-```
-
-### After (Type-Safe Document Operations)
-```dart
-// Get a single document - fully type-safe
-User? user = await db.users('user123').get();
-if (user != null) {
-  String name = user.name; // Compile-time safe
-  int age = user.age; // Strongly typed
-}
-
-// Stream a document - automatic deserialization
-Stream<User?> stream = db.users('user123').stream;
-stream.listen((user) {
-  if (user != null) {
-    // Direct access to typed fields
-    print('User: ${user.name}, Age: ${user.age}');
-  }
-});
-```
-
-### Migration Steps:
-1. **Replace `DocumentSnapshot` operations** with ODM document references
-2. **Remove manual data extraction** - ODM handles serialization automatically
-3. **Update stream handling** - Use typed streams instead of `DocumentSnapshot` streams
-4. **Remove null safety boilerplate** - ODM provides clean nullable types
-
-### Benefits After Migration:
-- ✅ **Automatic deserialization** - No manual data extraction
-- ✅ **Type-safe field access** - Compile-time validation of all fields
-- ✅ **Cleaner code** - Less boilerplate, more readable
-- ✅ **Better error handling** - Null safety built-in
-
-## 4. Writing Documents Migration
-
-### Before (Manual Map Construction)
-```dart
-// Create a document
-await usersCollection.doc('user123').set({
-  'name': 'John Doe',
-  'email': 'john@example.com',
-  'age': 30,
-  'isActive': true,
-  'createdAt': FieldValue.serverTimestamp(),
-});
-
-// Update a document
-await usersCollection.doc('user123').update({
+// Before
+await users.doc('jane').update({
   'age': FieldValue.increment(1),
   'tags': FieldValue.arrayUnion(['premium']),
   'lastLogin': FieldValue.serverTimestamp(),
+  'profile.bio': 'Hello',
 });
-```
 
-### After (Type-Safe Operations, 5.0 API)
-```dart
-// Create a document - type-safe model (explicit ID = full replace)
-await db.users.set(User(
-  id: 'user123',
-  name: 'John Doe',
-  email: 'john@example.com',
-  age: 30,
-  isActive: true,
-));
-
-// Or let Firestore generate the ID:
-final id = await db.users.create(User(
-  id: '',
-  name: 'John Doe',
-  email: 'john@example.com',
-  age: 30,
-  isActive: true,
-));
-
-// Partial update with explicit typed patch operations (ADR-0002)
-await db.users('user123').patch((p) => [
-  p.age.increment(1),
-  p.tags.arrayUnion(['premium']),
-  p.lastLogin.serverTimestamp(),
+// After
+await odm.users('jane').patch(($) => [
+  $.age.increment(1),
+  $.tags.arrayUnion(['premium']),
+  $.lastLogin.serverTimestamp(),
+  $.profile.set(const Profile(bio: 'Hello')),
 ]);
 ```
 
-### Migration Steps:
-1. **Replace `insert()`/`update()`/`upsert()`** with `set()` (explicit ID) or
-   `create()` (generated ID)
-2. **Convert manual maps** to typed model instances
-3. **Use `patch()`** for explicit atomic operations (six FieldValue-shaped ops)
-   — there is no `modify()` in 5.0
-4. **Replace `FieldValue` operations** with ODM equivalents
+The ODM patches a nested model as a whole value. To change one nested field
+without replacing the rest, use `cloud_firestore` directly through
+`odm.users('jane').ref.update({'profile.bio': 'Hello'})`.
 
-### Benefits After Migration:
-- ✅ **Explicit typed patch operations** - six FieldValue-shaped ops
-- ✅ **Native Timestamp storage** - DateTime round-trips as Firestore timestamps
-- ✅ **Type-safe field updates** - No more string-based field names
-- ✅ **Explicit server timestamps** - via the `serverTimestamp()` patch op
-
-## 5. Batch Operations Migration
-
-### Before (Manual WriteBatch Handling)
 ```dart
-// Manual batch creation and management
-WriteBatch batch = FirebaseFirestore.instance.batch();
+// Before
+await users.doc('jane').delete();
 
-// Manual map construction for each operation
-batch.set(usersCollection.doc('user1'), {
-  'name': 'John Doe',
-  'email': 'john@example.com',
-  'age': 30,
-});
-
-batch.update(usersCollection.doc('user2'), {
-  'age': FieldValue.increment(1),
-  'tags': FieldValue.arrayUnion(['premium']),
-});
-
-batch.delete(usersCollection.doc('user3'));
-
-// Manual commit
-await batch.commit();
-
-// No subcollection support in batch
-// No type safety
-// Manual error handling for batch limits
+// After
+await odm.users('jane').delete();
 ```
 
-### After (Type-Safe Batch Operations, 5.0)
+See [Writing Documents](/guide/writing-documents).
+
+## Queries
+
 ```dart
-// Automatic batch management - simple and clean
-await db.runBatch((batch) {
-  final users = db.users.inBatch(batch);
-
-  // Type-safe writes with models
-  users.set(User(
-    id: 'user1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    age: 30,
-  ));
-
-  // Typed patch operations
-  users.patch('user2', (p) => [p.age.increment(1), p.tags.arrayUnion(['premium'])]);
-
-  // Delete operations
-  users.delete('user3');
-
-  // Subcollection support (path-derived accessor)
-  db.usersPosts('user1').inBatch(batch).set(Post(
-    id: 'post1',
-    title: 'My First Post',
-    content: 'Hello world!',
-  ));
-});
-
-// Manual batch management for fine-grained control
-final batch = db.batch();
-db.users.inBatch(batch).set(user1);
-db.users.inBatch(batch).set(user2);
-db.posts.inBatch(batch).patch('p1', (p) => [p.likes.increment(1)]);
-await batch.commit();
-```
-
-### Migration Steps:
-1. **Replace `WriteBatch` creation** with ODM batch methods
-2. **Convert manual maps** to typed model operations
-3. **Use type-safe field operations** instead of `FieldValue` maps
-4. **Choose batch approach**:
-   - Use `runBatch()` for automatic management
-   - Use `batch()` for manual control
-5. **Add subcollection operations** where needed
-6. **Remove manual batch limit checking** - ODM handles this
-
-### Benefits After Migration:
-- ✅ **Two convenient approaches** - Automatic and manual batch management
-- ✅ **Complete type safety** - No more manual map construction
-- ✅ **Subcollection support** - Full nested document operations
-- ✅ **Atomic operations** - Type-safe patch operations
-- ✅ **Automatic limit handling** - Built-in 500 operation limit management
-- ✅ **Better error handling** - Clear error messages for batch failures
-
-## 6. Querying Migration
-
-### Before (String-Based Queries)
-```dart
-// Simple query
-QuerySnapshot snapshot = await usersCollection
-  .where('isActive', isEqualTo: true)
-  .where('age', isGreaterThan: 18)
-  .get();
-
-List<Map<String, dynamic>> users = snapshot.docs
-  .map((doc) => doc.data() as Map<String, dynamic>)
-  .toList();
-
-// Complex query with nested fields
-QuerySnapshot complexSnapshot = await usersCollection
-  .where('profile.followers', isGreaterThan: 1000)
-  .where('settings.theme', isEqualTo: 'dark')
-  .get();
-```
-
-### After (Type-Safe Queries)
-```dart
-// Simple query - fully type-safe
-List<User> users = await db.users
-  .where(($) => $.and(
-    $.isActive(isEqualTo: true),
-    $.age(isGreaterThan: 18),
-  ))
-  .get();
-
-// Complex query with nested fields - IDE autocomplete
-List<User> complexUsers = await db.users
-  .where(($) => $.and(
-    $.profile.followers(isGreaterThan: 1000),
-    $.settings.theme(isEqualTo: 'dark'),
-  ))
-  .get();
-
-// Advanced logical queries
-List<User> engagedUsers = await db.users
-  .where(($) => $.and(
-    $.isActive(isEqualTo: true),
-    $.or(
-      $.isPremium(isEqualTo: true),
-      $.profile.followers(isGreaterThan: 1000),
-    ),
-  ))
-  .get();
-```
-
-### Migration Steps:
-1. **Replace string field names** with type-safe field accessors
-2. **Use query builder syntax** - `where(($) => $.field(operator: value))`
-3. **Combine conditions** with `$.and()` and `$.or()` for complex logic
-4. **Remove manual deserialization** - ODM returns typed objects directly
-
-### Benefits After Migration:
-- ✅ **Type-safe field access** - No more string-based field names
-- ✅ **Complex logical queries** - Easy `and`/`or` combinations
-- ✅ **Nested field support** - Full autocomplete for nested objects
-- ✅ **Automatic deserialization** - Direct typed results
-
-## 7. Pagination Migration
-
-### Before (Error-Prone Manual Cursors)
-```dart
-// First page
-Query query = usersCollection
-  .orderBy('createdAt', descending: true)
-  .limit(10);
-
-QuerySnapshot firstPage = await query.get();
-List<QueryDocumentSnapshot> docs = firstPage.docs;
-
-// Next page - manual cursor management (error-prone!)
-if (docs.isNotEmpty) {
-  DocumentSnapshot lastDoc = docs.last;
-  Query nextQuery = usersCollection
-    .orderBy('createdAt', descending: true) // Must match exactly!
-    .startAfterDocument(lastDoc)
-    .limit(10);
-  
-  QuerySnapshot nextPage = await nextQuery.get();
-}
-```
-
-### After (Smart Builder Pagination)
-```dart
-// First page with Smart Builder
-List<User> firstPage = await db.users
-  .orderBy(($) => $.createdAt(descending: true))
-  .limit(10)
-  .get();
-
-// Next page - zero inconsistency risk!
-if (firstPage.isNotEmpty) {
-  List<User> nextPage = await db.users
-    .orderBy(($) => $.createdAt(descending: true)) // Same orderBy
-    .startAfterObject(firstPage.last) // Auto-extracts cursor
+// Before
+final snap = await users
+    .where('isActive', isEqualTo: true)
+    .where('profile.followers', isGreaterThan: 1000)
+    .orderBy('profile.followers', descending: true)
     .limit(10)
     .get();
-}
+final list = snap.docs.map((d) => d.data()).toList();
 
-// Multi-field ordering with type safety
-List<User> complexPage = await db.users
-  .orderBy(($) => (
-    $.profile.followers(descending: true),
-    $.name(), // ascending
-  ))
-  .limit(10)
-  .get();
+// After
+final list = await odm.users
+    .where(($) =>
+        $.isActive(isEqualTo: true) & $.profile.followers(isGreaterThan: 1000))
+    .orderBy(($) => ($.profile.followers(descending: true),))
+    .limit(10)
+    .get(); // List<User>
 ```
 
-### Migration Steps:
-1. **Replace `orderBy` strings** with type-safe field accessors
-2. **Use Smart Builder syntax** - `orderBy(($) => $.field())`
-3. **Replace manual cursor management** with `startAfterObject()`
-4. **Ensure consistent ordering** - Same `orderBy` for all pages
-
-### Benefits After Migration:
-- ✅ **Zero inconsistency risk** - Smart Builder ensures cursor consistency
-- ✅ **Type-safe ordering** - Compile-time validation of sort fields
-- ✅ **Multi-field sorting** - Easy tuple-based ordering
-- ✅ **Automatic cursor extraction** - No manual document cursor management
-
-## 8. Aggregations Migration
-
-### Before (Limited Basic Aggregations)
 ```dart
-// Only basic count available
-AggregateQuerySnapshot countSnapshot = await usersCollection
-  .where('isActive', isEqualTo: true)
-  .count()
-  .get();
-
-int count = countSnapshot.count;
-
-// No sum/average support
-// No streaming aggregations
-// Manual calculation required for complex stats
-```
-
-### After (Comprehensive Aggregations)
-```dart
-// Multiple aggregations in one request
-final stats = await db.users
-  .where(($) => $.isActive(isEqualTo: true))
-  .aggregate(($) => (
-    count: $.count(),
-    averageAge: $.age.average(),
-    totalFollowers: $.profile.followers.sum(),
-  ))
-  .get();
-
-print('Count: ${stats.count}');
-print('Average age: ${stats.averageAge}');
-print('Total followers: ${stats.totalFollowers}');
-
-// One-shot server-side aggregation (ADR-0002)
-final result = await db.users
-  .where(($) => $.isActive(isEqualTo: true))
-  .aggregate(($) => (count: $.count()))
-  .get();
-print('Count: ${result.count}');
-```
-
-### Migration Steps:
-1. **Replace basic `count()` calls** with ODM aggregate syntax
-2. **Combine multiple aggregations** in single requests for efficiency
-3. **Use one-shot server-side aggregates** (no client-side streaming)
-4. **Use typed aggregate results** instead of manual calculations
-
-### Benefits After Migration:
-- ✅ **Multiple aggregations** - count, sum, average in one request
-- ✅ **One-shot aggregations** - server-side count/sum/average
-- ✅ **Type-safe results** - Strongly typed aggregate responses
-- ✅ **Efficient queries** - Server-side calculations
-
-## 9. Transactions Migration
-
-### Before (Manual Read-Before-Write)
-```dart
-await FirebaseFirestore.instance.runTransaction((transaction) async {
-  // Must manually ensure all reads happen before writes
-  DocumentSnapshot userDoc = await transaction.get(
-    usersCollection.doc('user1')
-  );
-  DocumentSnapshot receiverDoc = await transaction.get(
-    usersCollection.doc('user2')
-  );
-  
-  // Manual data extraction
-  Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-  Map<String, dynamic> receiverData = receiverDoc.data() as Map<String, dynamic>;
-  
-  int userBalance = userData['balance'];
-  int receiverBalance = receiverData['balance'];
-  
-  // Manual map updates
-  transaction.update(usersCollection.doc('user1'), {
-    'balance': userBalance - 100,
-  });
-  transaction.update(usersCollection.doc('user2'), {
-    'balance': receiverBalance + 100,
-  });
-});
-```
-
-### After (Automatic Deferred Writes)
-```dart
-await db.runTransaction((tx) async {
-  // Reads happen automatically first
-  User? sender = await tx.users('user1').get();
-  User? receiver = await tx.users('user2').get();
-  
-  if (sender == null || receiver == null) {
-    throw Exception('User not found');
-  }
-  
-  if (sender.balance < 100) {
-    throw Exception('Insufficient funds');
-  }
-  
-  // Writes are automatically deferred until the end (explicit ops)
-  final txUsers = db.users.inTransaction(tx);
-  txUsers('user1').patch((p) => [p.balance.increment(-100)]);
-  txUsers('user2').patch((p) => [p.balance.increment(100)]);
-});
-```
-
-### Migration Steps:
-1. **Replace manual transaction handling** with ODM transaction context
-2. **Remove read-before-write logic** - ODM handles this automatically
-3. **Use typed models** instead of manual map operations
-4. **Leverage deferred writes** - Write operations are queued automatically
-
-### Benefits After Migration:
-- ✅ **Automatic deferred writes** - No manual read-before-write management
-- ✅ **Type-safe operations** - Strongly typed transaction operations
-- ✅ **Cleaner code** - Less boilerplate, more readable
-- ✅ **Error prevention** - Compile-time validation of transaction logic
-
-## 10. Subcollections Migration
-
-### Before (Manual Path Construction)
-```dart
-// Manual subcollection access
-CollectionReference userPosts = usersCollection
-  .doc('user123')
-  .collection('posts');
-
-// Manual path construction for nested subcollections
-CollectionReference postComments = usersCollection
-  .doc('user123')
-  .collection('posts')
-  .doc('post456')
-  .collection('comments');
-
-// No type safety, manual serialization
-QuerySnapshot postsSnapshot = await userPosts.get();
-List<Map<String, dynamic>> posts = postsSnapshot.docs
-  .map((doc) => doc.data() as Map<String, dynamic>)
-  .toList();
-```
-
-### After (Type-Safe Subcollection Access)
-```dart
-// Schema definition with subcollections
-class AppSchema extends FirestoreSchema {
-  const AppSchema();
-}
-
-@Schema()
-@Collection<User>("users")
-@Collection<Post>("users/*/posts")
-@Collection<Comment>("users/*/posts/*/comments")
-const appSchema = AppSchema();
-
-// Type-safe subcollection access (path-derived accessors, ADR-0002)
-final userPosts = db.usersPosts('user123');
-final postComments = db.usersPostsComments('user123', 'post456');
-
-// Fully typed operations
-List<Post> posts = await userPosts.get();
-await userPosts.set(Post(
-  id: 'new-post',
-  title: 'My New Post',
-  content: 'Post content...',
+// Before
+users.where(Filter.or(
+  Filter('isPremium', isEqualTo: true),
+  Filter('age', isGreaterThan: 65),
 ));
+
+// After
+odm.users.where(($) => $.isPremium(isEqualTo: true) | $.age(isGreaterThan: 65));
 ```
 
-### Migration Steps:
-1. **Define subcollections in schema** using wildcard paths (`users/*/posts`)
-2. **Create models for subcollection data** (can reuse same model types)
-3. **Replace manual path construction** with chained property access
-4. **Use type-safe operations** on subcollections
+See [Filtering Data](/guide/filtering-data) and
+[Ordering & Limiting](/guide/ordering-and-limiting).
 
-### Benefits After Migration:
-- ✅ **Type-safe subcollection access** - Chained property navigation
-- ✅ **Model reusability** - Same model works in multiple collection contexts
-- ✅ **Automatic path construction** - No manual path building
-- ✅ **Full feature support** - All ODM features work on subcollections
+## Pagination
 
-## 11. Error Handling Migration
-
-### Before (Runtime Error Prone)
 ```dart
-try {
-  DocumentSnapshot doc = await usersCollection.doc('user123').get();
-  Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-  
-  // Runtime errors waiting to happen:
-  String name = data['name']; // Throws if field missing
-  int age = data['age']; // Throws if wrong type
-  String email = data['profile']['email']; // Throws if nested field missing
-  
-} catch (e) {
-  // Generic error handling for various runtime issues
-  print('Error: $e');
-}
+// Before
+final next = await users
+    .orderBy('age')
+    .startAfterDocument(lastSnapshot)
+    .limit(20)
+    .get();
+
+// After
+final next = await odm.users
+    .orderBy(($) => ($.age(), $.documentId()))
+    .startAfterObject(lastUser)
+    .limit(20)
+    .get();
 ```
 
-### After (Compile-Time Safety)
+See [Pagination](/guide/pagination).
+
+## Aggregations
+
 ```dart
-try {
-  User? user = await db.users('user123').get();
-  
-  if (user != null) {
-    // Compile-time safe - these can't throw:
-    String name = user.name; // Guaranteed to exist and be String
-    int age = user.age; // Guaranteed to be int
-    String email = user.profile.email; // Type-safe nested access
-  }
-  
-} catch (e) {
-  // Only network/permission errors possible
-  print('Network/permission error: $e');
-}
+// Before
+final snap = await users
+    .aggregate(count(), sum('age'), average('age'))
+    .get();
+final total = snap.count;
+final avg = snap.getAverage('age');
+
+// After
+final stats = await odm.users
+    .aggregate(($) => (
+          total: $.count(),
+          sumAge: $.age.sum(),
+          avgAge: $.age.average(),
+        ))
+    .get();
 ```
 
-### Migration Steps:
-1. **Replace runtime type checking** with compile-time model validation
-2. **Use nullable types** for optional fields in your models
-3. **Leverage null safety** - handle missing documents cleanly
-4. **Focus error handling** on network/permission issues only
+See [Aggregations](/guide/aggregations).
 
-### Benefits After Migration:
-- ✅ **Compile-time error prevention** - Field access errors caught at build time
-- ✅ **Cleaner error handling** - Only handle actual runtime errors
-- ✅ **Better debugging** - Clear error messages for type mismatches
-- ✅ **Null safety** - Built-in handling for missing data
+## Transactions
 
-## Migration Checklist
+```dart
+// Before
+await FirebaseFirestore.instance.runTransaction((tx) async {
+  final snap = await tx.get(users.doc('jane'));
+  if ((snap.data()?['age'] as int? ?? 0) < 18) return;
+  tx.update(users.doc('jane'), {'isActive': true});
+});
 
-### Phase 1: Setup
-- [ ] Install Firestore ODM packages
-- [ ] Create data models with freezed/json_serializable
-- [ ] Define schema with collections
-- [ ] Run code generation
-- [ ] Test basic operations
+// After
+await odm.runTransaction((tx) async {
+  final txUsers = odm.users.inTransaction(tx);
+  final user = await txUsers('jane').get();
+  if (user == null || user.age < 18) return;
+  txUsers('jane').patch(($) => [$.isActive.set(true)]);
+});
+```
 
-### Phase 2: Core Operations
-- [ ] Migrate document reading operations
-- [ ] Migrate document writing operations
-- [ ] Migrate batch operations
-- [ ] Migrate basic queries
-- [ ] Update error handling
+See [Transactions](/guide/transactions).
 
-### Phase 3: Advanced Features
-- [ ] Migrate complex queries
-- [ ] Implement pagination with Smart Builder
-- [ ] Add aggregation operations
-- [ ] Migrate transaction logic
+## Batches
 
-### Phase 4: Optimization
-- [ ] Add subcollections support
-- [ ] Implement streaming aggregations
-- [ ] Optimize update strategies
-- [ ] Add comprehensive testing
+```dart
+// Before
+final batch = FirebaseFirestore.instance.batch();
+batch.set(users.doc('jane'), {/* ... */});
+batch.update(users.doc('bob'), {'age': FieldValue.increment(1)});
+batch.delete(users.doc('old'));
+await batch.commit();
 
-## Best Practices for Migration
+// After
+await odm.runBatch((batch) {
+  final b = odm.users.inBatch(batch);
+  b.set(jane);
+  b.patch('bob', ($) => [$.age.increment(1)]);
+  b.delete('old');
+});
+```
 
-1. **Migrate incrementally** - Start with one collection at a time
-2. **Keep existing code working** - Run both systems in parallel during migration
-3. **Test thoroughly** - Verify data integrity after each migration step
-4. **Use type-safe models** - Take full advantage of compile-time validation
-5. **Leverage new features** - Use streaming aggregations and smart pagination
-6. **Optimize updates** - Choose the right update strategy for each use case
+See [Batch Operations](/guide/batch-operations).
 
-## Conclusion
+## Subcollections
 
-Migrating from standard `cloud_firestore` to Firestore ODM provides significant benefits:
+```dart
+// Before
+final posts = users.doc('jane').collection('posts');
 
-- **Complete type safety** eliminates runtime errors
-- **Better developer experience** with IDE support and autocomplete
-- **Advanced features** like streaming aggregations and smart pagination
-- **Cleaner, more maintainable code** with less boilerplate
-- **Better performance** with optimized update strategies
+// After: declare @Collection<Post>('users/*/posts') in the schema, then
+final posts = odm.usersPosts('jane');
+```
 
-The migration process is straightforward and can be done incrementally, allowing you to gradually adopt Firestore ODM's powerful features while maintaining your existing functionality.
+See [Subcollections](/guide/subcollections).
+
+## Using cloud_firestore alongside the ODM
+
+Every ODM object exposes the underlying `cloud_firestore` object for anything
+the ODM does not cover:
+
+| ODM | `cloud_firestore` |
+|---|---|
+| `odm.firestore` | `FirebaseFirestore` |
+| `odm.users.ref` | `CollectionReference<Map<String, dynamic>>` |
+| `odm.users('jane').ref` | `DocumentReference<Map<String, dynamic>>` |
+| `query.nativeQuery` | `Query<Map<String, dynamic>>` |

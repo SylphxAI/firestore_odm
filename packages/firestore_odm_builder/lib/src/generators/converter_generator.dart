@@ -18,36 +18,8 @@ import '../utils/type_analyzer.dart';
 /// The ODM always generates its own converters. The model's own
 /// `toJson`/`fromJson` (freezed/json_serializable) serialize DateTime as ISO
 /// strings for JSON interchange; Firestore storage must use native Timestamp
-/// (ADR-0002), so storage serialization is always ODM-owned.
+///, so storage serialization is always ODM-owned.
 bool needsGeneratedConverters(InterfaceType type) => true;
-
-/// A function expression converting a model instance to a document map:
-/// `(value) => value.toJson()` when the model provides one, else `XToJson`.
-Expression modelToJsonRef(DartType type) {
-  if (hasOwnToJson(type as InterfaceType)) {
-    return Method(
-      (m) => m
-        ..requiredParameters.add(
-          Parameter(
-            (p) => p
-              ..name = 'value'
-              ..type = type.reference,
-          ),
-        )
-        ..body = refer('value').property('toJson').call(const []).code,
-    ).closure;
-  }
-  return refer('${type.element.name}ToJson');
-}
-
-/// A function expression converting a document map to a model instance:
-/// `X.fromJson` when the model provides one, else `XFromJson`.
-Expression modelFromJsonRef(DartType type) {
-  if (hasOwnFromJson(type as InterfaceType)) {
-    return refer('${type.element.name}.fromJson');
-  }
-  return refer('${type.element.name}FromJson');
-}
 
 /// Serializes a single value of [type] for storage or filter use.
 ///
@@ -73,8 +45,8 @@ Expression toJsonValue(
         .equalTo(literalNull)
         .conditional(literalNull, customConverter.toJson.call([value]));
   }
-  if (TypeAnalyzer.isDateTime(type)) {
-    // Native Timestamp; the SDK converts DateTime<->Timestamp on the wire.
+  if (TypeAnalyzer.isDateTime(type) || isFirestoreValueType(type)) {
+    // Stored natively; the SDK converts DateTime<->Timestamp on the wire.
     return value;
   }
   if (TypeAnalyzer.isDuration(type)) {
@@ -200,6 +172,9 @@ Expression fromJsonValue(
           .conditional(value, typeParamConverter.call([value]));
     }
 
+    if (isFirestoreValueType(type)) {
+      return value.asA(type.reference);
+    }
     if (TypeAnalyzer.isDateTime(type)) {
       return refer('dateTimeFromJson').call([value]);
     }
@@ -283,9 +258,16 @@ Expression fromJsonValue(
         elementType.reference,
       ]);
     }
+    if (type.isDartCoreDouble) {
+      // Another client or the console may store a whole number as an int.
+      return value.asA(refer('num')).property('toDouble').call(const []);
+    }
     if (isUserType(type)) {
-      return modelFromJsonRef(
-        type,
+      // The ODM's own converter, matching `XToJson` on the write side: a
+      // model's json_serializable `fromJson` expects ISO-8601 strings, not
+      // the Timestamps the ODM stores.
+      return refer(
+        '${type.element!.name!}FromJson',
       ).call([value.asA(refer('Map<String, dynamic>'))]);
     }
     return value.asA(type.reference);
@@ -299,6 +281,7 @@ bool _isSetType(DartType type) => type.element?.name == 'Set';
 
 bool _needsConversion(DartType type) {
   if (type is TypeParameterType) return false;
+  if (type.isDartCoreDouble) return true;
   if (TypeAnalyzer.isDateTime(type) || TypeAnalyzer.isDuration(type)) {
     return true;
   }
@@ -318,7 +301,7 @@ List<Spec> generateConverters(InterfaceType type) {
     for (final field in fields.values) {
       // The document ID is INCLUDED in the serialized map: write paths strip
       // it before storage, and `set(model)` reads it back to locate the
-      // document (ADR-0002).
+      // document.
       entries[literalString(field.jsonName)] = toJsonValue(
         field.type,
         refer('instance').property(field.parameterName),
@@ -354,15 +337,23 @@ List<Spec> generateConverters(InterfaceType type) {
   {
     final args = <String, Expression>{};
     for (final field in fields.values) {
-      args[field.parameterName] = fromJsonValue(
+      final source = refer('json').index(literalString(field.jsonName));
+      final value = fromJsonValue(
         field.type,
-        refer('json').index(literalString(field.jsonName)),
+        source,
         customConverter: field.customConverter,
         modelName: type.element.name,
         typeParamConverter: type.element.typeParameters.isEmpty
             ? null
             : refer('fromT'),
       );
+      // A field missing from an older document takes the model's default.
+      final defaultCode = field.defaultValueCode;
+      args[field.parameterName] = defaultCode == null
+          ? value
+          : source
+                .equalTo(literalNull)
+                .conditional(CodeExpression(Code(defaultCode)), value);
     }
     specs.add(
       Method(

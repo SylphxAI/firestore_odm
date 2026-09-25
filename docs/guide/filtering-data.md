@@ -1,62 +1,103 @@
 # Filtering Data
 
-The `.where()` method is the foundation of all queries. It takes a builder function that gives you access to all fields on your model, ensuring type-safety at compile time.
-
-## Basic Comparisons
-
-You can use standard comparison operators like `isEqualTo`, `isNotEqualTo`, `isGreaterThan`, `isLessThan`, etc.
+`where` takes a function. Its argument, `$`, has one selector per model field.
+Call a selector with exactly one condition:
 
 ```dart
-// Find users who are exactly 30 years old
-final users = await db.users.where(($) => $.age(isEqualTo: 30)).get();
-
-// Find users with more than 1000 followers
-final popularUsers = await db.users
-  .where(($) => $.profile.followers(isGreaterThan: 1000))
-  .get();
+final thirty = await odm.users.where(($) => $.age(isEqualTo: 30)).get();
 ```
 
-## Array Operations
+A selector called with no condition, or with more than one, throws an
+`ArgumentError`.
 
--   **`arrayContains`**: Find documents where an array field contains a specific value.
--   **`arrayContainsAny`**: Find documents where an array field contains any of the specified values.
--   **`whereIn`**: Find documents where a field's value is in a list of possible values.
--   **`whereNotIn`**: Find documents where a field's value is not in a list of possible values.
+## Conditions
+
+| Condition | Matches documents where the field |
+|---|---|
+| `isEqualTo: v` | equals `v` |
+| `isNotEqualTo: v` | does not equal `v` |
+| `isLessThan: v` | is less than `v` |
+| `isLessThanOrEqualTo: v` | is less than or equal to `v` |
+| `isGreaterThan: v` | is greater than `v` |
+| `isGreaterThanOrEqualTo: v` | is greater than or equal to `v` |
+| `whereIn: [a, b]` | equals one of the values |
+| `whereNotIn: [a, b]` | equals none of the values |
+| `arrayContains: v` | is an array that contains `v` |
+| `arrayContainsAny: [a, b]` | is an array that contains any of the values |
+| `isNull: true` / `false` | is (or is not) `null` |
+
+Values are type-checked against the field. A `DateTime` value is compared as a
+`Timestamp`, and an enum value as its stored value.
 
 ```dart
-// Find users interested in 'flutter'
-final flutterDevs = await db.users
-  .where(($) => $.tags(arrayContains: 'flutter'))
-  .get();
+final flutterDevs = await odm.users
+    .where(($) => $.tags(arrayContains: 'flutter'))
+    .get();
 
-// Find users who are either premium or verified
-final specialUsers = await db.users
-  .where(($) => $.status(whereIn: ['premium', 'verified']))
-  .get();
+final someAges = await odm.users
+    .where(($) => $.age(whereIn: [18, 21, 30]))
+    .get();
+
+final neverLoggedIn = await odm.users
+    .where(($) => $.lastLogin(isNull: true))
+    .get();
 ```
 
-## Complex Logical Queries
+## Nested fields
 
-You can combine multiple conditions using `and()` and `or()`. The `and` and `or` methods can be nested to create highly specific queries.
+Selectors follow nested models:
 
 ```dart
-final engagedUsers = await db.users.where(($) => $.and(
-  // Condition 1: User must be active
-  $.isActive(isEqualTo: true),
-  // Condition 2: User must be premium OR have more than 1000 followers
-  $.or(
-    $.isPremium(isEqualTo: true),
-    $.profile.followers(isGreaterThan: 1000),
-  ),
-)).get();
+final popular = await odm.users
+    .where(($) => $.profile.followers(isGreaterThan: 1000))
+    .get();
 ```
 
-## Querying Map Fields
+## Document ID
 
-You can query nested fields within a `Map` by using the `.key()` accessor.
+`$.documentId` filters on the document ID:
 
 ```dart
-// Find users who have a 'dark' theme setting
-final darkThemeUsers = await db.users
-  .where(($) => $.settings.key('theme')(isEqualTo: 'dark'))
-  .get();
+final pair = await odm.users
+    .where(($) => $.documentId(whereIn: ['alice', 'bob']))
+    .get();
+```
+
+## Combining conditions
+
+Combine conditions with `&` (and) and `|` (or), or with the equivalent
+`.and()` and `.or()` methods. Use parentheses to group:
+
+```dart
+final engaged = await odm.users
+    .where(
+      ($) =>
+          $.isActive(isEqualTo: true) &
+          ($.isPremium(isEqualTo: true) |
+              $.profile.followers(isGreaterThan: 1000)),
+    )
+    .get();
+
+// The same with methods
+final engaged2 = await odm.users
+    .where(
+      ($) => $.isActive(isEqualTo: true).and(
+        $.isPremium(isEqualTo: true).or(
+          $.profile.followers(isGreaterThan: 1000),
+        ),
+      ),
+    )
+    .get();
+```
+
+Calling `where` more than once also combines the conditions with "and":
+
+```dart
+final q = odm.users
+    .where(($) => $.isActive(isEqualTo: true))
+    .where(($) => $.age(isGreaterThan: 18));
+```
+
+Firestore's own query limits apply, such as the number of `whereIn` values and
+the rules for combining range filters. Some queries need a composite index;
+Firestore's error message links to the console page that creates it.

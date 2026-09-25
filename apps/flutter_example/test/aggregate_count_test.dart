@@ -1,4 +1,4 @@
-/// Server-side aggregates are one-shot only (ADR-0002): no fake streaming.
+/// Server-side aggregates are one-shot only: no fake streaming.
 library;
 
 import 'package:flutter_test/flutter_test.dart';
@@ -55,5 +55,17 @@ void main() {
     // count() is a Future, not a stream.
     final c = odm.users.count();
     expect(c, isA<Future<int>>());
+  });
+
+  test('aggregates over no documents: count 0, sum 0, average NaN', () async {
+    final (_, odm) = newDb();
+    final stats = await odm.users
+        .aggregate(
+          ($) => (count: $.count(), total: $.age.sum(), avg: $.age.average()),
+        )
+        .get();
+    expect(stats.count, 0);
+    expect(stats.total, 0);
+    expect(stats.avg, isNaN);
   });
 }

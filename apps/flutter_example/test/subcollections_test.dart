@@ -1,5 +1,5 @@
 /// Subcollection accessors are path-derived methods with parent args:
-/// 'users/*/posts' -> usersPosts(String userId) (ADR-0002).
+/// 'users/*/posts' -> usersPosts(String userId).
 library;
 
 import 'package:flutter_example/models/comment.dart';

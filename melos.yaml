@@ -7,117 +7,44 @@ packages:
   # (ios + macos SourcePackages) and trips melos' duplicate-name check.
   - apps/*
   - packages/*
-
-command:
-  version:
-    updateGitTagRefs: true
-    workspaceChangelog: true
+  - packages/firestore_odm/example
 
 scripts:
   generate:
-    run: melos exec -c 1 --depends-on build_runner -- dart run build_runner build
-    
-  # Development scripts
+    run: melos exec -c 1 --depends-on build_runner -- dart run build_runner build --delete-conflicting-outputs
+    description: Run build_runner in every package that uses it.
+
   analyze:
-    # `melos exec` runs per-package; a plain `run` would execute once at the
-    # workspace root (melos >=6), defeating the flutter_example exclusion.
-    run: melos exec --ignore="flutter_example" -- dart analyze .
-    description: Run static analysis on all packages.
-
-  test:
-    run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
-    description: Run tests in all packages (those with a test/ dir).
-
-  fix:
-    run: dart fix --apply
-    description: Apply automated fixes to all packages.
+    # Needs `generate` first. The test app stays out: its models exercise
+    # edge cases that trip lints on purpose.
+    run: melos exec --ignore="flutter_example" -- dart analyze --fatal-infos .
+    description: Static analysis of the published packages.
 
   format:check:
     run: dart format --output=none --set-exit-if-changed .
-    description: Check if all files are formatted correctly.
+    description: Fail when any file is not formatted.
 
-  build:example:
-    run: melos exec --scope="flutter_example" -- dart run build_runner build --delete-conflicting-outputs
-    description: Generate code for the example.
-
-  # Testing scripts
   test:unit:
-    # Library packages have no standalone test dirs (the v5 contract suite
-    # lives in the example app); this is intentionally a no-op for now.
-    run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
-    description: Run library unit tests (none yet; see test:integration).
+    run: melos exec --no-flutter --dir-exists="test" -- dart test
+    description: Unit tests of the published packages (the migration codemod).
 
   test:integration:
-    run: melos exec --scope="flutter_example" -- flutter test
-    description: Run the v5 semantics-contract unit suite (fake Firestore).
+    run: melos exec -c 1 --scope="flutter_example,firestore_odm_example" -- flutter test
+    description: Generated-code tests against an in-memory Firestore, plus benchmarks.
 
   test:e2e:
-    # Live emulator lane (ADR-0002): requires the Firestore emulator on
-    # localhost:8080 (CI runs it via firebase-tools emulators:exec).
+    # Needs Java 21 and Node; starts the Firestore emulator on localhost:8080.
     run: melos exec --scope="flutter_example" -- npx --yes firebase-tools emulators:exec --only firestore --project demo-project "flutter test integration_test --timeout 5m"
-    description: Run emulator e2e (real Firestore behavior).
-
-  benchmark:
-    run: melos exec --scope="flutter_example" -- flutter test test/benchmarks_test.dart
-    description: Run the recorded benchmark harness (prints BENCH lines).
+    description: End-to-end tests against the Firestore emulator.
 
   test:all:
-    run: |
-      melos run test:unit --no-select &&
-      melos run test:integration --no-select
-    description: Run all tests (unit + integration).
-
-  # Code quality scripts
-  analyze:fix:
-    run: dart fix --apply
-    description: Apply automated fixes.
-    packageFilters:
-      ignore:
-        - flutter_example
+    run: melos run test:unit --no-select && melos run test:integration --no-select
+    description: Unit and generated-code tests.
 
   check:
-    run: |
-      melos run format:check --no-select &&
-      melos run analyze --no-select &&
-      melos run test:all --no-select
-    description: Run all checks (format, analyze, test).
+    run: melos run format:check --no-select && melos run generate --no-select && melos run analyze --no-select && melos run test:all --no-select
+    description: Everything the pull request check runs, except pana and docs.
 
-  # Release preparation scripts
-  clean:
-    run: |
-      flutter clean &&
-      dart pub cache repair
-    description: Clean build artifacts and repair pub cache.
-    packageFilters:
-      flutter: true
-
-  deps:
-    run: dart pub deps
-    description: Show dependency tree.
-
-  deps:outdated:
-    run: dart pub outdated
-    description: Check for outdated dependencies.
-
-  sync:readme:
-    run: |
-      copy README.md packages\firestore_odm\README.md
-      copy README.md packages\firestore_odm_annotation\README.md
-      copy README.md packages\firestore_odm_builder\README.md
-    description: Sync README.md to all packages.
-
-  # Publishing scripts
   publish:dry-run:
     run: melos exec --scope="firestore_odm_annotation,firestore_odm,firestore_odm_builder" -- dart pub publish --dry-run
-    description: Verify packages are ready to publish.
-
-  publish:packages:
-    run: dart pub publish --force
-    description: Publish packages to pub.dev.
-    packageFilters:
-      scope:
-        - firestore_odm_annotation
-        - firestore_odm
-        - firestore_odm_builder
-    exec:
-      orderDependents: true
+    description: Verify the packages are ready to publish.

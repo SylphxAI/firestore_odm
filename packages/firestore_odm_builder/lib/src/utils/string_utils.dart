@@ -7,7 +7,7 @@ extension StringUtils on String {
 
   String camelCase() {
     if (isEmpty) return this;
-    final parts = split('_');
+    final parts = split(RegExp(r'[_\-]'));
     return parts
         .map((p) => p.isNotEmpty ? p[0].toUpperCase() + p.substring(1) : '')
         .join('');

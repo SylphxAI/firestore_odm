@@ -1,55 +1,25 @@
-# Firestore ODM Project
+# firestore_odm
 
-Firestore ODM is a production Dart/Flutter package ecosystem for type-safe
-Firestore access through annotations and code generation. It publishes
-`firestore_odm`, `firestore_odm_annotation`, and `firestore_odm_builder`.
+A type-safe Firestore ODM for Flutter and Dart: annotations, a code generator
+and a runtime that give Firestore collections typed queries, updates,
+aggregates, transactions, batches and streams. The maintained successor to
+`cloud_firestore_odm`, with a codemod to migrate from it.
 
-## Goals
+## Scope
 
-- Own Firestore ODM annotations, runtime package, builder package, generated API
-  semantics, example app, documentation, CI, and pub.dev release workflow.
-- Keep Firestore data access type-safe, generated, benchmarked, and compatible
-  with supported Dart/Flutter versions.
-- Publish packages only with CI, dry-run/publish proof, pub.dev readback, and
-  documentation evidence.
-
-## Non-Goals
-
-- Do not own downstream app schemas, Firebase projects, Firestore security
-  rules, or tenant data models.
-- Do not encode app-specific Firestore behavior into the generic ODM.
-- Do not rely on source revert for already-published pub.dev packages.
-
-## Boundaries
-
-Owned contexts are the annotation package, runtime package, builder package,
-generated code contract, example app, docs, package versions, and release
-workflow. Downstream apps consume only pub.dev packages and documented APIs.
-
-Public surfaces:
-
-- pub.dev packages under `packages/*/pubspec.yaml`.
-- Documentation under `docs/` and GitHub Pages.
-- Required contexts `quality`, `security`, `docs`, `performance`, `coverage`,
-  and `ci-success`.
-- Release workflow `.github/workflows/release.yml`.
+- Owns the three pub.dev packages, the generated API, the example, the
+  documentation site (GitHub Pages) and the release workflow.
+- Targets the client SDK (`cloud_firestore`) on the platforms it supports.
+  The Firebase Admin SDK and pure-Dart servers are not targets (#44).
+- Does not own application schemas, Firebase projects or security rules.
 
 ## Delivery
 
-Current CI model: `legacy-ci`. Required contexts are `quality`, `security`,
-`docs`, `performance`, `coverage`, and `ci-success`.
-
-Release path: tag or manual release workflow dry-runs/publishes packages to
-pub.dev, creates a GitHub release, and verifies publication. Production proof
-must include required CI, dry-run/publish output, pub.dev readback, docs
-readback, and generated-code smoke tests.
-
-Recovery class: `forward-fix-only`, because pub.dev package versions and
-generated downstream APIs cannot be fully undone by source revert.
-
-## References
-
-- Public docs: `docs/README.md`
-- Package manifests: `packages/*/pubspec.yaml`
-- CI: `.github/workflows/ci.yml`
-- Release: `.github/workflows/release.yml`
+- Required check: `ci-success` (pull request: Linux checks; merge queue:
+  macOS/Windows tests and Firestore emulator tests).
+- Release: a `v<version>` tag on `main` publishes all three packages, waits
+  until pub.dev serves each version, and creates the GitHub release.
+- Docs: a push to `main` that touches `docs/` deploys
+  https://sylphxai.github.io/firestore_odm/.
+- Published versions cannot be withdrawn, so problems are fixed forward with a
+  new version.

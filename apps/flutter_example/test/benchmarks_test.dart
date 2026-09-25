@@ -1,4 +1,4 @@
-/// Real benchmark harness (ADR-0002): measured, not asserted.
+/// Real benchmark harness: measured, not asserted.
 ///
 /// These are recorded benchmarks — they assert only that the operations
 /// complete and print the measurements. They exist so the `performance` CI

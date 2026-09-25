@@ -1,64 +1,94 @@
 # Multiple ODM Instances
 
-A powerful feature of the schema-based architecture is the ability to create multiple, completely separate ODM instances, even within the same application. This is useful for a variety of scenarios:
+One `FirestoreODM` instance serves one schema on one Firestore database. You
+can create as many as you need, for example:
 
--   **Microservices or Modular Apps**: Different parts of your app can have their own dedicated database schemas and ODM instances.
--   **Testing**: You can easily create a separate ODM instance that points to a test or emulator database.
--   **Multi-Tenant Apps**: If you have different database structures for different user roles or tenants, you can create a specific ODM for each one.
+- one per Firestore database (the default database and a named one)
+- one pointing at the emulator or a test double in tests
+- separate schemas for separate parts of an app
 
-## How It Works
+## Several schemas
 
-The key is that the `FirestoreODM` class is instantiated with a specific schema variable. You can define as many schema variables as you need.
-
-### 1. Define Multiple Schemas
-
-Create different schema definitions in your application.
+Each schema lives in its own file with its own `part`:
 
 ```dart
 // lib/schemas/admin_schema.dart
+import 'package:firestore_odm/firestore_odm.dart';
+
+import '../models/audit_log.dart';
+import '../models/user.dart';
+
+part 'admin_schema.g.dart';
+
 class AdminSchema extends FirestoreSchema {
   const AdminSchema();
 }
 
 @Schema()
-@Collection<User>("users")
-@Collection<AuditLog>("audit_logs")
+@Collection<User>('users')
+@Collection<AuditLog>('audit_logs')
 const adminSchema = AdminSchema();
+```
 
-// lib/schemas/user_schema.dart
-class UserSchema extends FirestoreSchema {
-  const UserSchema();
+```dart
+// lib/schemas/app_schema.dart
+import 'package:firestore_odm/firestore_odm.dart';
+
+import '../models/post.dart';
+import '../models/user.dart';
+
+part 'app_schema.g.dart';
+
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
 }
 
 @Schema()
-@Collection<User>("users")
-@Collection<Post>("posts")
-const userSchema = UserSchema();
+@Collection<User>('users')
+@Collection<Post>('posts')
+const appSchema = AppSchema();
 ```
 
-After running the build runner, the generated extensions land in `admin_schema.g.dart` and `user_schema.g.dart` (each schema file declares its part).
-
-### 2. Create Separate ODM Instances
-
-Now, you can create separate `FirestoreODM` instances, each configured with a different schema.
+Each ODM only has the collections of its schema:
 
 ```dart
-import 'package:firestore_odm/firestore_odm.dart';
-import 'schemas/admin_schema.dart';
-import 'schemas/user_schema.dart';
-
-// An ODM instance for administrative tasks
 final adminDb = FirestoreODM(adminSchema);
+final appDb = FirestoreODM(appSchema);
 
-// A separate ODM instance for regular user data access
-final userDb = FirestoreODM(userSchema);
-
-// These are now fully type-safe and separate:
-final auditLogs = adminDb.audit_logs; // This exists
-// final posts = adminDb.posts; // This would be a compile-time error
-
-final userPosts = userDb.posts; // This exists
-// final auditLogs = userDb.audit_logs; // This would be a compile-time error
+final logs = adminDb.auditLogs; // OK
+final posts = appDb.posts;      // OK
+// appDb.auditLogs              // compile error: not in AppSchema
 ```
 
-This approach provides strong compile-time guarantees, ensuring that different parts of your application only access the collections they are authorized to use, as defined by their respective schemas.
+A model can appear in several schemas.
+
+## Several databases
+
+Pass the `FirebaseFirestore` instance to use:
+
+```dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+final mainDb = FirestoreODM(appSchema);
+final analyticsDb = FirestoreODM(
+  appSchema,
+  firestore: FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: 'analytics',
+  ),
+);
+```
+
+## Tests
+
+Pass a test double such as `FakeFirebaseFirestore` from
+`fake_cloud_firestore`:
+
+```dart
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+
+final odm = FirestoreODM(appSchema, firestore: FakeFirebaseFirestore());
+```
+
+`odm.firestore` returns the underlying `FirebaseFirestore` instance.

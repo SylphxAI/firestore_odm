@@ -1,52 +1,68 @@
-> **5.0 note:** this guide documents the v4 API surface. See
-> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
-> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
->
-# Fetching Data from Queries
+# Fetching Data
 
-This guide covers how to execute a query to retrieve or subscribe to a set of documents.
+A collection, or a query built from it with `where`, `orderBy` and `limit`,
+returns a list of models.
 
-## Fetching a Query Once
-
-Once you have constructed a query (by starting with a collection reference and optionally adding `where`, `orderBy`, or `limit` clauses), you execute it by calling `.get()`.
-
-This returns a `Future` that resolves to a `List` of your model objects.
+## Read once
 
 ```dart
-// Define a query for active users, sorted by age
-final activeUsersQuery = db.users
-  .where(($) => $.isActive(isEqualTo: true))
-  .orderBy(($) => $.age(descending: true));
+// Every document in the collection
+final all = await odm.users.get();
 
-// Execute the query to get the results
-// Returns Future<List<User>>
-final List<User> activeUsers = await activeUsersQuery.get();
+// A query
+final active = await odm.users
+    .where(($) => $.isActive(isEqualTo: true))
+    .orderBy(($) => ($.age(descending: true),))
+    .get();
 
-for (final user in activeUsers) {
-  print('${user.name} is ${user.age} years old.');
+for (final user in active) {
+  print('${user.name} is ${user.age}');
 }
 ```
 
-## Subscribing to a Query (Real-time)
-
-To create a real-time subscription to a query, use the `.stream` property instead of `.get()`.
-
-This returns a `Stream` that emits a new `List` of your model objects every time there is a change to the documents that match the query. This is incredibly powerful for building reactive lists and UIs.
+`get` accepts `GetOptions` to read from the cache or the server only:
 
 ```dart
-// Define a query for premium users
-final premiumUsersQuery = db.users.where(($) => $.isPremium(isEqualTo: true));
+final cached = await odm.users.get(const GetOptions(source: Source.cache));
+```
 
-// Create a stream from the query
-// Returns Stream<List<User>>
-final premiumUsersStream = premiumUsersQuery.stream;
+## Listen for changes
 
-// Listen to the stream
-final subscription = premiumUsersStream.listen((List<User> users) {
-  // This code will run initially and then every time the list of
-  // premium users changes (e.g., a user is added, removed, or updated).
-  print('Current number of premium users: ${users.length}');
+`stream` emits the full result list now and after every change to a matching
+document.
+
+```dart
+final subscription = odm.users
+    .where(($) => $.isPremium(isEqualTo: true))
+    .stream
+    .listen((users) {
+  print('Premium users: ${users.length}');
 });
 
-// In a real app, remember to cancel the subscription when it's no longer needed.
-// subscription.cancel();
+// Later
+await subscription.cancel();
+```
+
+Each read of `stream` starts a new listener. In a Flutter widget, create the
+stream once (for example in `initState`) and pass it to a `StreamBuilder`.
+
+## Counting
+
+To count documents without downloading them, use `count()`; see
+[Aggregations](/guide/aggregations).
+
+```dart
+final n = await odm.users.where(($) => $.isActive(isEqualTo: true)).count();
+```
+
+## Using a query more than once
+
+Queries are immutable values. Store one and call `get`, `stream`, or further
+builder methods on it as often as you like:
+
+```dart
+final adults = odm.users.where(($) => $.age(isGreaterThanOrEqualTo: 18));
+
+final firstTen = await adults.limit(10).get();
+final total = await adults.count();
+```

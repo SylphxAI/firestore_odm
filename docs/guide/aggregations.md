@@ -1,39 +1,44 @@
 # Aggregations
 
-Aggregations are **one-shot** server-side queries (ADR-0002): the native
-`AggregateQuery` runs on the server and returns a typed Dart record. There is
-no streaming aggregate surface — a client-side re-query would silently download
-every document, which is exactly what server-side aggregation exists to avoid.
-Server-side aggregate streams will be added only when `cloud_firestore`
-exposes them.
+Aggregations run on the Firestore server and return only the result, not the
+documents. Firestore bills one read per batch of up to 1,000 index entries
+scanned, which costs far less than downloading the documents.
 
-## Count
+Aggregations are read once. There is no aggregation stream, because
+`cloud_firestore` does not offer one. To refresh a count, run it again.
 
-```dart
-// Number of documents in the collection
-final total = await db.users.count();
-
-// Number of documents matching a filter
-final active = await db.users
-  .where(($) => $.isActive(isEqualTo: true))
-  .count();
-```
-
-## Typed aggregates
-
-`aggregate(...)` returns a query with a typed record result:
+## count
 
 ```dart
-final stats = await db.users
-  .aggregate(($) => (
-    count: $.count(),
-    totalFollowers: $.profile.followers.sum(),
-    averageAge: $.age.average(),
-  ))
-  .get();
+final total = await odm.users.count();
 
-print('${stats.count} users, avg ${stats.averageAge}');
+final active = await odm.users
+    .where(($) => $.isActive(isEqualTo: true))
+    .count();
 ```
 
-Supported operations: `count()`, `sum()`, `average()`. Aggregates compose
-with `where` and are limited to 30 aggregate fields (Firestore's limit).
+## sum, average and count together
+
+`aggregate` takes a function that returns a record. Call `.get()` to run it; the
+result is a record with the same field names.
+
+```dart
+final stats = await odm.users
+    .where(($) => $.isActive(isEqualTo: true))
+    .aggregate(($) => (
+          count: $.count(),
+          totalFollowers: $.profile.followers.sum(),
+          averageAge: $.age.average(),
+        ))
+    .get();
+
+print('${stats.count} users, average age ${stats.averageAge}');
+```
+
+- `$.count()` returns an `int`.
+- `$.field.sum()` returns the field's type (`int` for an `int` field).
+- `$.field.average()` returns a `double`, or `double.nan` when no document
+  matches.
+
+`sum` and `average` are available on numeric fields, including nested ones.
+One query can hold up to 30 aggregations, which is Firestore's limit.

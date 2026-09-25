@@ -1,79 +1,66 @@
-# 🚀 Getting Started
+# Getting started
 
-Get up and running with Firestore ODM in five simple steps.
+From an empty Flutter app to typed reads and writes in five steps. You need
+Dart 3.8 or later and a Firebase project set up for Flutter
+([FlutterFire setup](https://firebase.google.com/docs/flutter/setup)).
 
-## 1. Installation
+## 1. Install
 
-Install Firestore ODM:
-
-```bash
-dart pub add firestore_odm
-dart pub add dev:firestore_odm_builder
-dart pub add dev:build_runner
+```sh
+flutter pub add firestore_odm cloud_firestore firebase_core
+flutter pub add dev:firestore_odm_builder dev:build_runner
 ```
 
-You'll also need a JSON serialization solution:
+`firestore_odm` exports the annotations, so you do not add
+`firestore_odm_annotation` yourself.
 
-```bash
-# If using Freezed
-dart pub add freezed_annotation
-dart pub add dev:freezed
-dart pub add dev:json_serializable
+## 2. Describe a model
 
-# If using plain classes
-dart pub add json_annotation
-dart pub add dev:json_serializable
-```
+Annotate the class with `@firestoreOdm` and mark the field that holds the
+document ID with `@DocumentIdField()`. The ID is not stored inside the
+document; it is filled in when you read.
 
-> **Note:** `firestore_odm_annotation` is exported by `firestore_odm`, so you don't need to add it manually.
-
-## 2. Configure json_serializable (Important for Nested Models)
-
-If you're using models with nested objects, create a `build.yaml` file next to your `pubspec.yaml` to enable `explicit_to_json`:
-
-```yaml
-# build.yaml
-targets:
-  $default:
-    builders:
-      json_serializable:
-        options:
-          explicit_to_json: true
-```
-
-**Why is this needed?** When using nested Freezed classes or any nested objects with `json_serializable`, the generated `toJson()` method doesn't automatically call `toJson()` on nested objects. This results in nested objects being serialized as their raw Dart object representation instead of proper JSON. The `explicit_to_json: true` option forces `json_serializable` to generate proper serialization code for nested objects.
-
-**When do you need this?**
-- When using nested Freezed classes
-- When using nested objects with `json_serializable`
-- When you encounter serialization issues with complex object structures
-
-## 3. Define Your Model
-
-Create your data model. We recommend using packages like `freezed` for robust, immutable classes.
-
-Crucially, you must tell the ODM which field holds the document's ID by annotating it with `@DocumentIdField()`. For more details, see the [Document ID Handling](/guide/document-id.html) guide.
-
-Every model that appears in a `@Collection` must also carry the `@firestoreOdm` annotation; that is what makes the generator emit the model's converters and patch/filter/orderBy selectors.
+A plain class works:
 
 ```dart
-// lib/models/user.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+// lib/schema.dart
+import 'package:firestore_odm/firestore_odm.dart';
 
-part 'user.freezed.dart';
-part 'user.g.dart';
+part 'schema.g.dart';
 
+@firestoreOdm
+class User {
+  const User({
+    required this.id,
+    required this.name,
+    required this.age,
+    this.tags = const [],
+    this.lastLogin,
+  });
+
+  @DocumentIdField()
+  final String id;
+  final String name;
+  final int age;
+  final List<String> tags;
+  final DateTime? lastLogin;
+}
+```
+
+So does a freezed class with json_serializable (add `freezed`,
+`freezed_annotation` and `json_serializable`). The ODM generates its own
+Firestore converters, so `fromJson`/`toJson` stay free for your API or cache
+format:
+
+```dart
 @freezed
 @firestoreOdm
-class User with _$User {
+abstract class User with _$User {
   const factory User({
-    // This field is automatically populated with the document ID
     @DocumentIdField() required String id,
     required String name,
-    required String email,
     required int age,
+    @Default([]) List<String> tags,
     DateTime? lastLogin,
   }) = _User;
 
@@ -81,68 +68,83 @@ class User with _$User {
 }
 ```
 
-## 4. Define Your Schema
+See [Data modeling](/guide/data-modeling) for nested models, enums, generics,
+`@JsonKey` and custom converters.
 
-Group your collections into a schema. This is the single source of truth for your database structure.
+## 3. Declare the schema
+
+The schema lists every collection. A `*` segment marks a subcollection.
 
 ```dart
-// lib/schema.dart
-import 'package:firestore_odm/firestore_odm.dart';
-import 'models/user.dart';
-
-part 'schema.g.dart'; // combined generated part (ODM + json_serializable)
-
-/// The schema class is declared by hand (ADR-0002) so the schema variable's
-/// type is resolvable before code generation.
+// lib/schema.dart (continued)
 class AppSchema extends FirestoreSchema {
   const AppSchema();
 }
 
 @Schema()
-@Collection<User>("users")
+@Collection<User>('users')
+@Collection<Post>('users/*/posts')
 const appSchema = AppSchema();
 ```
 
-> **Note:** The `@Schema()` annotation is crucial for the generator to correctly
-> process your collections. The generated code lands in `<library>.g.dart`,
-> which every annotated model file and the schema file declare as a part.
+Every file that declares a model or the schema needs its `part '<file>.g.dart';`
+line.
 
-## 5. Generate Code
+## 4. Generate
 
-Run the `build_runner` to generate the required ODM code:
-
-```bash
-# Generate code
+```sh
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-## 6. Start Using
+Use `dart run build_runner watch` while you edit models.
 
-Initialize the ODM and start performing type-safe operations.
+## 5. Read and write
 
 ```dart
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firestore_odm/firestore_odm.dart';
+import 'package:flutter/widgets.dart';
+
 import 'schema.dart';
 
-void main() async {
-  final firestore = FirebaseFirestore.instance;
-  final odm = FirestoreODM(appSchema, firestore: firestore);
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  final db = FirestoreODM(appSchema);
 
-  // Create a user with an explicit ID (full replace)
-  await odm.users.set(User(id: 'jane', name: 'Jane Smith', email: 'jane@example.com'));
+  // Write: set replaces the document; create picks an ID and returns it.
+  await db.users.set(const User(id: 'kim', name: 'Kim', age: 31));
 
-  // Or create with a server-generated ID (the ID is returned)
-  final id = await odm.users.create(User(id: '', name: 'Jane', email: 'jane@example.com'));
+  // Read one document (null when it does not exist).
+  final kim = await db.users('kim').get();
 
-  // Get a user
-  final user = await odm.users('jane').get();
-  print(user?.name); // Prints "Jane Smith"
+  // Query.
+  final adults = await db.users
+      .where(($) => $.age(isGreaterThanOrEqualTo: 18))
+      .orderBy(($) => ($.name(),))
+      .get();
 
-  // Partial update with typed ops
-  await odm.users.patch('jane', (p) => [p.age.increment(1), p.lastLogin.serverTimestamp()]);
+  // Update fields atomically.
+  await db.users('kim').patch(($) => [
+    $.age.increment(1),
+    $.lastLogin.serverTimestamp(),
+  ]);
 
-  // Query users
-  final smiths = await odm.users.where((_) => _.name(isEqualTo: 'Jane Smith')).get();
-  print('Found ${smiths.length} users named Jane Smith');
+  // Listen.
+  db.users('kim').stream.listen((user) => debugPrint(user?.name));
 }
+```
+
+`FirestoreODM(appSchema)` uses `FirebaseFirestore.instance`; pass
+`firestore:` to use another instance or, in tests, `FakeFirebaseFirestore`
+from `fake_cloud_firestore`.
+
+## Next
+
+- [Filtering](/guide/filtering-data), [ordering](/guide/ordering-and-limiting)
+  and [pagination](/guide/pagination)
+- [Writing documents](/guide/writing-documents)
+- [Transactions](/guide/transactions) and [batches](/guide/batch-operations)
+- [Aggregations](/guide/aggregations)
+- [Subcollections](/guide/subcollections)
+- Coming from cloud_firestore_odm? [Run the codemod](/guide/migrate-from-cloud-firestore-odm).

@@ -80,11 +80,18 @@ Map<Object, Object?> operationsToMap(List<UpdateOperation> operations) {
   return result;
 }
 
-/// Base class for generated patch builders. Instances are stateless
-/// path-namespaces; the actual operations are produced by the field-update
-/// objects returned from the builder's getters.
+/// Base class for generated patch builders. A builder is a path namespace:
+/// [field] is empty for the document itself and the field path for a nested
+/// model (`$.profile`), so `$.profile.followers.increment(1)` updates
+/// `profile.followers` only.
 abstract class PatchBuilder<T> {
-  const PatchBuilder();
+  const PatchBuilder({this.field = const FieldNode()});
+
+  /// The path this builder's handles are relative to.
+  final FieldNode field;
+
+  /// The path of the child field [name].
+  FieldNode append(String name) => field.append(name);
 }
 
 /// Per-field update handle for non-specialized fields: `set` and `delete`.

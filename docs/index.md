@@ -1,35 +1,48 @@
 ---
 layout: home
+title: firestore_odm
+titleTemplate: Type-safe Firestore ODM for Flutter and Dart
 
 hero:
-  name: "Firestore ODM for Dart"
-  text: "Stop fighting with Firestore queries. Start building amazing apps."
-  tagline: Transform your Firestore development experience with type-safe, intuitive database operations that feel natural and productive.
+  name: firestore_odm
+  text: Type-safe Firestore for Flutter
+  tagline: Type-safe Firestore ODM for Flutter and Dart — the maintained successor to cloud_firestore_odm.
   actions:
     - theme: brand
-      text: Get Started
+      text: Get started
       link: /guide/getting-started
     - theme: alt
-      text: View on GitHub
+      text: Migrate from cloud_firestore_odm
+      link: /guide/migrate-from-cloud-firestore-odm
+    - theme: alt
+      text: GitHub
       link: https://github.com/SylphxAI/firestore_odm
 
 features:
-  - title: "⚡ Lightning Fast Code Generation"
-    details: Inline-first optimized code generation. Measured performance (recorded benchmark harness), zero reflection, exact Firestore semantics.
-  - title: "🔢 Enum Support (New in 4.0)"
-    details: "@JsonValue with string and numeric values, enums in orderBy, and default-value generation."
-  - title: "🧩 Automatic Nested Imports (New in 4.0)"
-    details: Filter, patch, aggregate, and orderBy selectors for nested types need no manual imports.
-  - title: "🧬 Full Generic Support"
-    details: Complete generic model support with type-safe patch operations that respect generic constraints.
-  - title: "🛡️ Runtime Error Prevention"
-    details: Catch mistakes at compile-time, not in production. Say goodbye to string-based field names.
-  - title: "🎯 Intuitive & Type-Safe Queries"
-    details: Write complex filters that read like natural language and are fully type-safe.
-  - title: "🧠 Smart Pagination"
-    details: Revolutionary pagination with zero inconsistency risk, thanks to our Smart Builder.
-  - title: "🔄 Powerful Updates"
-    details: Two powerful update strategies (patch, modify) with atomic operation detection, plus batch & transaction patch builders.
-  - title: "🧩 Flexible Modeling"
-    details: Supports freezed, plain Dart classes, fast_immutable_collections, JsonKey & JsonConverter.
+  - title: Typed queries
+    details: "where(($) => $.age(isGreaterThan: 18) | $.tags(arrayContains: 'vip')), nested fields, ordering with record-typed cursors. A misspelled field is a compile error."
+  - title: Typed updates
+    details: "patch(($) => [$.likes.increment(1), $.tags.arrayUnion(['new']), $.updatedAt.serverTimestamp()]), plus patchAll and deleteAll over a query."
+  - title: Aggregates, transactions, batches
+    details: "Server-side count, sum and average as a typed record; transactions with reads before deferred writes; typed batches."
+  - title: Current Firebase
+    details: "Built for cloud_firestore 6 and firebase_core 4, analyzer 9 to 14, freezed 3. Stable releases."
+  - title: Any model style
+    details: "Plain Dart classes, freezed or json_serializable. DateTime is stored as a Timestamp; GeoPoint, DocumentReference and Blob fields are stored natively."
+  - title: One-command migration
+    details: "A codemod moves a cloud_firestore_odm project over and lists anything left to finish by hand. Your data does not change."
 ---
+
+```dart
+final adults = await db.users
+    .where(($) => $.age(isGreaterThanOrEqualTo: 18))
+    .orderBy(($) => ($.age(descending: true), $.name()))
+    .limit(20)
+    .get(); // List<User>
+
+await db.users('kim').patch(($) => [$.age.increment(1), $.lastLogin.serverTimestamp()]);
+
+final stats = await db.users
+    .aggregate(($) => (count: $.count(), averageAge: $.age.average()))
+    .get(); // ({int count, double averageAge})
+```

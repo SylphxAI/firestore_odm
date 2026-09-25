@@ -1,5 +1,5 @@
 /// Server timestamps are set explicitly via the patch `serverTimestamp()` op
-/// (ADR-0002); DateTime fields round-trip as native timestamps, not strings.
+///; DateTime fields round-trip as native timestamps, not strings.
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;

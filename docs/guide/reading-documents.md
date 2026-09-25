@@ -1,60 +1,54 @@
 # Reading Documents
 
-This guide covers all the ways to read a single document's data.
+Call a collection with an ID to get a document handle. `odm.users('jane')` and
+`odm.users.doc('jane')` are the same.
 
-## Fetching a Document Once
+## Read once
 
-To get a document by its ID, use the `.get()` method on a document reference. This performs a single read from the database.
-
-If the document does not exist, the result will be `null`.
+`get()` returns the model, or `null` when the document does not exist.
 
 ```dart
-// Get a reference to a specific document
-final userDoc = db.users('jane-doe');
-
-// Fetch the data
-// Returns a Future<User?>
-final user = await userDoc.get();
+final user = await odm.users('jane').get();
 
 if (user != null) {
-  print('User found: ${user.name}');
+  print('Found ${user.name}');
 } else {
-  print('User not found.');
+  print('No such user');
 }
 ```
 
-## Subscribing to a Document (Real-time)
+To check whether a document exists, compare the result with `null`.
 
-To listen for real-time changes to a document, use the `.stream` property. This returns a `Stream` that emits a new value every time the document's data changes on the server.
+### Cache or server only
 
-This is essential for building reactive user interfaces that update automatically.
+Pass `GetOptions` to choose where the read comes from. `GetOptions` and
+`Source` are exported by `firestore_odm`.
 
 ```dart
-// Returns a Stream<User?>
-final userStream = db.users('jane-doe').stream;
+final cached = await odm.users('jane').get(
+  const GetOptions(source: Source.cache),
+);
+```
 
-final subscription = userStream.listen((user) {
-  if (user != null) {
-    // This code will run every time the 'jane-doe' document is updated
-    print('User data updated: ${user.name}');
+## Listen for changes
+
+`stream` emits the document now and after every change. It emits `null` while
+the document does not exist.
+
+```dart
+final subscription = odm.users('jane').stream.listen((user) {
+  if (user == null) {
+    print('Deleted');
   } else {
-    print('User was deleted.');
+    print('Updated: ${user.name}');
   }
 });
 
-// In a real app (e.g., a Flutter widget), you would cancel the subscription
-// when it's no longer needed to prevent memory leaks.
-// subscription.cancel();
+// Cancel when you no longer need updates, for example in dispose().
+await subscription.cancel();
 ```
 
-## Checking for Existence
+Each read of `stream` starts a new listener. In a Flutter widget, create the
+stream once (for example in `initState`) and pass it to a `StreamBuilder`.
 
-If you only need to know if a document exists and don't need its data, use `.exists()`. This is more efficient than fetching the entire document as it only downloads a minimal amount of data.
-
-```dart
-// Returns a Future<bool>
-final bool userExists = await db.users('jane-doe').exists();
-
-if (userExists) {
-  print('The user jane-doe exists!');
-}
+To read many documents, see [Fetching Data](/guide/fetching-data).

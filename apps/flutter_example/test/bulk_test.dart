@@ -1,5 +1,4 @@
-/// Bulk query writes are chunked to Firestore's 500-write batch limit
-/// (ADR-0002).
+/// Bulk query writes are chunked to Firestore's 500-write batch limit.
 library;
 
 import 'package:firestore_odm/firestore_odm.dart';

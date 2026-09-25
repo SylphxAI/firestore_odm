@@ -1,7 +1,7 @@
 /// The typed collection surface: create/set/patch/delete writes plus the typed
 /// query surface, transactions and batches.
 ///
-/// Write verbs map 1:1 to Firestore primitives (ADR-0002):
+/// Write verbs map 1:1 to Firestore primitives:
 /// - [create]: `collection.add()` — returns the generated document ID.
 /// - [set]: full document replace (`doc.set`).
 /// - [patch]: partial update with typed ops (`doc.update`).
@@ -143,8 +143,9 @@ class FirestoreCollection<
     return result;
   }
 
-  /// All documents in this collection.
-  Future<List<T>> get() => _query().get();
+  /// All documents in this collection. Pass [options] to read from the
+  /// cache or the server only.
+  Future<List<T>> get([firestore.GetOptions? options]) => _query().get(options);
 
   /// Live stream of all documents in this collection.
   Stream<List<T>> get stream => _query().stream;

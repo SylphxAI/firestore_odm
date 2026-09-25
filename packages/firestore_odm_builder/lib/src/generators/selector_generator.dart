@@ -185,7 +185,7 @@ TypeReference _leafType(
     elementType ?? dartType,
   ]),
   SelectorKind.orderBy => generic('OrderByField', [dartType]),
-  SelectorKind.aggregate => generic('AggregateField', [dartType]),
+  SelectorKind.aggregate => generic('AggregateFieldSelector', [dartType]),
   SelectorKind.pipeline => generic('PipelineField', [dartType]),
 };
 
@@ -223,7 +223,7 @@ Expression _leafInstance(
         'defaultValue': refer('${dartType.element!.name!}.values.first'),
     }),
     SelectorKind.aggregate => refer(
-      'AggregateField',
+      'AggregateFieldSelector',
     ).newInstance([], {'field': pathExpr, 'context': refer('_context')}),
     SelectorKind.pipeline => refer('PipelineField').newInstance([], {
       'components': isDocumentId

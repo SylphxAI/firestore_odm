@@ -1,243 +1,161 @@
 # Data Modeling
 
-The ODM is designed to be unopinionated about how you create your data models. It supports a variety of popular modeling styles and packages, allowing you to choose the approach that best fits your project.
+A model is a Dart class that describes one document. The code generator reads
+the model's unnamed constructor and generates, in the model's `.g.dart` file:
 
-## Important: Nested Object Serialization
+- the converters that write the model to Firestore and read it back
+- the typed selectors used by `where`, `orderBy`, `aggregate` and `patch`
 
-When working with nested objects (especially with Freezed classes), you **must** configure `json_serializable` to properly handle nested serialization. Create a `build.yaml` file next to your `pubspec.yaml`:
+## Rules for a model
 
-```yaml
-# build.yaml
-targets:
-  $default:
-    builders:
-      json_serializable:
-        options:
-          explicit_to_json: true
-```
+- Annotate the class with `@firestoreOdm`. Nested model classes need it too.
+- Add `part '<file>.g.dart';` to the model's file.
+- Give the class an unnamed constructor. Every constructor parameter becomes a
+  document field.
+- Hold the document ID in a `String` field marked `@DocumentIdField()`, or in a
+  `String` field named `id` (see [Document ID](/guide/document-id)).
 
-**Why is this required?** Without `explicit_to_json: true`, `json_serializable` generates `toJson()` methods that don't properly serialize nested objects. Instead of calling `toJson()` on nested objects, it serializes them as raw Dart objects, which causes issues when storing data in Firestore.
+You can use freezed or a plain class. `json_serializable` is not required: the
+ODM generates its own converters. If your model also has `toJson`/`fromJson`
+for other uses, keep them.
 
-**Example of the problem:**
-```dart
-// Without explicit_to_json: true, this generates broken JSON:
-@freezed
-class User with _$User {
-  const factory User({
-    @DocumentIdField() required String id,
-    required String name,
-    required Profile profile, // This won't serialize properly!
-  }) = _User;
-  
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-}
-
-@freezed
-class Profile with _$Profile {
-  const factory Profile({
-    required String bio,
-    required int followers,
-  }) = _Profile;
-  
-  factory Profile.fromJson(Map<String, dynamic> json) => _$ProfileFromJson(json);
-}
-```
-
-**Alternative Solutions:**
-If you can't use a global `build.yaml` configuration, you can add the annotation directly to specific classes:
-
-```dart
-@freezed
-class User with _$User {
-  const User._();
-  
-  @JsonSerializable(explicitToJson: true) // Add this annotation
-  const factory User({
-    @DocumentIdField() required String id,
-    required String name,
-    required Profile profile,
-  }) = _User;
-  
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
-}
-```
-
-## Using `freezed` (Recommended)
-
-We recommend using the [freezed](https://pub.dev/packages/freezed) package to create your models. It generates robust, immutable classes with `copyWith`, `==`, and `toString()` methods, reducing boilerplate and preventing common errors.
+## freezed
 
 ```dart
 // lib/models/user.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
+import 'package:firestore_odm/firestore_odm.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+import 'profile.dart';
 
 part 'user.freezed.dart';
 part 'user.g.dart';
 
 @freezed
-class User with _$User {
+@firestoreOdm
+abstract class User with _$User {
   const factory User({
     @DocumentIdField() required String id,
     required String name,
     required String email,
+    required int age,
+    required Profile profile,
+    @Default([]) List<String> tags,
+    @Default(false) bool isActive,
+    @Default(false) bool isPremium,
+    DateTime? lastLogin,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) = _User;
-
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 }
 ```
 
-## Using Plain Dart Classes with `json_serializable`
+```dart
+// lib/models/profile.dart
+import 'package:firestore_odm/firestore_odm.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-If you prefer full control, you can use plain Dart classes and rely on the [json_serializable](https://pub.dev/packages/json_serializable) package for serialization.
+part 'profile.freezed.dart';
+part 'profile.g.dart';
+
+@freezed
+@firestoreOdm
+abstract class Profile with _$Profile {
+  const factory Profile({
+    required String bio,
+    @Default(0) int followers,
+  }) = _Profile;
+}
+```
+
+The other guides use this `User` and `Profile`.
+
+## Plain class
 
 ```dart
 // lib/models/task.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
+import 'package:firestore_odm/firestore_odm.dart';
 
 part 'task.g.dart';
 
-@JsonSerializable()
+@firestoreOdm
 class Task {
-  @DocumentIdField()
-  final String id;
-  final String description;
-  final bool isCompleted;
-
-  Task({required this.id, required this.description, this.isCompleted = false});
-
-  factory Task.fromJson(Map<String, dynamic> json) => _$TaskFromJson(json);
-  Map<String, dynamic> toJson() => _$TaskToJson(this);
-}
-```
-
-## Using `fast_immutable_collections`
-
-For applications requiring high-performance, truly immutable collections, the ODM seamlessly integrates with the [fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections) package. Simply use `IList`, `IMap`, or `ISet` in your models.
-
-```dart
-// lib/models/immutable_user.dart
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'immutable_user.freezed.dart';
-part 'immutable_user.g.dart';
-
-@freezed
-class ImmutableUser with _$ImmutableUser {
-  const factory ImmutableUser({
-    @DocumentIdField() required String id,
-    required String name,
-    required IList<String> tags,
-    required IMap<String, String> settings,
-    required ISet<String> categories,
-  }) = _ImmutableUser;
-
-  factory ImmutableUser.fromJson(Map<String, dynamic> json) => _$ImmutableUserFromJson(json);
-}
-```
-
-## Customizing Field Names with `@JsonKey`
-
-The ODM fully respects `@JsonKey` annotations from the `json_annotation` package. This allows you to use different field names in your Dart models than what is stored in Firestore. This is particularly useful when working with existing databases that have different naming conventions (e.g., `snake_case`).
-
-You can also use `@JsonKey` to ignore fields during serialization.
-
-```dart
-// lib/models/json_key_user.dart
-import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
-
-part 'json_key_user.g.dart';
-
-@JsonSerializable()
-class JsonKeyUser {
-  @DocumentIdField()
-  final String id;
-
-  // 'email' in Dart, but 'email_address' in Firestore
-  @JsonKey(name: 'email_address')
-  final String email;
-
-  // 'isPremium' in Dart, but 'is_premium_member' in Firestore
-  @JsonKey(name: 'is_premium_member')
-  final bool isPremium;
-
-  // This field will not be saved to or read from Firestore
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  final String? secretField;
-
-  JsonKeyUser({
+  const Task({
     required this.id,
-    required this.email,
-    required this.isPremium,
-    this.secretField,
+    required this.title,
+    required this.estimate,
+    this.isDone = false,
   });
 
-  factory JsonKeyUser.fromJson(Map<String, dynamic> json) => _$JsonKeyUserFromJson(json);
-  Map<String, dynamic> toJson() => _$JsonKeyUserToJson(this);
-}
-
-## Troubleshooting Nested Object Serialization
-
-### Common Error: "Instance of 'NestedClass'" in Firestore
-
-If you see raw Dart object representations like `Instance of 'Profile'` stored in Firestore instead of proper JSON objects, this indicates that nested objects aren't being serialized correctly.
-
-**Symptoms:**
-- Nested objects appear as `Instance of 'ClassName'` in Firestore console
-- Deserialization fails when reading documents with nested objects
-- Type errors when trying to access nested object properties
-
-**Solution:**
-Add the `build.yaml` configuration as described above, or use the `@JsonSerializable(explicitToJson: true)` annotation on affected classes.
-
-### Alternative Per-Class Configuration
-
-If you prefer not to use a global `build.yaml` configuration, you can enable explicit JSON serialization on individual classes:
-
-```dart
-@freezed
-class User with _$User {
-  const User._(); // Required for the annotation below
-  
-  @JsonSerializable(explicitToJson: true)
-  const factory User({
-    @DocumentIdField() required String id,
-    required String name,
-    required Profile profile, // Now properly serialized
-  }) = _User;
-  
-  factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
+  @DocumentIdField()
+  final String id;
+  final String title;
+  final Duration estimate;
+  final bool isDone;
 }
 ```
 
-### Working with Lists of Nested Objects
+## Field types
 
-When using lists of nested objects, the `explicit_to_json: true` configuration is especially important:
+| Dart type | Stored in Firestore as |
+|---|---|
+| `String`, `int`, `double`, `num`, `bool` | the same value |
+| `DateTime` | a `Timestamp` |
+| `Duration` | an integer number of microseconds |
+| enum | the constant's name, or its `@JsonValue` |
+| `List<T>`, `Set<T>` | an array |
+| `Map<String, T>` | a map |
+| a nested `@firestoreOdm` class | a map |
+| `GeoPoint`, `DocumentReference`, `Blob`, `Timestamp` | the same value |
+
+A nullable field (`T?`) is stored as `null` when it has no value.
+
+When reading, a field missing from the document takes the parameter's
+default (a Dart default value or freezed's `@Default`), so you can add fields
+with defaults without migrating existing documents. A missing non-nullable
+field without a default throws. A `double` field also accepts a whole number
+stored as an integer.
+
+Reading a `DateTime` returns the same instant in local time, which matches
+`Timestamp.toDate()` in `cloud_firestore`.
+
+## Field names and converters
+
+The generator reads these `json_annotation` annotations on constructor
+parameters:
+
+- `@JsonKey(name: 'email_address')` stores the field under a different name.
+  Queries and patches use the stored name automatically.
+- `@JsonKey(includeFromJson: false, includeToJson: false)` leaves a field out of
+  the document. The field must be nullable or have a default.
+- `@JsonConverter` on a field converts it with your converter.
+- `@JsonValue` on enum constants sets the stored value.
 
 ```dart
-@freezed
-class Team with _$Team {
-  const factory Team({
-    @DocumentIdField() required String id,
-    required String name,
-    required List<Member> members, // Requires explicit_to_json
-  }) = _Team;
-  
-  factory Team.fromJson(Map<String, dynamic> json) => _$TeamFromJson(json);
+import 'package:firestore_odm/firestore_odm.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'account.freezed.dart';
+part 'account.g.dart';
+
+enum Plan {
+  @JsonValue('free')
+  free,
+  @JsonValue('pro')
+  pro,
 }
 
 @freezed
-class Member with _$Member {
-  const factory Member({
-    required String name,
-    required String role,
-  }) = _Member;
-  
-  factory Member.fromJson(Map<String, dynamic> json) => _$MemberFromJson(json);
+@firestoreOdm
+abstract class Account with _$Account {
+  const factory Account({
+    @DocumentIdField() required String id,
+    @JsonKey(name: 'email_address') required String email,
+    @Default(Plan.free) Plan plan,
+    @JsonKey(includeFromJson: false, includeToJson: false) String? draftNote,
+  }) = _Account;
 }
 ```
 
-Without proper configuration, the `members` list would be serialized incorrectly, causing data corruption in Firestore.
+`freezed_annotation` exports `json_annotation`. With a plain class, import
+`package:json_annotation/json_annotation.dart` to use these annotations.

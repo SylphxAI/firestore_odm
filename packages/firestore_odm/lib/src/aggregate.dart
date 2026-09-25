@@ -80,9 +80,14 @@ abstract class AggregateBuilderRoot extends SelectorRoot {
       throw UnsupportedError('count() must be overridden by generated code');
 }
 
+/// Deprecated name of [AggregateFieldSelector]; it collides with
+/// cloud_firestore's `AggregateField` in files that import both.
+@Deprecated('Use AggregateFieldSelector')
+typedef AggregateField<T extends num?> = AggregateFieldSelector<T>;
+
 /// Typed aggregate selector for one numeric field.
-class AggregateField<T extends num?> {
-  const AggregateField({
+class AggregateFieldSelector<T extends num?> {
+  const AggregateFieldSelector({
     required FieldNode field,
     required AggregateContext context,
   }) : _field = field,
@@ -95,6 +100,7 @@ class AggregateField<T extends num?> {
     SumOperation('sum:${_field.components.join('.')}', _field),
   );
 
+  /// The average of the field; `double.nan` when no document matches.
   double average() => _context.resolve<double>(
     AverageOperation('avg:${_field.components.join('.')}', _field),
   );
@@ -121,12 +127,11 @@ class AggregateQuery<R extends Record, AB extends AggregateBuilderRoot> {
       for (final op in _operations)
         op.key: switch (op) {
           CountOperation() => snapshot.count ?? 0,
-          SumOperation(:final field) => snapshot.getSum(
-            field.components.join('.'),
-          ),
-          AverageOperation(:final field) => snapshot.getAverage(
-            field.components.join('.'),
-          ),
+          SumOperation(:final field) =>
+            snapshot.getSum(field.components.join('.')) ?? 0,
+          // Firestore returns no average when no document matches.
+          AverageOperation(:final field) =>
+            snapshot.getAverage(field.components.join('.')) ?? double.nan,
         },
     };
     final context = AggregateResultContext(results);

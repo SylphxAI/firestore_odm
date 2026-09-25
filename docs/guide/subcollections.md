@@ -1,81 +1,60 @@
-> **5.0 note:** this guide documents the v4 API surface. See
-> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
-> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
->
 # Subcollections
 
-The ODM provides a fluent, type-safe API for defining and accessing subcollections. One of the key advantages is that **the same model can be reused in both collections and subcollections without generating additional code**, keeping your build output minimal and efficient.
+## Declare a subcollection
 
-## Defining Subcollections
-
-You define subcollections in your schema file alongside your root-level collections. The key is to use a path with a wildcard (`*`) to represent the parent document's ID.
-
-In this example, we define a `posts` subcollection that lives under each `user` document.
+Add a `@Collection` whose path uses `*` for each parent document ID:
 
 ```dart
-// lib/schema.dart
-
-class AppSchema extends FirestoreSchema {
-  const AppSchema();
-}
-
 @Schema()
-// Root-level collection
-@Collection<User>("users")
-// Subcollection of users. The '*' is a wildcard for the user ID.
-@Collection<Post>("users/*/posts")
+@Collection<User>('users')
+@Collection<Post>('users/*/posts')
+@Collection<Comment>('users/*/posts/*/comments')
 const appSchema = AppSchema();
 ```
 
-The generator will automatically detect this relationship and create the necessary accessors.
+## Access a subcollection
 
-## Accessing Subcollections
+Each subcollection gets a method on the ODM. Its name joins the path's
+collection names, and it takes one argument per `*`, in path order:
 
-Once defined, you can access a subcollection by chaining a property accessor onto a document reference. The ODM automatically handles inserting the correct document ID into the path.
-
-```dart
-// Get a reference to a specific user document
-final userDoc = db.users('jane-doe');
-
-// Access the 'posts' subcollection for that user
-final postsCollection = userDoc.posts;
-
-// Now you can perform any standard collection operation on it
-final allPosts = await postsCollection.get();
-
-await postsCollection.insert(
-  Post(id: 'my-first-post', title: 'Hello from a subcollection!'),
-);
-```
-
-You can chain these calls to access deeply nested subcollections as well, as long as they are defined in your schema.
+| Path | Accessor |
+|---|---|
+| `users/*/posts` | `odm.usersPosts(userId)` |
+| `users/*/posts/*/comments` | `odm.usersPostsComments(userId, postId)` |
 
 ```dart
-// Example of accessing a nested sub-subcollection
-// This would require a "users/*/posts/*/comments" definition in the schema.
+final janePosts = odm.usersPosts('jane');
+
+// Everything a root collection offers works here
+await janePosts.set(post);
+final hello = await janePosts('hello-world').get();
+final recent = await janePosts
+    .orderBy(($) => ($.createdAt(descending: true),))
+    .limit(10)
+    .get();
+
+final comments = odm.usersPostsComments('jane', 'hello-world');
+final count = await comments.count();
 ```
 
-## Model Reusability
-
-A major advantage of Firestore ODM is that **the same model can be used in both root collections and subcollections without duplicating generated code**. This keeps your build output minimal and efficient.
+Subcollections also work in batches and transactions:
 
 ```dart
-// The same Post model works in both contexts:
-
-// As a root collection
-@Collection<Post>("posts")
-
-// As a subcollection under users
-@Collection<Post>("users/*/posts")
-
-// As a subcollection under categories
-@Collection<Post>("categories/*/posts")
+await odm.runBatch((batch) {
+  odm.usersPosts('jane').inBatch(batch).delete('draft');
+});
 ```
 
-The ODM's smart code generation ensures that:
-- **No duplicate code** is generated for the same model
-- **Build times remain fast** regardless of how many collections use the same model
-- **Generated code stays minimal** using highly optimized callables and Dart extensions
+## One model, many collections
 
-This approach allows you to organize your data flexibly without worrying about code bloat or performance impact.
-final comments = db.users('jane-doe').posts('my-first-post').comments;
+The same model can be used in any number of collections, for example `Post`
+in both `posts` and `users/*/posts`. Its generated code exists once.
+
+## Notes
+
+- Always pass every parent ID. Passing `null` or leaving an argument out
+  targets a path that contains the text `null`.
+- Deleting a parent document does not delete its subcollections.
+- Queries across all subcollections with the same name (collection group
+  queries) are not available through the ODM. Use
+  `odm.firestore.collectionGroup('posts')` from `cloud_firestore` for those.

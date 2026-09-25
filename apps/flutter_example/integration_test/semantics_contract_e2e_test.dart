@@ -1,4 +1,4 @@
-/// Emulator e2e lane (ADR-0002): the live-Firestore behavior the fake cannot
+/// Emulator e2e lane: the live-Firestore behavior the fake cannot
 /// model — Timestamp storage, dotted-path updates, transactions and queries.
 ///
 /// Requires the Firestore emulator on localhost:8080 (CI runs it as a service
@@ -6,7 +6,9 @@
 /// contract; it is NOT run by the plain unit-test suite.
 library;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firestore_odm/firestore_odm.dart';
+import 'package:flutter_example/models/place.dart';
 import 'package:flutter_example/models/profile.dart';
 import 'package:flutter_example/models/user.dart';
 import 'package:flutter_example/test_schema.dart';
@@ -78,6 +80,22 @@ void main() {
       expect(current?.age, 35);
     });
     expect((await odm.users(id).get())?.age, 36);
+
+    // Firestore value types are stored natively and filter by value.
+    final owner = odm.firestore.doc('users/$id');
+    await odm.places.set(
+      Place(
+        id: 'hk',
+        name: 'Hong Kong',
+        location: const GeoPoint(22.3, 114.2),
+        rating: 5,
+        owner: owner,
+      ),
+    );
+    final owned = await odm.places
+        .where(($) => $.owner(isEqualTo: owner))
+        .get();
+    expect(owned.single.location, const GeoPoint(22.3, 114.2));
 
     // Bulk delete.
     await odm.users.deleteAll();

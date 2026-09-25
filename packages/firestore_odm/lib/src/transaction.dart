@@ -1,4 +1,4 @@
-/// Typed transactions (ADR-0002): all reads execute as they are awaited; all
+/// Typed transactions: all reads execute as they are awaited; all
 /// writes are deferred and flushed at the end of the callback so Firestore's
 /// read-before-write rule always holds. Reads are cached per transaction
 /// attempt.

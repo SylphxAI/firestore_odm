@@ -1,0 +1,20 @@
+name: firestore_odm_example
+description: A runnable firestore_odm example, tested against an in-memory Firestore.
+publish_to: none
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  cloud_firestore: ^6.4.0
+  firebase_core: ^4.0.0
+  firestore_odm: ^5.1.0
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  build_runner: ^2.4.13
+  fake_cloud_firestore: ^4.1.0
+  firestore_odm_builder: ^5.1.0
+  flutter_test:
+    sdk: flutter

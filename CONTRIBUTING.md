@@ -1,228 +1,72 @@
-# Contributing to Firestore ODM
+# Contributing
 
-Welcome! We're excited that you're interested in contributing to Firestore ODM. This guide will help you get started.
+Issues and pull requests are welcome. For a bug, include the model, the
+generated code or the error, and the versions of firestore_odm,
+cloud_firestore and Flutter.
 
-## 🚀 Quick Start
+## Setup
 
-### Prerequisites
+You need Flutter 3.44 (the version CI pins in
+`.github/actions/setup-flutter/action.yml`).
 
-- [Dart SDK](https://dart.dev/get-dart) (>=3.8.1)
-- [Flutter](https://flutter.dev/docs/get-started/install) (>=3.0.0)
-- [Git](https://git-scm.com/)
-
-### Local Development Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SylphxAI/firestore_odm.git
-   cd firestore_odm
-   ```
-
-2. **Install Melos globally**
-   ```bash
-   dart pub global activate melos
-   ```
-
-3. **Bootstrap the workspace**
-   ```bash
-   melos bootstrap
-   ```
-
-4. **Verify setup**
-   ```bash
-   melos run check
-   ```
-
-## 📋 Development Workflow
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `melos run check` | Run all quality checks (format, analyze, test) |
-| `melos run format` | Format all Dart code |
-| `melos run format:check` | Check if code is properly formatted |
-| `melos run analyze` | Run static analysis |
-| `melos run test:all` | Run all tests |
-| `melos run test:unit` | Run unit tests only |
-| `melos run test:integration` | Run integration tests only |
-| `melos run build:example` | Generate code for examples |
-| `melos run clean` | Clean all build artifacts |
-
-### Making Changes
-
-1. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make your changes**
-   - Write code following our style guidelines
-   - Add tests for new functionality
-   - Update documentation as needed
-
-3. **Run quality checks**
-   ```bash
-   melos run check
-   ```
-
-4. **Commit your changes**
-   ```bash
-   git add .
-   git commit -m "feat: add new feature"
-   ```
-
-5. **Push and create PR**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-## 🧪 Testing
-
-### Running Tests
-
-- **All tests**: `melos run test:all`
-- **Unit tests**: `melos run test:unit`
-- **Integration tests**: `melos run test:integration`
-- **Specific package**: `melos run test --scope=firestore_odm`
-
-### Writing Tests
-
-- Place unit tests in `test/` directory
-- Use descriptive test names
-- Follow the AAA pattern (Arrange, Act, Assert)
-- Mock external dependencies
-
-Example:
-```dart
-import 'package:test/test.dart';
-import 'package:firestore_odm/firestore_odm.dart';
-
-void main() {
-  group('FirestoreODM', () {
-    test('should create collection reference', () {
-      // Arrange
-      const collectionPath = 'users';
-      
-      // Act
-      final collection = FirestoreODM.collection(collectionPath);
-      
-      // Assert
-      expect(collection.path, equals(collectionPath));
-    });
-  });
-}
+```sh
+git clone https://github.com/SylphxAI/firestore_odm.git
+cd firestore_odm
+dart pub global activate melos
+melos bootstrap
+melos run check      # format, generate, analyze, test: what the pull request check runs
 ```
 
-## 📝 Code Style
+## Layout
 
-### Formatting
+| Path | What it is |
+| --- | --- |
+| `packages/firestore_odm` | runtime: collections, queries, updates, transactions, batches |
+| `packages/firestore_odm_annotation` | `@firestoreOdm`, `@Schema`, `@Collection`, `@DocumentIdField` |
+| `packages/firestore_odm_builder` | the code generator, and the `migrate` codemod (`bin/migrate.dart`) |
+| `packages/firestore_odm/example` | the README example, tested |
+| `apps/flutter_example` | models covering every supported shape, and the test suite (in-memory Firestore in `test/`, Firestore emulator in `integration_test/`) |
+| `benchmarks` | code generation and runtime benchmarks (`benchmarks/run.sh`) |
+| `docs` | the documentation site (VitePress) |
 
-We use `dart format` with default settings. Run `melos run format` to format your code.
+## Commands
 
-### Linting
+| Command | Does |
+| --- | --- |
+| `melos run generate` | runs build_runner wherever it is used |
+| `melos run analyze` | static analysis of the packages (after `generate`) |
+| `melos run test:all` | codemod unit tests and the generated-code tests |
+| `melos run test:e2e` | tests against the Firestore emulator (needs Java 21 and Node) |
+| `benchmarks/run.sh` | benchmarks; prints a Markdown report |
+| `cd docs && npm ci && npm run dev` | the documentation site with live reload |
 
-We use `very_good_analysis` for linting. Run `melos run analyze` to check for issues.
+A behaviour change comes with a test in `apps/flutter_example/test` that calls
+the generated API, and a line in the package `CHANGELOG.md`.
 
-### Naming Conventions
+## CI
 
-- **Classes**: PascalCase (`FirestoreCollection`)
-- **Methods/Variables**: camelCase (`getUserById`)
-- **Constants**: camelCase (`maxRetryCount`)
-- **Files**: snake_case (`firestore_collection.dart`)
+Pull requests run format, analysis, tests, API docs, the publish dry run, the
+pub.dev score check and the docs site build on Linux. The merge queue runs the
+macOS and Windows tests and the emulator tests. `ci-success` is the required
+check.
 
-## 📦 Package Structure
+## Releasing
 
-```
-packages/
-├── firestore_odm_annotation/     # Pure annotations
-├── firestore_odm/                # Core ODM functionality
-└── firestore_odm_builder/        # Code generation
-flutter_example/                   # Example application
-```
+The three packages share one version.
 
-### Adding Dependencies
+1. Set `version:` in the three `pubspec.yaml` files and
+   `firestoreOdmConstraint` in
+   `packages/firestore_odm_builder/lib/src/migrate/cloud_firestore_odm_migration.dart`.
+   Raise the `firestore_odm_annotation` constraints only when the release
+   needs new annotation API (the pub.dev score check resolves dependencies
+   from pub.dev, so an unpublished constraint fails it until release).
+2. Add the version's section to each package `CHANGELOG.md`; merge.
+3. Tag the merged commit: `git tag v5.1.0 && git push origin v5.1.0`.
 
-1. Add to appropriate `pubspec.yaml`
-2. Run `melos bootstrap`
-3. Update documentation if needed
-
-## 🔄 Release Process
-
-### Versioning
-
-We follow [Semantic Versioning](https://semver.org/):
-- **MAJOR**: Breaking changes
-- **MINOR**: New features (backward compatible)
-- **PATCH**: Bug fixes (backward compatible)
-
-### Creating a Release
-
-1. **Ensure all tests pass**
-   ```bash
-   melos run check
-   ```
-
-2. **Preview version changes**
-   ```bash
-   melos run version:check
-   ```
-
-3. **Create release via GitHub Actions**
-   - Go to Actions > Release
-   - Choose version type (patch/minor/major)
-   - Run workflow
-
-### Manual Release (if needed)
-
-```bash
-# Version packages
-melos version --patch --yes
-
-# Publish (dry run first)
-melos run publish:dry-run
-melos run publish
-```
-
-## 🐛 Bug Reports
-
-When reporting bugs, please include:
-
-- **Description**: Clear description of the issue
-- **Steps to reproduce**: Minimal reproduction steps
-- **Expected behavior**: What should happen
-- **Actual behavior**: What actually happens
-- **Environment**: Dart/Flutter versions, OS, etc.
-- **Code sample**: Minimal code that demonstrates the issue
-
-## ✨ Feature Requests
-
-When requesting features:
-
-- **Use case**: Explain why this feature is needed
-- **Proposed solution**: How you think it should work
-- **Alternatives**: Other solutions you've considered
-- **Examples**: Code examples of how it would be used
-
-## 📚 Documentation
-
-- Update relevant documentation when making changes
-- Add code examples for new features
-- Keep API documentation up to date
-- Update CHANGELOG.md for significant changes
-
-## 🤝 Code of Conduct
-
-Please be respectful and constructive in all interactions. We want to maintain a welcoming environment for all contributors.
-
-## ❓ Questions
-
-If you have questions:
-
-1. Check existing [issues](https://github.com/SylphxAI/firestore_odm/issues)
-2. Search [discussions](https://github.com/SylphxAI/firestore_odm/discussions)
-3. Create a new discussion or issue
-
-## 🙏 Thank You
-
-Thank you for contributing to Firestore ODM! Your contributions help make this project better for everyone.
+The Release workflow checks the tag matches the versions and is on `main`,
+publishes the annotation, runtime and builder packages in that order, waits
+until pub.dev serves each version, and creates the GitHub release from the
+changelog. It publishes through pub.dev automated publishing (GitHub OIDC),
+which each package's pub.dev admin page must allow for this repository with
+the tag pattern `v{{version}}`; until then it uses the `PUB_CREDENTIALS`
+secret.

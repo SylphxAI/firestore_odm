@@ -1,37 +1,46 @@
 # Server Timestamps
 
-Server-set times are an explicit patch operation (ADR-0002 — no sentinel
-constants):
+To store the server's time in a `DateTime` field, use the `serverTimestamp()`
+patch operation. Firestore fills in the time when it applies the write, so the
+value does not depend on the device clock.
 
 ```dart
-await db.users('jane').patch((p) => [p.updatedAt.serverTimestamp()]);
+await odm.users('jane').patch(($) => [$.updatedAt.serverTimestamp()]);
 ```
 
-Works the same inside transactions and batches:
+It works the same way in bulk writes, batches and transactions:
 
 ```dart
-await db.runTransaction((tx) async {
-  db.users.inTransaction(tx)('jane').patch((p) => [p.updatedAt.serverTimestamp()]);
+await odm.runBatch((batch) {
+  odm.users.inBatch(batch).patch('jane', ($) => [$.updatedAt.serverTimestamp()]);
 });
 
-await db.runBatch((batch) {
-  db.users.inBatch(batch).patch('jane', (p) => [p.updatedAt.serverTimestamp()]);
+await odm.runTransaction((tx) async {
+  odm.users.inTransaction(tx)('jane').patch(
+    ($) => [$.updatedAt.serverTimestamp()],
+  );
 });
 ```
 
-## Reading timestamps back
+## Setting a server time when creating a document
 
-Firestore stores server timestamps as `Timestamp`. The ODM converts them to
-`DateTime` on read (the same instant; Timestamps are timezone-less, so the
-returned `DateTime` is in local time — identical to the raw SDK's
-`Timestamp.toDate()`).
-
-## Insert-time server timestamps
-
-There is no sentinel for `create`/`set`; if you need a server-set field at
-insert time, create the document first and patch it:
+`create` and `set` write the model's own values. To add a server time to a new
+document atomically, queue the write and a patch in one batch:
 
 ```dart
-final id = await db.users.create(user);
-await db.users(id).patch((p) => [p.createdAt.serverTimestamp()]);
+await odm.runBatch((batch) {
+  final users = odm.users.inBatch(batch);
+  final id = users.create(newUser);
+  users.patch(id, ($) => [$.createdAt.serverTimestamp()]);
+});
 ```
+
+## Use a nullable field
+
+Declare server-set fields as `DateTime?`. Until the server confirms the write,
+a listener on the same device sees the field as `null`.
+
+## Reading
+
+Firestore stores the value as a `Timestamp`. The ODM returns it as a
+`DateTime` for the same instant, in local time.

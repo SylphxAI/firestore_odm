@@ -1,3 +1,26 @@
+## 5.1.0
+
+Upgrade `firestore_odm` and `firestore_odm_builder` together: generated code
+uses `AggregateFieldSelector`, which is new in firestore_odm 5.1.0.
+
+- New: `dart run firestore_odm_builder:migrate` rewrites a
+  `cloud_firestore_odm` project (pubspec, imports, collection declarations,
+  `whereX`/`orderByX` queries, named `update` calls, subcollections) and
+  lists what is left to finish by hand. Preview by default; `--apply` writes.
+- Nested model fields get their own patch builder, so
+  `$.profile.followers.increment(1)` compiles and updates one nested field.
+- Generated readers apply the model's defaults to missing fields, read
+  whole numbers into `double` fields, and read nested models with the
+  generated converter (fixes `DateTime` inside nested json_serializable
+  models).
+- Subcollection accessor parameters are required `String`s.
+- Fixed: aggregate selectors no longer collide with `cloud_firestore`'s
+  `AggregateField` when a model file imports `cloud_firestore`.
+- Fixed: `GeoPoint`, `DocumentReference`, `Blob` and `Timestamp` fields are stored natively instead of being treated as nested
+  models.
+- Collection paths with hyphens produce valid accessor names.
+- Supports analyzer 14.
+
 ## 5.0.0
 
 - **Stable release of the 5.0 clean break (ADR-0002)** — exact Firestore

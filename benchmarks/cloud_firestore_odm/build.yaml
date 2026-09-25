@@ -1,0 +1,11 @@
+# cloud_firestore_odm needs json_serializable's field map and per-field toJson.
+targets:
+  $default:
+    builders:
+      json_serializable:
+        generate_for: [lib/**]
+        options:
+          create_field_map: true
+          create_per_field_to_json: true
+      cloud_firestore_odm_generator:
+        generate_for: [lib/**]

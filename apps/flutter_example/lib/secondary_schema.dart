@@ -6,7 +6,7 @@ import 'package:flutter_example/models/user.dart';
 /// Secondary schema class (multiple-schema support). Declared by hand so the
 part 'secondary_schema.g.dart';
 
-/// schema variable's type is resolvable before code generation (ADR-0002).
+/// schema variable's type is resolvable before code generation.
 class SecondarySchema extends FirestoreSchema {
   const SecondarySchema();
 }
