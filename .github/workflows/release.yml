@@ -1,5 +1,10 @@
 name: Release & Publish
 
+# Publishes firestore_odm_annotation, firestore_odm, and firestore_odm_builder
+# to pub.dev. It still authenticates with the PUB_CREDENTIALS secret because
+# pub.dev automated publishing (GitHub OIDC) is not enabled for these packages
+# yet; once it is, replace the credentials steps with OIDC (see PUBLISHING.md).
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,53 +12,28 @@ on:
         description: 'Actually publish to pub.dev (uncheck for dry-run only)'
         type: boolean
         default: false
-      run_versioning:
-        description: 'Run automatic versioning based on conventional commits'
-        type: boolean
-        default: true
   push:
     tags:
-      - 'v*'  # Auto-publish when tags are pushed
+      - 'v*' # Auto-publish when tags are pushed
+
+permissions:
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+    env:
+      PUBLISH: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full git history for conventional commits
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # Mirror ci.yml: pin Flutter to current stable 3.44.2 (bump
-          # deliberately), installed via a retry-guarded git clone (subosito's
-          # archive install intermittently leaves an empty engine version on
-          # these self-hosted runners).
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
-          # subosito used to export PUB_CACHE; the git-clone setup doesn't, so the
-          # later "Setup Pub Credentials" step's `mkdir -p $PUB_CACHE` failed on an
-          # empty var. Export it for the credentials + publish steps.
-          echo "PUB_CACHE=$HOME/.pub-cache" >> "$GITHUB_ENV"
+        uses: ./.github/actions/setup-flutter
 
       - name: 📋 Dry Run Publish (annotation only)
         run: |
@@ -65,139 +45,104 @@ jobs:
           cd packages/firestore_odm_annotation && dart pub publish --dry-run
 
       - name: 🔐 Setup Pub Credentials
-        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
+        if: env.PUBLISH == 'true'
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
         run: |
-          # Setup credentials in both possible locations
-          PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
-          mkdir -p "$PUB_CACHE" ~/.config/dart
-          printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > "$PUB_CACHE/credentials.json"
-          printf '%s' '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
-          # Verify credentials were written
-          echo "Credentials written to:"
-          ls -la "$PUB_CACHE/credentials.json" || true
-          ls -la ~/.config/dart/pub-credentials.json || true
+          # The secret reaches the shell only through the environment and is
+          # written owner-readable only; the always() step below deletes it.
+          umask 077
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/dart"
+          printf '%s' "$PUB_CREDENTIALS" > "${XDG_CONFIG_HOME:-$HOME/.config}/dart/pub-credentials.json"
 
-      - name: 🚀 Publish firestore_odm_annotation
-        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
+      - name: 🚀 Publish packages
+        if: env.PUBLISH == 'true'
         run: |
-          cd packages/firestore_odm_annotation
-          # Publish, but don't fail if version already exists
-          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
-            echo "✅ Published firestore_odm_annotation successfully"
-          elif grep -q "already exists" /tmp/pub_output.txt; then
-            echo "⏭️ firestore_odm_annotation version already published, skipping"
-          else
-            echo "❌ Failed to publish firestore_odm_annotation"
-            cat /tmp/pub_output.txt
-            exit 1
-          fi
-          echo "Waiting for package to be indexed on pub.dev..."
+          # Without pipefail, `dart pub publish | tee` would report tee's status.
+          set -o pipefail
+          publish() {
+            local package="$1"
+            rm -f "packages/$package/pubspec_overrides.yaml"
+            (cd "packages/$package" && dart pub get)
+            # Publish, but don't fail if this version already exists.
+            if (cd "packages/$package" && dart pub publish --force) 2>&1 | tee /tmp/pub_output.txt; then
+              echo "✅ Published $package"
+            elif grep -q "already exists" /tmp/pub_output.txt; then
+              echo "⏭️ $package version already published, skipping"
+            else
+              echo "❌ Failed to publish $package"
+              exit 1
+            fi
+          }
+          publish firestore_odm_annotation
+          echo "Waiting for firestore_odm_annotation to be indexed on pub.dev..."
           sleep 60
-
-      - name: 🚀 Publish firestore_odm
-        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          # Remove pubspec_overrides.yaml and get fresh dependencies
-          rm -f packages/firestore_odm/pubspec_overrides.yaml
-          cd packages/firestore_odm && dart pub get
-          # Publish, but don't fail if version already exists
-          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
-            echo "✅ Published firestore_odm successfully"
-          elif grep -q "already exists" /tmp/pub_output.txt; then
-            echo "⏭️ firestore_odm version already published, skipping"
-          else
-            echo "❌ Failed to publish firestore_odm"
-            cat /tmp/pub_output.txt
-            exit 1
-          fi
-          echo "Waiting for package to be indexed on pub.dev..."
+          publish firestore_odm
+          echo "Waiting for firestore_odm to be indexed on pub.dev..."
           sleep 60
+          publish firestore_odm_builder
 
-      - name: 🚀 Publish firestore_odm_builder
-        if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
+      - name: 🧹 Remove Pub Credentials
+        if: always()
         run: |
-          # Remove pubspec_overrides.yaml and get fresh dependencies
-          rm -f packages/firestore_odm_builder/pubspec_overrides.yaml
-          cd packages/firestore_odm_builder && dart pub get
-          # Publish, but don't fail if version already exists
-          if dart pub publish --force 2>&1 | tee /tmp/pub_output.txt; then
-            echo "✅ Published firestore_odm_builder successfully"
-          elif grep -q "already exists" /tmp/pub_output.txt; then
-            echo "⏭️ firestore_odm_builder version already published, skipping"
-          else
-            echo "❌ Failed to publish firestore_odm_builder"
-            cat /tmp/pub_output.txt
-            exit 1
-          fi
+          rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/dart/pub-credentials.json" \
+                "${PUB_CACHE:-$HOME/.pub-cache}/credentials.json"
 
       - name: 📊 Create Release
         # Only on tag pushes — workflow_dispatch has github.ref_name=main (and a
         # `main` tag already exists), which would make a bogus release.
         if: ${{ startsWith(github.ref, 'refs/tags/') && success() }}
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: Release ${{ github.ref_name }}
-          body: |
-            🎉 **Firestore ODM Packages Released**
-            
-            ## 📦 Published Packages
-            - [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)
-            - [firestore_odm](https://pub.dev/packages/firestore_odm) 
-            - [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)
-            
-            ## 🔗 Links
-            - **Repository**: https://github.com/SylphxAI/firestore_odm
-            - **Documentation**: https://pub.dev/documentation/firestore_odm/latest/
-            - **Issues**: https://github.com/SylphxAI/firestore_odm/issues
-            
-            ## 📝 Changes
-            See individual package changelogs for detailed changes.
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > /tmp/release-notes.md <<'NOTES'
+          ## Published packages
+          - [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)
+          - [firestore_odm](https://pub.dev/packages/firestore_odm)
+          - [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)
+
+          See each package's CHANGELOG for details.
+          NOTES
+          gh release create "$TAG" --verify-tag --title "Release $TAG" --notes-file /tmp/release-notes.md
 
       - name: 📊 Summary
         if: success()
         run: |
-          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
-            echo "✅ **Packages Published to pub.dev**" >> $GITHUB_STEP_SUMMARY
-            echo "- [firestore_odm_annotation](https://pub.dev/packages/firestore_odm_annotation)" >> $GITHUB_STEP_SUMMARY
-            echo "- [firestore_odm](https://pub.dev/packages/firestore_odm)" >> $GITHUB_STEP_SUMMARY  
-            echo "- [firestore_odm_builder](https://pub.dev/packages/firestore_odm_builder)" >> $GITHUB_STEP_SUMMARY
+          if [[ "$PUBLISH" == "true" ]]; then
+            echo "✅ **Packages published to pub.dev**" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "🔍 **Dry-run completed successfully**" >> $GITHUB_STEP_SUMMARY
-            echo "Ready for publishing! Run again with 'Actually publish' checked." >> $GITHUB_STEP_SUMMARY
+            echo "🔍 **Dry run completed.** Run again with 'Actually publish' checked." >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **Repository**: https://github.com/SylphxAI/firestore_odm" >> $GITHUB_STEP_SUMMARY
 
-  # Verify publication success
+  # Fails unless every package's pubspec version is live on pub.dev.
   verify-publish:
     runs-on: ubuntu-latest
     if: ${{ inputs.run_publish || startsWith(github.ref, 'refs/tags/') }}
     needs: release
     steps:
-      - name: 📚 Git Checkout  
+      - name: 📚 Git Checkout
         uses: actions/checkout@v4
-
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
 
       - name: ✅ Verify Published Packages
         run: |
-          echo "Waiting for packages to be available on pub.dev..."
-          sleep 30
-          
-          # Try to fetch published packages from pub.dev
-          dart pub deps --style=tree firestore_odm_annotation || echo "Package not yet available"
-          dart pub deps --style=tree firestore_odm || echo "Package not yet available"  
-          dart pub deps --style=tree firestore_odm_builder || echo "Package not yet available"
-          
-          echo "✅ Verification completed"
+          missing=0
+          for package in firestore_odm_annotation firestore_odm firestore_odm_builder; do
+            version="$(sed -n 's/^version:[[:space:]]*//p' "packages/$package/pubspec.yaml" | tr -d "\"'")"
+            found=0
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl -fsS "https://pub.dev/api/packages/$package/versions/$version" > /dev/null; then
+                found=1
+                break
+              fi
+              echo "$package $version not on pub.dev yet (attempt $attempt); retrying in 30s"
+              sleep 30
+            done
+            if [ "$found" = 1 ]; then
+              echo "✅ $package $version is on pub.dev"
+            else
+              echo "::error::$package $version is not on pub.dev"
+              missing=1
+            fi
+          done
+          exit "$missing"

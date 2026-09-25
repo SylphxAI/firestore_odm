@@ -9,16 +9,13 @@ on:
     branches: [main, develop]
 
 # Flutter is pinned to the current stable, 3.44.2 (Dart 3.12.2), deliberately —
-# bump it on purpose, don't float `channel: stable` (silent drift previously
-# broke CI). The builder needs analyzer >=9 (Dart >=3.9), so 3.32.x no longer
-# works.
-#
-# Self-hosted jobs install Flutter via a shallow git clone instead of
-# subosito/flutter-action: the archive install intermittently produced a Flutter
-# SDK with an empty engine version on these runners, yielding a broken
-# `flutter//flutter_gpu.zip` URL and a failed bootstrap. A git checkout always
-# resolves the engine version correctly. The cross-platform test matrix also runs on owned self-hosted runners;
-# the action is an install helper, not a hosted-compute dependency.
+# bump it on purpose in .github/actions/setup-flutter, don't float
+# `channel: stable` (silent drift previously broke CI). The builder needs
+# analyzer >=9 (Dart >=3.9). Every job sets Flutter up through that one
+# composite action.
+
+permissions:
+  contents: read
 
 concurrency:
   # Fast Trunk: supersede obsolete runs for the same PR or branch tip.
@@ -34,31 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # These self-hosted runners intermittently produce an incomplete
-          # Flutter checkout (empty bin/internal/engine.version), which yields a
-          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
-          # until the engine version is present, precache serially before melos'
-          # concurrent pub gets, and retry to absorb transient failures.
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/setup-flutter
 
       - name: 🎨 Check Code Formatting
         run: melos run format:check --no-select
@@ -90,17 +63,10 @@ jobs:
       - name: 📚 Git Checkout
         uses: actions/checkout@v4
 
-      - name: 🐦 Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: 🐦 Setup Flutter & Bootstrap
+        uses: ./.github/actions/setup-flutter
         with:
           flutter-version: ${{ matrix.flutter-version }}
-          cache: true
-
-      - name: 🔧 Setup Melos
-        run: dart pub global activate melos
-
-      - name: 📦 Bootstrap Dependencies
-        run: melos bootstrap
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -120,31 +86,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # These self-hosted runners intermittently produce an incomplete
-          # Flutter checkout (empty bin/internal/engine.version), which yields a
-          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
-          # until the engine version is present, precache serially before melos'
-          # concurrent pub gets, and retry to absorb transient failures.
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/setup-flutter
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -153,9 +95,8 @@ jobs:
         # All tests live in flutter_example; `flutter test --coverage` writes
         # apps/flutter_example/coverage/lcov.info. (The old format_coverage step
         # relied on the removed `.packages` file and had no coverage input.)
-        # --concurrency=1: the self-hosted runners exhaust threads
-        # (pthread_create failed) under coverage instrumentation at the default
-        # concurrency. Lower it for a reliable (if slower) coverage run.
+        # --concurrency=1: runners have exhausted threads (pthread_create
+        # failed) under coverage instrumentation at the default concurrency.
         run: melos exec --scope="flutter_example" -- flutter test --coverage --concurrency=1
 
       - name: 📤 Upload Coverage
@@ -176,31 +117,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # These self-hosted runners intermittently produce an incomplete
-          # Flutter checkout (empty bin/internal/engine.version), which yields a
-          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
-          # until the engine version is present, precache serially before melos'
-          # concurrent pub gets, and retry to absorb transient failures.
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/setup-flutter
 
       - name: 🏗️ Generate Code
         run: melos run generate
@@ -216,31 +133,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # These self-hosted runners intermittently produce an incomplete
-          # Flutter checkout (empty bin/internal/engine.version), which yields a
-          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
-          # until the engine version is present, precache serially before melos'
-          # concurrent pub gets, and retry to absorb transient failures.
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/setup-flutter
 
       - name: 🔒 Security Audit
         run: |
@@ -259,31 +152,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 🐦 Setup Flutter & Bootstrap
-        run: |
-          # These self-hosted runners intermittently produce an incomplete
-          # Flutter checkout (empty bin/internal/engine.version), which yields a
-          # broken `flutter//flutter_gpu.zip` URL and a failed bootstrap. Re-clone
-          # until the engine version is present, precache serially before melos'
-          # concurrent pub gets, and retry to absorb transient failures.
-          export PATH="$RUNNER_TEMP/flutter/bin:$HOME/.pub-cache/bin:$PATH"
-          ok=0
-          for attempt in 1 2 3; do
-            rm -rf "$RUNNER_TEMP/flutter"
-            git clone --depth 1 -b 3.44.2 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter" \
-              || { echo "::warning::clone failed (attempt $attempt)"; sleep 10; continue; }
-            if [ ! -s "$RUNNER_TEMP/flutter/bin/internal/engine.version" ]; then
-              echo "::warning::empty engine.version (attempt $attempt); re-cloning"; sleep 10; continue
-            fi
-            flutter --version \
-              && flutter precache \
-              && dart pub global activate melos \
-              && melos bootstrap \
-              && { ok=1; break; }
-            echo "::warning::setup/bootstrap failed (attempt $attempt); retrying"; sleep 10
-          done
-          [ "$ok" = 1 ] || { echo "Flutter setup/bootstrap failed after retries"; exit 1; }
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        uses: ./.github/actions/setup-flutter
 
       - name: 📖 Generate Documentation
         run: |

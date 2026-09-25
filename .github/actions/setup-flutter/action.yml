@@ -1,0 +1,30 @@
+name: Setup Flutter and bootstrap
+description: >-
+  Install the pinned Flutter SDK, activate melos, and bootstrap the workspace.
+  The one Flutter setup every workflow job uses.
+
+inputs:
+  flutter-version:
+    description: Flutter SDK version. Pinned deliberately; bump it on purpose.
+    default: '3.44.2'
+  bootstrap:
+    description: Run `melos bootstrap` after activating melos.
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        cache: true
+
+    - name: Activate melos
+      shell: bash
+      run: dart pub global activate melos
+
+    - name: Bootstrap workspace
+      if: inputs.bootstrap == 'true'
+      shell: bash
+      run: melos bootstrap
