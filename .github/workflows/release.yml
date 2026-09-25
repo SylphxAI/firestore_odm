@@ -15,8 +15,14 @@ on:
     tags:
       - 'v*'  # Auto-publish when tags are pushed
 
+# Least privilege: jobs that need more request it explicitly.
+permissions:
+  contents: read
+
 jobs:
   release:
+    permissions:
+      contents: write  # actions/create-release on tag pushes
     runs-on: ubuntu-latest
     steps:
       - name: 📚 Git Checkout
