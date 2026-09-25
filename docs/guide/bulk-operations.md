@@ -1,42 +1,28 @@
 # Bulk Operations
 
-The ODM allows you to perform updates and deletions on multiple documents at once with a single, efficient command. These bulk operations are applied to all documents that match a query.
+Bulk writes apply to every document matching a query and are **chunked** to
+Firestore's 500-write batch limit (ADR-0002) — never one unbounded batch.
 
-## Bulk Updates
+## patchAll
 
-You can use `patch()`, `modify()`, or `incrementalModify()` on a query to update all matching documents. This is extremely useful for large-scale data migrations or updates.
-
-The syntax is identical to updating a single document, but the operation is applied to every document returned by the query.
+Applies the same typed patch operations to every match:
 
 ```dart
-// Give a 100 point bonus to all premium users
 await db.users
-  .where(($) => $.isPremium(isEqualTo: true))
-  .patch(($) => [$.points.increment(100)]);
-
-// Mark all posts in a certain category as archived
-await db.posts
-  .where(($) => $.category(isEqualTo: 'old-news'))
-  .modify((post) => post.copyWith(isArchived: true));
-
-// Reset the 'isActive' flag for all users
-await db.users.patch(($) => [$.isActive(false)]);
+  .where(($) => $.isActive(isEqualTo: true))
+  .patchAll([SetOperation(const FieldNode(components: ['archived']), true)]);
 ```
 
-## Bulk Deletes
+## deleteAll
 
-To delete all documents that match a query, simply chain the `.delete()` method.
-
-**Warning**: This operation is permanent and cannot be undone. Use with caution.
+Deletes every match (chunked):
 
 ```dart
-// Delete all users who have been marked as 'inactive'
 await db.users
-  .where(($) => $.status(isEqualTo: 'inactive'))
-  .delete();
+  .where(($) => $.isActive(isEqualTo: false))
+  .deleteAll();
+```
 
-// Clean up posts that were created over a year ago
-final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
-await db.posts
-  .where(($) => $.createdAt(isLessThan: oneYearAgo))
-  .delete();
+> For Enterprise-edition users, Firestore Pipelines provide server-side bulk
+> update/delete stages (experimental surface, ADR-0001/0002) — the ODM's typed
+> pipeline API is the supported path there.

@@ -42,15 +42,24 @@ scripts:
 
   # Testing scripts
   test:unit:
-    # `--dir-exists=test` skips packages without a test/ dir; otherwise
-    # `dart test` aborts with "Could not find package test". Currently no
-    # library package has unit tests — all tests are integration tests.
+    # Library packages have no standalone test dirs (the v5 contract suite
+    # lives in the example app); this is intentionally a no-op for now.
     run: melos exec --ignore="flutter_example" --dir-exists="test" -- dart test
-    description: Run unit tests (packages with a test/ dir).
+    description: Run library unit tests (none yet; see test:integration).
 
   test:integration:
     run: melos exec --scope="flutter_example" -- flutter test
-    description: Run integration tests.
+    description: Run the v5 semantics-contract unit suite (fake Firestore).
+
+  test:e2e:
+    # Live emulator lane (ADR-0002): requires the Firestore emulator on
+    # localhost:8080 (CI runs it via firebase-tools emulators:exec).
+    run: melos exec --scope="flutter_example" -- npx --yes firebase-tools emulators:exec --only firestore --project demo-project "flutter test integration_test --timeout 5m"
+    description: Run emulator e2e (real Firestore behavior).
+
+  benchmark:
+    run: melos exec --scope="flutter_example" -- flutter test test/benchmarks_test.dart
+    description: Run the recorded benchmark harness (prints BENCH lines).
 
   test:all:
     run: |

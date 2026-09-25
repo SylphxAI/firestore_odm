@@ -1,122 +1,66 @@
-import 'dart:async';
+/// The typed document surface: get/stream/set/patch/delete (ADR-0002).
+library;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firestore_odm/src/interfaces/deletable.dart';
-import 'package:firestore_odm/src/interfaces/existable.dart';
-import 'package:firestore_odm/src/interfaces/gettable.dart';
-import 'package:firestore_odm/src/interfaces/modifiable.dart';
-import 'package:firestore_odm/src/interfaces/patchable.dart';
-import 'package:firestore_odm/src/interfaces/streamable.dart';
-import 'package:firestore_odm/src/interfaces/updatable.dart';
-import 'package:firestore_odm/src/schema.dart';
-import 'package:firestore_odm/src/services/patch_operations.dart';
-import 'services/update_operations_service.dart';
-import 'filter_builder.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
-/// A wrapper around Firestore DocumentReference with type safety and caching
-/// Uses Interface + Composition architecture with services handling operations
+import 'patch.dart';
+import 'schema.dart';
+import 'types.dart';
+import 'utils.dart';
+
+/// A type-safe wrapper around a Firestore document reference.
 class FirestoreDocument<
   S extends FirestoreSchema,
   T,
-  Path extends Record,
-  P extends PatchBuilder<T, Map<String, dynamic>?>
->
-    implements
-        Gettable<T?>,
-        Streamable<T?>,
-        Existable,
-        Modifiable<T>,
-        Patchable<T>,
-        Deletable,
-        Updatable<T> {
-  /// The collection this document belongs to (nullable for fromRef constructor)
-  final Map<String, dynamic> Function(T) _toJson;
-  final T Function(Map<String, dynamic>) _fromJson;
-
-  final String documentIdField;
-
-  /// The document ID
-  final DocumentReference<Map<String, dynamic>> ref;
-
-  /// The patch builder for this document
-  final P _patchBuilder;
-
-  /// Creates a new FirestoreDocument instance from a collection and document ID
-  const FirestoreDocument({
+  P extends PatchBuilder<T>
+> {
+  FirestoreDocument({
     required this.ref,
-    required Map<String, dynamic> Function(T) toJson,
-    required T Function(Map<String, dynamic>) fromJson,
+    required JsonSerializer<T> toJson,
+    required JsonDeserializer<T> fromJson,
     required this.documentIdField,
-    required P patchBuilder,
+    required P Function() patchBuilderFactory,
   }) : _toJson = toJson,
        _fromJson = fromJson,
-       _patchBuilder = patchBuilder;
+       _patchBuilderFactory = patchBuilderFactory;
 
-  /// Stream of document snapshots
-  @override
-  Stream<T?> get stream =>
-      DocumentHandler.stream<T>(ref, _fromJson, documentIdField);
+  /// The underlying Firestore document reference (escape hatch).
+  final firestore.DocumentReference<Map<String, dynamic>> ref;
 
-  /// Checks if the document exists
-  @override
-  Future<bool> exists() => DocumentHandler.exists(ref);
+  final JsonSerializer<T> _toJson;
+  final JsonDeserializer<T> _fromJson;
+  final String? documentIdField;
+  final P Function() _patchBuilderFactory;
 
-  /// Gets the document data
-  @override
-  Future<T?> get() => DocumentHandler.get(ref, _fromJson, documentIdField);
-
-  /// Sets the document data
-  @override
-  Future<void> update(T state) =>
-      DocumentHandler.update(ref, state, _toJson, documentIdField);
-
-  /// Modify a document using diff-based updates.
-  ///
-  /// This method performs a read operation followed by an update operation.
-  /// Performance is slightly worse than [patch] due to the additional read,
-  /// but convenient when you need to read the current state before writing.
-  ///
-  /// **Important Notes:**
-  /// - **Performance**: This method has an additional read operation, making it slower than [patch]
-  /// - **Concurrency**: Firestore uses last-write-wins semantics. This read-modify-write
-  ///   operation is NOT transactional and may be subject to race conditions
-  /// - **Transactions**: For transactional updates, use transactions instead
-  ///
-  /// [atomic] - When true (default), automatically detects and uses atomic
-  /// operations like FieldValue.increment() and FieldValue.arrayUnion() where possible.
-  /// When false, performs simple field updates without atomic operations.
-  ///
-  /// **Example:**
-  /// ```dart
-  /// // With atomic operations (default)
-  /// await userDoc.modify((user) => user.copyWith(
-  ///   age: user.age + 1,              // Auto-detects -> FieldValue.increment(1)
-  ///   tags: [...user.tags, 'new'],    // Auto-detects -> FieldValue.arrayUnion(['new'])
-  /// ));
-  ///
-  /// // Without atomic operations
-  /// await userDoc.modify((user) => user.copyWith(
-  ///   name: 'Updated Name',
-  /// ), atomic: false);
-  /// ```
-  @override
-  Future<void> modify(T Function(T docData) modifier, {bool atomic = true}) =>
-      DocumentHandler.modify(
-        ref,
-        modifier,
-        _toJson,
-        _fromJson,
-        documentIdField,
-        atomic: atomic,
-      );
-
-  /// Delete this document
-  @override
-  Future<void> delete() => DocumentHandler.delete(ref);
-
-  @override
-  Future<void> patch(List<UpdateOperation> Function(P updateBuilder) patches) {
-    final operations = patches(_patchBuilder);
-    return DocumentHandler.patch(ref, operations);
+  /// The document data, or null when the document does not exist.
+  Future<T?> get() async {
+    final snapshot = await ref.get();
+    if (!snapshot.exists) return null;
+    return processDocumentSnapshot(snapshot, _fromJson, documentIdField);
   }
+
+  /// Live stream of the document; emits null when it does not exist.
+  Stream<T?> get stream => ref.snapshots().map(
+    (snapshot) => snapshot.exists
+        ? processDocumentSnapshot(snapshot, _fromJson, documentIdField)
+        : null,
+  );
+
+  /// Replaces this document.
+  Future<void> set(T value) async {
+    await ref.set(
+      toFirestoreData(_toJson, value, documentIdField: documentIdField),
+    );
+  }
+
+  /// Applies typed patch operations to this document.
+  Future<void> patch(List<UpdateOperation> Function(P builder) patches) async {
+    final operations = patches(_patchBuilderFactory());
+    final updateMap = operationsToMap(operations);
+    if (updateMap.isEmpty) return;
+    await ref.update(updateMap);
+  }
+
+  /// Deletes this document.
+  Future<void> delete() => ref.delete();
 }

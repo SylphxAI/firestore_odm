@@ -207,3 +207,10 @@ extension ExpressionnX on Expression {
     return refer('/* $message */ ${accept(DartEmitter())}');
   }
 }
+
+/// A generic type reference: `symbol<args...>`.
+TypeReference generic(String symbol, List<Reference> args) => TypeReference(
+  (b) => b
+    ..symbol = symbol
+    ..types.addAll(args),
+);

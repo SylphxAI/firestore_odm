@@ -35,7 +35,6 @@ dependencies:
   cloud_firestore: ^6.4.0
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
-  fast_immutable_collections: ^11.0.4
   firestore_odm:
     path: ../../packages/firestore_odm
   equatable: ^2.0.7

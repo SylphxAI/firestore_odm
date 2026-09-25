@@ -1,49 +1,39 @@
-/// Custom exceptions for Firestore ODM operations.
+/// Exceptions raised by Firestore ODM.
 ///
-/// These exceptions provide more specific error information than
-/// standard Dart exceptions, allowing for better error handling
-/// in client code.
+/// All ODM errors implement [FirestoreODMException]. Where an underlying
+/// [FirebaseException] from `cloud_firestore` exists (permission denied,
+/// not-found, failed-precondition, ...), it is preserved in [cause] and its
+/// `code` is forwarded to [FirestoreODMException.code] so callers can branch
+/// on the same codes they already use with the raw SDK.
 library;
 
-/// Base exception for all Firestore ODM errors.
-///
-/// Catch this to handle any Firestore ODM-specific error.
-///
-/// ```dart
-/// try {
-///   await odm.users.doc('123').get();
-/// } on FirestoreODMException catch (e) {
-///   print('ODM error: ${e.message}');
-/// }
-/// ```
-sealed class FirestoreODMException implements Exception {
-  /// Human-readable error message.
-  String get message;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-  /// Optional error code for programmatic handling.
+sealed class FirestoreODMException implements Exception {
+  String get message;
   String? get code;
+  Object? get cause;
 
   @override
   String toString() => 'FirestoreODMException: $message';
 }
 
-/// Exception thrown when document validation fails.
-///
-/// This includes:
-/// - Invalid document ID
-/// - Missing required fields
-/// - Type mismatches during serialization
+/// Raised when a document or its data fails validation.
 class FirestoreODMValidationException implements FirestoreODMException {
   @override
   final String message;
-
   @override
   final String? code;
-
-  /// The field that failed validation, if applicable.
+  @override
+  final Object? cause;
   final String? field;
 
-  const FirestoreODMValidationException(this.message, {this.code, this.field});
+  const FirestoreODMValidationException(
+    this.message, {
+    this.code,
+    this.field,
+    this.cause,
+  });
 
   @override
   String toString() {
@@ -54,24 +44,18 @@ class FirestoreODMValidationException implements FirestoreODMException {
   }
 }
 
-/// Exception thrown when a document operation fails.
-///
-/// This includes:
-/// - Document not found
-/// - Permission denied (wrapped from Firestore)
-/// - Network errors (wrapped from Firestore)
+/// Raised when a document-level operation fails (missing document, malformed
+/// snapshot, wrapped platform error).
 class FirestoreODMDocumentException implements FirestoreODMException {
   @override
   final String message;
-
   @override
   final String? code;
-
-  /// The document path that caused the error.
-  final String? documentPath;
-
-  /// The underlying cause, if any.
+  @override
   final Object? cause;
+
+  /// The document path that caused the error, when known.
+  final String? documentPath;
 
   const FirestoreODMDocumentException(
     this.message, {
@@ -89,55 +73,41 @@ class FirestoreODMDocumentException implements FirestoreODMException {
   }
 }
 
-/// Exception thrown when path resolution fails.
-///
-/// This occurs when accessing nested fields that don't exist
-/// or have unexpected types.
+/// Raised when a nested field path cannot be resolved on a document map.
 class FirestoreODMPathException implements FirestoreODMException {
   @override
   final String message;
-
   @override
   final String? code;
-
-  /// The path that failed to resolve.
+  @override
+  final Object? cause;
   final String? path;
-
-  /// The component where resolution failed.
-  final String? failedComponent;
 
   const FirestoreODMPathException(
     this.message, {
     this.code,
     this.path,
-    this.failedComponent,
+    this.cause,
   });
 
   @override
   String toString() {
     final buffer = StringBuffer('FirestoreODMPathException: $message');
     if (path != null) buffer.write(' (path: $path)');
-    if (failedComponent != null) buffer.write(' (at: $failedComponent)');
     if (code != null) buffer.write(' [code: $code]');
     return buffer.toString();
   }
 }
 
-/// Exception thrown when type conversion fails.
-///
-/// This occurs during serialization or deserialization when
-/// the actual type doesn't match the expected type.
+/// Raised when a Firestore value does not match the expected Dart type.
 class FirestoreODMTypeException implements FirestoreODMException {
   @override
   final String message;
-
   @override
   final String? code;
-
-  /// The expected type.
+  @override
+  final Object? cause;
   final Type? expectedType;
-
-  /// The actual type encountered.
   final Type? actualType;
 
   const FirestoreODMTypeException(
@@ -145,6 +115,7 @@ class FirestoreODMTypeException implements FirestoreODMException {
     this.code,
     this.expectedType,
     this.actualType,
+    this.cause,
   });
 
   @override
@@ -156,4 +127,27 @@ class FirestoreODMTypeException implements FirestoreODMException {
     if (code != null) buffer.write(' [code: $code]');
     return buffer.toString();
   }
+}
+
+/// Wraps a platform [FirebaseException] with ODM context while preserving the
+/// original code and message so existing Firebase-style handling keeps working.
+class FirestoreODMPlatformException implements FirestoreODMException {
+  @override
+  final String message;
+  @override
+  final String? code;
+  @override
+  final Object? cause;
+
+  const FirestoreODMPlatformException(this.message, {this.code, this.cause});
+
+  factory FirestoreODMPlatformException.from(FirebaseException error) =>
+      FirestoreODMPlatformException(
+        error.message ?? 'Firestore platform error',
+        code: error.code,
+        cause: error,
+      );
+
+  @override
+  String toString() => 'FirestoreODMPlatformException: $message [code: $code]';
 }

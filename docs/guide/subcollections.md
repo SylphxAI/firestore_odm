@@ -1,3 +1,7 @@
+> **5.0 note:** this guide documents the v4 API surface. See
+> [migration-guide-5](./migration-guide-5) and [getting-started](./getting-started)
+> for the current 5.0 API (create/set/patch/delete, no sentinels, no modify).
+>
 # Subcollections
 
 The ODM provides a fluent, type-safe API for defining and accessing subcollections. One of the key advantages is that **the same model can be reused in both collections and subcollections without generating additional code**, keeping your build output minimal and efficient.
@@ -11,12 +15,16 @@ In this example, we define a `posts` subcollection that lives under each `user` 
 ```dart
 // lib/schema.dart
 
+class AppSchema extends FirestoreSchema {
+  const AppSchema();
+}
+
 @Schema()
 // Root-level collection
 @Collection<User>("users")
 // Subcollection of users. The '*' is a wildcard for the user ID.
 @Collection<Post>("users/*/posts")
-final appSchema = _$AppSchema;
+const appSchema = AppSchema();
 ```
 
 The generator will automatically detect this relationship and create the necessary accessors.
