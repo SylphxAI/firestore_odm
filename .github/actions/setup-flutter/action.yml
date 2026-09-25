@@ -27,4 +27,6 @@ runs:
     - name: Bootstrap workspace
       if: inputs.bootstrap == 'true'
       shell: bash
-      run: melos bootstrap
+      # Through dart, not the `melos` shim: on Windows the shim is melos.bat,
+      # which bash cannot run.
+      run: dart pub global run melos bootstrap
