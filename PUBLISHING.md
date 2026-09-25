@@ -10,7 +10,6 @@ This document explains how to publish packages in the Firestore ODM monorepo usi
    - Go to GitHub Actions → Release & Publish
    - Click "Run workflow"
    - Choose options:
-     - ✅ Run automatic versioning
      - ✅ Actually publish to pub.dev
    - Click "Run workflow"
 
@@ -42,16 +41,33 @@ melos run publish:packages
 
 Add these secrets to your GitHub repository:
 
-1. **PUB_CREDENTIALS** (Required for publishing)
+1. **PUB_CREDENTIALS** (Required for publishing until automated publishing is enabled)
    ```bash
    # Generate credentials
    dart pub login
-   
+
    # Copy credentials file content
-   cat ~/.pub-cache/credentials.json
-   
+   cat ~/.config/dart/pub-credentials.json
+
    # Add to GitHub Secrets as PUB_CREDENTIALS
    ```
+   The release workflow passes the secret through `env:` (never inline in the
+   script), writes it owner-readable only, and deletes it in an `always()` step.
+
+### Moving to pub.dev automated publishing (GitHub OIDC)
+
+A long-lived `PUB_CREDENTIALS` secret is a stopgap. To retire it:
+
+1. On pub.dev, for each of `firestore_odm_annotation`, `firestore_odm`, and
+   `firestore_odm_builder`: Admin → Automated publishing → Enable publishing
+   from GitHub Actions, repository `SylphxAI/firestore_odm`, tag pattern
+   `v{{version}}`.
+2. In `release.yml`, grant the job `id-token: write`, replace the credentials
+   steps with `dart-lang/setup-dart` (which configures the OIDC token), and
+   delete the `PUB_CREDENTIALS` secret.
+
+`verify-publish` fails the release unless every package's `pubspec.yaml`
+version is live on pub.dev.
 
 ### Repository Settings
 
@@ -71,26 +87,22 @@ Enable in Settings → Actions → General:
 
 ### 2. Automated Workflow
 
-The GitHub Action automatically:
+The release workflow:
 
-1. **Quality Checks**
-   - Runs all tests
-   - Validates code formatting
-   - Performs static analysis
-   - Dry-run publish validation
+1. **Checks**
+   - Dry-run publish validation (`firestore_odm_annotation`)
+   - Tests, formatting, and analysis run in CI before the tag
 
-2. **Versioning**
-   - Uses conventional commits for automatic versioning
-   - Updates package versions
-   - Updates dependencies between packages
-   - Generates/updates CHANGELOG.md
+2. **Versioning** happens before the release, with `melos version` (conventional
+   commits), merged through a pull request.
 
 3. **Publishing**
    - Publishes packages in dependency order:
      1. `firestore_odm_annotation`
-     2. `firestore_odm` 
+     2. `firestore_odm`
      3. `firestore_odm_builder`
-   - Creates GitHub release
+   - Creates GitHub release (tag pushes only)
+   - `verify-publish` fails unless each version is live on pub.dev
    - Verifies packages are available on pub.dev
 
 ### 3. Dependency Management
