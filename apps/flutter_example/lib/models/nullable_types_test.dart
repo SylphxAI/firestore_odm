@@ -1,9 +1,10 @@
-/// Test model for nullable type handling
-/// This file tests the fixes for GitHub Issue #3:
-/// https://github.com/SylphxAI/firestore_odm/issues/3
+/// Nullable type handling models.
 ///
-/// Issues fixed:
-/// 1. Nullable Map types in DartMapFieldUpdate
+/// Issue #3 regression coverage: nullable map/list/enum fields.
+library;
+
+/// Models for nullable type handling.
+/// 1. Nullable Map types in map field updates
 /// 2. Nullable return type in MapFilterField.toJson
 /// 3. Type mismatch in fromJson for nested objects
 /// 4. Enum lookup returns nullable but field is non-nullable

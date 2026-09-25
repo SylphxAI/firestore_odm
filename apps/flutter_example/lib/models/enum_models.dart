@@ -1,6 +1,5 @@
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:json_annotation/json_annotation.dart';
 
 part 'enum_models.freezed.dart';
 part 'enum_models.g.dart';

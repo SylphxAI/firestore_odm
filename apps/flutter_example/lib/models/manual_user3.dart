@@ -1,11 +1,10 @@
 import 'package:equatable/equatable.dart';
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:firestore_odm/firestore_odm.dart';
 
 part 'manual_user3.g.dart';
 
 @firestoreOdm
-class ManualUser3<T> with EquatableMixin {
+class ManualUser3<T> with Equatable {
   // Generic field for additional flexibility
 
   const ManualUser3({
@@ -32,7 +31,7 @@ class ManualUser3<T> with EquatableMixin {
 }
 
 @firestoreOdm
-class ManualUser3Profile<T> with EquatableMixin {
+class ManualUser3Profile<T> with Equatable {
   // Generic list for additional flexibility
 
   const ManualUser3Profile({
@@ -43,7 +42,7 @@ class ManualUser3Profile<T> with EquatableMixin {
     this.tags = const [],
     this.preferences = const {},
     this.customList = const [],
-    this.customIList = const IListConst([]),
+    this.customIList = const [],
   });
   final String email;
   final int age;
@@ -52,7 +51,7 @@ class ManualUser3Profile<T> with EquatableMixin {
   final List<String> tags;
   final Map<String, String> preferences;
   final List<T> customList; // Generic list for additional flexibility
-  final IList<T> customIList;
+  final List<T> customIList;
 
   ManualUser3Profile<T> copyWith({
     String? email,
@@ -62,7 +61,7 @@ class ManualUser3Profile<T> with EquatableMixin {
     List<String>? tags,
     Map<String, String>? preferences,
     List<T>? customList,
-    IList<T>? customIList,
+    List<T>? customIList,
   }) {
     return ManualUser3Profile<T>(
       email: email ?? this.email,
@@ -89,7 +88,7 @@ class ManualUser3Profile<T> with EquatableMixin {
 }
 
 @firestoreOdm
-class Book with EquatableMixin {
+class Book with Equatable {
   const Book({required this.title, required this.author});
   final String title;
   final String author;

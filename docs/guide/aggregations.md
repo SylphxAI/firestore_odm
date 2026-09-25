@@ -1,68 +1,39 @@
 # Aggregations
 
-The ODM provides a type-safe API for performing server-side aggregations, allowing you to efficiently calculate values like `count`, `sum`, and `average` across a set of documents without needing to download all the data to the client.
+Aggregations are **one-shot** server-side queries (ADR-0002): the native
+`AggregateQuery` runs on the server and returns a typed Dart record. There is
+no streaming aggregate surface — a client-side re-query would silently download
+every document, which is exactly what server-side aggregation exists to avoid.
+Server-side aggregate streams will be added only when `cloud_firestore`
+exposes them.
 
-## `count()`
-
-The simplest aggregation is `.count()`, which returns the number of documents matching your query.
+## Count
 
 ```dart
-// Get the total number of users
-final userCount = await db.users.count().get();
+// Number of documents in the collection
+final total = await db.users.count();
 
-// Get the number of active users
-final activeUserCount = await db.users
+// Number of documents matching a filter
+final active = await db.users
   .where(($) => $.isActive(isEqualTo: true))
-  .count()
-  .get();
-
-print('There are $activeUserCount active users.');
+  .count();
 ```
 
-## `aggregate()`
+## Typed aggregates
 
-For more complex aggregations, use the `.aggregate()` method. It allows you to perform multiple calculations (`sum`, `average`, and `count`) in a single request. The result is returned as a strongly-typed Record.
+`aggregate(...)` returns a query with a typed record result:
 
 ```dart
-// Get multiple stats for active users in one go
 final stats = await db.users
-  .where(($) => $.isActive(isEqualTo: true))
-  .aggregate(($) => (
-    // You can name the fields whatever you want
-    totalUsers: $.count(),
-    averageAge: $.age.average(),
-    totalFollowers: $.profile.followers.sum(),
-  ))
-  .get();
-
-print('Total active users: ${stats.totalUsers}');
-print('Average age of active users: ${stats.averageAge}');
-print('Combined followers of all active users: ${stats.totalFollowers}');
-```
-
-## Streaming Aggregations (A Unique Feature)
-
-A powerful and unique feature of this ODM is the ability to create **real-time subscriptions to aggregation results**. While Firestore does not support this natively, our ODM implements this on the client-side for you.
-
-When you call `.stream` on an `aggregate()` or `count()` query, the ODM:
-1.  Creates a real-time subscription to the underlying query.
-2.  Whenever the query results change, it efficiently recalculates the aggregations on the client.
-3.  It then emits the new aggregation results on the stream.
-
-This allows you to build reactive UIs that display live-updating stats.
-
-```dart
-// Create a stream that emits the latest stats whenever the data changes
-final statsStream = db.users
-  .where(($) => $.isActive(isEqualTo: true))
   .aggregate(($) => (
     count: $.count(),
-    avgAge: $.age.average(),
+    totalFollowers: $.profile.followers.sum(),
+    averageAge: $.age.average(),
   ))
-  .stream;
+  .get();
 
-// Listen to the stream and update your UI
-statsStream.listen((stats) {
-  print('Live active user count: ${stats.count}');
-  print('Live average age: ${stats.avgAge}');
-});
+print('${stats.count} users, avg ${stats.averageAge}');
+```
+
+Supported operations: `count()`, `sum()`, `average()`. Aggregates compose
+with `where` and are limited to 30 aggregate fields (Firestore's limit).
