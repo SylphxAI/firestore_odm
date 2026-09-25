@@ -3,7 +3,7 @@ description: Runtime and code generation benchmark of cloud_firestore_odm (its l
 publish_to: none
 
 environment:
-  sdk: ^3.5.0
+  sdk: ^3.8.1
 
 dependencies:
   flutter:
