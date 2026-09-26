@@ -1,8 +1,12 @@
 name: CI
 
-# Each check runs once per landed change. Pull requests run the Linux checks;
-# the merge queue runs the macOS/Windows tests and the Firestore emulator
-# end-to-end tests. `ci-success` is the one required status check for both.
+# Each check runs once per landed change, on our own Linux runners (owner
+# standards/dx.md). `ci-success` is the one required status check.
+#
+# Off until we host the OS: the macOS and Windows test lanes, and the
+# Firestore emulator end-to-end tests, which run the Windows desktop test app
+# (cloud_firestore has no Linux desktop implementation). Neither can be
+# cross-compiled on Linux.
 #
 # Flutter is pinned in .github/actions/setup-flutter; bump it on purpose.
 
@@ -22,7 +26,7 @@ concurrency:
 jobs:
   check:
     if: github.event_name != 'merge_group'
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -53,7 +57,7 @@ jobs:
 
   site:
     if: github.event_name != 'merge_group'
-    runs-on: ubuntu-latest
+    runs-on: sylphx-linux-standard
     timeout-minutes: 10
     defaults:
       run:
@@ -69,51 +73,10 @@ jobs:
       - name: Build (fails on dead links)
         run: npm run build
 
-  platforms:
-    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup-flutter
-      - name: Generate code
-        run: melos run generate
-      - name: Test
-        run: melos run test:all --no-select
-
-  e2e-emulator:
-    # The Firestore emulator checks storage types, index errors and real
-    # query semantics that the in-memory fake cannot. Windows: cloud_firestore
-    # has no Linux desktop implementation, and hosted Windows runners can run
-    # the desktop test app.
-    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
-    runs-on: windows-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - uses: ./.github/actions/setup-flutter
-      - name: Generate code
-        run: melos run generate
-      - name: Emulator end-to-end tests
-        working-directory: apps/flutter_example
-        shell: bash
-        run: |
-          npx --yes firebase-tools@latest emulators:exec \
-            --only firestore --project demo-project \
-            "flutter test integration_test -d windows --timeout 5m"
-
   ci-success:
     if: always()
-    needs: [check, site, platforms, e2e-emulator]
-    runs-on: ubuntu-latest
+    needs: [check, site]
+    runs-on: sylphx-linux-standard
     timeout-minutes: 5
     steps:
       - name: All jobs that ran passed
