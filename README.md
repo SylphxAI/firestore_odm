@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://mark.sylphx.com/api/v1/mark/hero?type=wave&theme=tokyonight&text=firestore_odm&desc=Type-safe+Firestore+ODM+for+Flutter+and+Dart&height=200&animation=rise" alt="firestore_odm" width="100%" />
+<img src="https://mark.sylphx.com/api/v1/mark/hero.svg?type=aurora&theme=grape&text=firestore_odm&desc=Type-safe%20Firestore%20ODM%20for%20Flutter%20and%20Dart" alt="firestore_odm" width="100%" />
 
 # firestore_odm
 
@@ -8,9 +8,9 @@
 
 [![pub package](https://img.shields.io/pub/v/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
 [![pub points](https://img.shields.io/pub/points/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm/score)
-[![CI](https://img.shields.io/github/actions/workflow/status/SylphxAI/firestore_odm/ci.yml?style=flat-square&label=CI)](https://github.com/SylphxAI/firestore_odm/actions/workflows/ci.yml)
-[![GitHub stars](https://img.shields.io/github/stars/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/stargazers)
-[![license](https://img.shields.io/github/license/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
+[![CI](https://github.com/SylphxAI/firestore_odm/actions/workflows/ci.yml/badge.svg)](https://github.com/SylphxAI/firestore_odm/actions/workflows/ci.yml)
+[![GitHub stars](https://mark.sylphx.com/github/stars/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/stargazers)
+[![license](https://mark.sylphx.com/badge/license-MIT-blue?style=flat-square)](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
 
 [Documentation](https://sylphxai.github.io/firestore_odm/) · [Getting started](https://sylphxai.github.io/firestore_odm/guide/getting-started) · [Migrate from cloud_firestore_odm](https://sylphxai.github.io/firestore_odm/guide/migrate-from-cloud-firestore-odm) · [Benchmarks](https://sylphxai.github.io/firestore_odm/guide/benchmarks)
 
