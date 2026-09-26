@@ -1,12 +1,12 @@
 name: CI
 
-# Each check runs once per landed change, on our own Linux runners (owner
-# standards/dx.md). `ci-success` is the one required status check.
+# Each check runs once per landed change, on our own runners (owner
+# standards/dx.md). Pull requests run the Linux checks; the merge queue runs
+# the macOS tests on our macOS pool. `ci-success` is the one required check.
 #
-# Off until we host the OS: the macOS and Windows test lanes, and the
-# Firestore emulator end-to-end tests, which run the Windows desktop test app
-# (cloud_firestore has no Linux desktop implementation). Neither can be
-# cross-compiled on Linux.
+# Off until we host Windows: the Windows tests, and the Firestore emulator
+# end-to-end tests, which run the Windows desktop test app (cloud_firestore
+# has no Linux desktop implementation).
 #
 # Flutter is pinned in .github/actions/setup-flutter; bump it on purpose.
 
@@ -73,9 +73,21 @@ jobs:
       - name: Build (fails on dead links)
         run: npm run build
 
+  macos:
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, sylphx, macos, standard]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-flutter
+      - name: Generate code
+        run: melos run generate
+      - name: Test
+        run: melos run test:all --no-select
+
   ci-success:
     if: always()
-    needs: [check, site]
+    needs: [check, site, macos]
     runs-on: sylphx-linux-standard
     timeout-minutes: 5
     steps:

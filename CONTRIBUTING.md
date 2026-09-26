@@ -47,8 +47,9 @@ the generated API, and a line in the package `CHANGELOG.md`.
 
 Pull requests run format, analysis, tests, API docs, the publish dry run, the
 pub.dev score check and the docs site build, on our own Linux runners. The
-macOS and Windows tests and the emulator tests (a Windows desktop app) are off
-until we host those systems. `ci-success` is the required check.
+merge queue runs the macOS tests on our macOS pool. The Windows tests and the
+emulator tests (a Windows desktop app) are off until we host Windows.
+`ci-success` is the required check.
 
 ## Releasing
 
