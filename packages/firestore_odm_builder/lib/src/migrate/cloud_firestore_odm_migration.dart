@@ -13,7 +13,7 @@ import 'dart:math' as math;
 import 'dart_scanner.dart';
 
 /// The firestore_odm version the codemod migrates to.
-const firestoreOdmConstraint = '^5.1.0';
+const firestoreOdmConstraint = '^5.2.0';
 
 /// A `@Collection` annotation of a cloud_firestore_odm reference declaration.
 class CollectionAnnotation {

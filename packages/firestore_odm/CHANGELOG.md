@@ -1,4 +1,4 @@
-## Unreleased
+## 5.2.0
 
 - New: `FirestoreBuilder`, the widget `cloud_firestore_odm` had. It listens to
   a collection, query or document reference and rebuilds on every change, and

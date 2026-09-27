@@ -1,4 +1,4 @@
-## Unreleased
+## 5.2.0
 
 - New: `@Min`/`@Max` bounds are enforced by the generated converters on `set`,
   `create` and patch `set`, including nested models. A bound on a non-numeric
