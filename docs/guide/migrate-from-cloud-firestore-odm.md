@@ -45,7 +45,8 @@ What the codemod rewrites:
 | `moviesRef.doc(id).comments` | `moviesOdm.moviesComments(id)` |
 | `moviesRef.add(movie)` | `moviesRef.create(movie)` (returns the new id) |
 | `.snapshots()` on a typed reference | `.stream` |
-| `@Min(0)` / `@Max(10)` and the generated `_$assertMovie(this)` call | removed; listed as a follow-up |
+| `FirestoreBuilder<MovieQuerySnapshot>(...)` / `FirestoreBuilder<MovieDocumentSnapshot>(...)` | `FirestoreBuilder<List<Movie>>(...)` / `FirestoreBuilder<Movie?>(...)`, the same widget with the model payload type |
+| `@Min(0)` / `@Max(10)` and the generated `_$assertMovie(this)` call | the annotations are kept (the generated write paths enforce them); only the `_$assertMovie(this)` call is removed |
 
 The codemod keeps your reference variables (`moviesRef`), so most call sites
 compile once the calls above are rewritten.
@@ -71,7 +72,8 @@ document, or `query.nativeQuery` for a query.
 
 ### FirestoreBuilder
 
-Use a `StreamBuilder` over the typed stream:
+`FirestoreBuilder` is the same widget, and `ref` accepts the typed reference
+or query directly:
 
 ```dart
 // cloud_firestore_odm
@@ -84,17 +86,27 @@ FirestoreBuilder<MovieQuerySnapshot>(
 );
 
 // firestore_odm
-StreamBuilder<List<Movie>>(
-  stream: moviesRef.orderBy(($) => ($.likes(descending: true),)).stream,
-  builder: (context, snapshot) {
+FirestoreBuilder<List<Movie>>(
+  ref: moviesRef.orderBy(($) => ($.likes(descending: true),)),
+  builder: (context, snapshot, child) {
     if (!snapshot.hasData) return const CircularProgressIndicator();
     return MovieList(snapshot.data!);
   },
 );
 ```
 
-Create the stream once (for example in `initState`), not in `build`, so a
-rebuild does not start a new listener.
+The snapshot carries your models instead of snapshot wrappers:
+`AsyncSnapshot<List<Movie>>` for a collection or query, `AsyncSnapshot<Movie?>`
+for a document. `snapshot.data!.docs`/`.data` collapse to `snapshot.data!`, and
+a missing document is `data == null` rather than a snapshot with `exists`.
+The type argument can also be left off when it is inferable from `ref`.
+
+The widget keeps its listener while `ref` still points at the same document or
+query, so rebuilding with a freshly created query does not start a second,
+billable listener. See [FirestoreBuilder](/guide/firestore-builder).
+
+With a `StreamBuilder` instead, create the stream once (for example in
+`initState`), not in `build`, for the same reason.
 
 ### Transactions and batches
 
@@ -136,8 +148,12 @@ final page2 = await moviesRef
 
 ### Validators
 
-firestore_odm has no `@Min`/`@Max`. Check values in the model constructor, or
-in the code that builds the model.
+`@Min` and `@Max` stay where they are, and now work on both write paths. They
+are checked when a model is written (`set`, `create`) and when a patched field
+is set (`$.likes.set(...)`); an out-of-range value throws a
+`FirestoreODMValidationException` before anything reaches Firestore. A null
+value passes, as it did in cloud_firestore_odm. `increment` is not bounded —
+it is a relative change, and the server applies it.
 
 ### Named queries (bundles)
 

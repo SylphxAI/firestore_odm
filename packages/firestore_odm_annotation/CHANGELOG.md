@@ -1,3 +1,9 @@
+## Unreleased
+
+- New: `@Min` and `@Max` constrain a numeric field to a range. Put them on the
+  field of a plain class or the constructor parameter of a freezed class;
+  `firestore_odm_builder` generates the check.
+
 ## 5.1.0
 
 - Released with firestore_odm 5.1.0; no API changes.

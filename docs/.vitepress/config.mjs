@@ -105,6 +105,13 @@ export default defineConfig({
             { text: 'Batches', link: '/guide/batch-operations' },
           ],
         },
+        {
+          text: 'Flutter',
+          items: [
+            { text: 'FirestoreBuilder', link: '/guide/firestore-builder' },
+            { text: 'Field validators', link: '/guide/validators' },
+          ],
+        },
       ],
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/SylphxAI/firestore_odm' }],
