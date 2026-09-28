@@ -3,14 +3,14 @@
   "files": {
     "README.md": {
       "source": "The usage sheet for this brand home.",
-      "sha256": "2270e285aeb153aa9437c46746a0bdafabd10af4277c184ecffa517e20cee9bc"
+      "sha256": "b7cebdfb8aa1f0b88ee76a1ed534b65a7728701c1c33e4a4bb2afb56539642ad"
     },
     "brand.json": {
       "source": "Written for this brand home: the repo has no logo mark, so there is no icon block; the one surface file the repository already serves is the docs site social card, docs/public/og.png.",
       "sha256": "9ece05401e999b1d9dd996e3f42970613b2dbcf10e8489d0f39a1b14f57ada4f"
     },
     "build.py": {
-      "source": "Unmodified copy of the brand kit generator, /scratch/sylphx-apps/brand-kit/build.py.",
+      "source": "Unmodified copy of the brand kit generator,.",
       "sha256": "406f811f5e85e5969fa6905cc8f8503788b7d70d0998426922e2ba97caa1bdcf"
     },
     "og/firestore_odm-og.png": {

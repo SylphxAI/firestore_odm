@@ -119,4 +119,4 @@ product earns money. Use ™ at most, never ®.
 Firestore is a trademark of Google LLC; the name uses it to say what the
 library works with.
 
-<!-- similarity: filled in by review -->
+Checked 2026-09-28. The official FlutterFire `cloud_firestore_odm` (alpha, now at FirebaseExtended/firestoreodm-flutter) is the product this one succeeds, deliberately. "Firestore" is Google's trademark, used to say what the library works with. No mark to check.
