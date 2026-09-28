@@ -1,0 +1,6 @@
+{
+  "name": "firestore_odm",
+  "outputs": {
+    "docs/public/og.png": "og/firestore_odm-og.png"
+  }
+}
