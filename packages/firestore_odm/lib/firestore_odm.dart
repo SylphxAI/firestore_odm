@@ -11,6 +11,7 @@ export 'src/batch.dart';
 export 'src/exceptions.dart';
 export 'src/field_selector.dart';
 export 'src/filter_builder.dart';
+export 'src/firestore_builder.dart';
 export 'src/firestore_collection.dart';
 export 'src/firestore_document.dart';
 export 'src/firestore_odm.dart';
@@ -23,6 +24,7 @@ export 'src/record_utils.dart';
 export 'src/schema.dart';
 export 'src/transaction.dart';
 export 'src/types.dart';
+export 'src/validators.dart';
 export 'src/utils.dart'
     show
         defaultValue,

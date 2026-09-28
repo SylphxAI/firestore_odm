@@ -14,6 +14,7 @@ import 'aggregate.dart';
 import 'batch.dart';
 import 'exceptions.dart';
 import 'filter_builder.dart';
+import 'firestore_builder.dart';
 import 'firestore_document.dart';
 import 'orderby.dart';
 import 'patch.dart';
@@ -31,7 +32,8 @@ class FirestoreCollection<
   F extends FilterBuilderRoot,
   OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
-> {
+>
+    implements FirestoreListenable<List<T>> {
   FirestoreCollection({
     required this.ref,
     required JsonSerializer<T> toJson,
@@ -148,7 +150,11 @@ class FirestoreCollection<
   Future<List<T>> get([firestore.GetOptions? options]) => _query().get(options);
 
   /// Live stream of all documents in this collection.
+  @override
   Stream<List<T>> get stream => _query().stream;
+
+  @override
+  Object get nativeReference => ref;
 
   /// Typed query with filters.
   Query<S, T, P, F, OB, AB> where(

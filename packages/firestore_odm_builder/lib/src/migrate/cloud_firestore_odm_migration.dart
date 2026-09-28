@@ -13,7 +13,7 @@ import 'dart:math' as math;
 import 'dart_scanner.dart';
 
 /// The firestore_odm version the codemod migrates to.
-const firestoreOdmConstraint = '^5.1.0';
+const firestoreOdmConstraint = '^5.2.0';
 
 /// A `@Collection` annotation of a cloud_firestore_odm reference declaration.
 class CollectionAnnotation {
@@ -99,18 +99,23 @@ MigrationResult migrateDartSource(
   String source,
   List<RefDeclaration> declarations,
 ) {
-  final followUps = _followUps(source, declarations);
   var out = source;
   out = _rewriteImports(out);
   out = _rewriteDeclarations(out);
   out = _annotateModels(out, source);
   out = out.replaceAll('@Id()', '@DocumentIdField()');
-  out = out.replaceAll(RegExp(r'[ \t]*@(Min|Max)\([^)]*\)[ \t]*\n'), '');
+  // `@Min`/`@Max` stay: firestore_odm checks them on write. Only the
+  // constructor assertion cloud_firestore_odm generated goes away.
   out = out.replaceAll(RegExp(r'[ \t]*_\$assert\w+\(this\);[ \t]*\n'), '');
+  out = _rewriteFirestoreBuilders(out, declarations);
   for (final declaration in declarations) {
     out = _rewriteRefChains(out, declaration);
   }
   out = _rewriteCalls(out);
+  final followUps = [
+    ..._followUps(source, declarations),
+    ..._firestoreBuilderFollowUps(out),
+  ]..sort((a, b) => a.line.compareTo(b.line));
   return MigrationResult(out, followUps, changed: out != source);
 }
 
@@ -263,6 +268,49 @@ int _chainEnd(String source, int index) {
   }
 }
 
+final _firestoreBuilderSnapshot = RegExp(
+  r'\bFirestoreBuilder\s*<\s*(\w+?)(Query|Document)Snapshot\s*>',
+);
+
+/// Rewrites the snapshot type argument of `FirestoreBuilder` calls to the
+/// model payload firestore_odm's builder carries:
+/// `FirestoreBuilder<MovieQuerySnapshot>` -> `FirestoreBuilder<List<Movie>>`,
+/// `FirestoreBuilder<MovieDocumentSnapshot>` -> `FirestoreBuilder<Movie?>`.
+String _rewriteFirestoreBuilders(
+  String source,
+  List<RefDeclaration> declarations,
+) {
+  final models = {
+    for (final d in declarations)
+      for (final c in d.collections) c.type.split('<').first,
+  };
+  return source.replaceAllMapped(_firestoreBuilderSnapshot, (m) {
+    final model = m[1]!;
+    if (!models.contains(model)) return m[0]!;
+    return 'FirestoreBuilder<${m[2] == 'Document' ? '$model?' : 'List<$model>'}>';
+  });
+}
+
+/// `FirestoreBuilder` calls whose snapshot type argument did not match a model
+/// declared in this project, so the codemod left them alone.
+List<FollowUp> _firestoreBuilderFollowUps(String source) {
+  final lines = const LineSplitter().convert(source);
+  final result = <FollowUp>[];
+  for (var i = 0; i < lines.length; i++) {
+    if (_firestoreBuilderSnapshot.hasMatch(lines[i])) {
+      result.add(
+        FollowUp(
+          i + 1,
+          'FirestoreBuilder: change the snapshot type argument to the model '
+          'payload — List<T> for a query, T? for a document — or drop it '
+          '(it is inferred from ref).',
+        ),
+      );
+    }
+  }
+  return result;
+}
+
 final _typedCall = RegExp(r'\.(where|orderBy)([A-Z]\w*)\s*\(');
 final _namedUpdate = RegExp(r'\.update\(\s*[A-Za-z_]\w*\s*:');
 const _cursors = ['startAt', 'startAfter', 'endAt', 'endBefore'];
@@ -400,15 +448,6 @@ List<FollowUp> _followUps(String source, List<RefDeclaration> declarations) {
       RegExp(r'\b(startAt|startAfter|endAt|endBefore)Document:'),
       'snapshot cursors: use startAfterObject(model) (or startAfter with the '
           'orderBy values) on the ordered query.',
-    ),
-    (
-      RegExp(r'\bFirestoreBuilder\s*<'),
-      'FirestoreBuilder: use StreamBuilder<List<T>> (query.stream) or '
-          'StreamBuilder<T?> (document.stream); data arrives as models.',
-    ),
-    (
-      RegExp(r'@(Min|Max)\('),
-      '@Min/@Max validators are removed: validate in the model constructor.',
     ),
     (
       RegExp(r'@NamedQuery<'),

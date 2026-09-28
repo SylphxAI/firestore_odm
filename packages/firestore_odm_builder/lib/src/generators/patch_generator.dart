@@ -132,6 +132,9 @@ Field _generateField(InterfaceType model, FieldInfo field) {
     modelName: model.element.name,
   );
 
+  // A `$.likes.set(-1)` on a `@Min(0)` field is rejected before the update.
+  final boundsCheck = numericBoundsCheck(field, refer('value'));
+
   final String updateType;
   TypeReference? listElementType;
   final Map<String, Expression> args = {
@@ -139,7 +142,13 @@ Field _generateField(InterfaceType model, FieldInfo field) {
     'toJson': Method(
       (m) => m
         ..requiredParameters.add(Parameter((p) => p..name = 'value'))
-        ..body = _body(toJson).code,
+        ..body = boundsCheck == null
+            ? _body(toJson).code
+            : Block(
+                (b) => b
+                  ..statements.add(boundsCheck)
+                  ..statements.add(_body(toJson).code),
+              ),
     ).closure,
   };
 

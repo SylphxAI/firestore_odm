@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
 import 'aggregate.dart';
 import 'filter_builder.dart';
+import 'firestore_builder.dart';
 import 'orderby.dart';
 import 'patch.dart';
 import 'pagination.dart';
@@ -24,7 +25,8 @@ abstract class _QueryOperations<
   F extends FilterBuilderRoot,
   OB extends OrderByBuilderRoot,
   AB extends AggregateBuilderRoot
-> {
+>
+    implements FirestoreListenable<List<T>> {
   _QueryOperations(
     this._query,
     this._toJson,
@@ -54,9 +56,13 @@ abstract class _QueryOperations<
     return processQuerySnapshot(snapshot, _fromJson, _documentIdField);
   }
 
+  @override
   Stream<List<T>> get stream => _query.snapshots().map(
     (snapshot) => processQuerySnapshot(snapshot, _fromJson, _documentIdField),
   );
+
+  @override
+  Object get nativeReference => nativeQuery;
 
   /// Server-side document count (native AggregateQuery; one-shot).
   Future<int> count() async {

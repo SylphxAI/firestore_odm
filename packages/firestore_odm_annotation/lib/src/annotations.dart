@@ -64,4 +64,46 @@ class FirestoreOdm {
   const FirestoreOdm();
 }
 
+/// Constrains a numeric field to a minimum value.
+///
+/// Put it on the field of a plain class, or on the constructor parameter of a
+/// freezed class:
+///
+/// ```dart
+/// @firestoreOdm
+/// class Movie {
+///   Movie({required this.likes});
+///
+///   @Min(0)
+///   final int likes;
+/// }
+/// ```
+///
+/// The generated write paths check the value before it is written, so a
+/// `create`, `set` or `patch` with a value below [value] throws a
+/// `FirestoreODMValidationException` and nothing is written. A `null`
+/// (unset) optional field passes.
+@Target({TargetKind.field, TargetKind.parameter})
+@immutable
+class Min {
+  /// Creates a [Min] constraint with the smallest accepted value.
+  const Min(this.value);
+
+  /// The smallest value the field accepts.
+  final num value;
+}
+
+/// Constrains a numeric field to a maximum value.
+///
+/// See [Min] for where to put it and when it is checked.
+@Target({TargetKind.field, TargetKind.parameter})
+@immutable
+class Max {
+  /// Creates a [Max] constraint with the largest accepted value.
+  const Max(this.value);
+
+  /// The largest value the field accepts.
+  final num value;
+}
+
 const FirestoreOdm firestoreOdm = FirestoreOdm();

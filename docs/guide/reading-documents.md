@@ -48,7 +48,9 @@ final subscription = odm.users('jane').stream.listen((user) {
 await subscription.cancel();
 ```
 
-Each read of `stream` starts a new listener. In a Flutter widget, create the
-stream once (for example in `initState`) and pass it to a `StreamBuilder`.
+Each read of `stream` starts a new listener. In a Flutter widget,
+[FirestoreBuilder](/guide/firestore-builder) handles that for you:
+`FirestoreBuilder<User?>(ref: odm.users('jane'), builder: ...)`. With a
+`StreamBuilder` instead, create the stream once (for example in `initState`).
 
 To read many documents, see [Fetching Data](/guide/fetching-data).

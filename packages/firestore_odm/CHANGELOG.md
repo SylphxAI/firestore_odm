@@ -1,3 +1,13 @@
+## 5.2.0
+
+- New: `FirestoreBuilder`, the widget `cloud_firestore_odm` had. It listens to
+  a collection, query or document reference and rebuilds on every change, and
+  it keeps one listener while the reference stays the same (a rebuild with a
+  freshly created query does not start a second, billable listener).
+- New: `@Min`/`@Max` on numeric fields are enforced by the generated code on
+  `set`, `create` and `patch`: a `$.likes.set(-1)` on a `@Min(0)` field throws
+  a `FirestoreODMValidationException` before the write reaches Firestore.
+
 ## 5.1.0
 
 Upgrade `firestore_odm` and `firestore_odm_builder` together: code generated

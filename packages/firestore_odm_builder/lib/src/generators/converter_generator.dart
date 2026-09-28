@@ -15,6 +15,25 @@ import '../utils/model_analyzer.dart';
 import '../utils/reference_utils.dart';
 import '../utils/type_analyzer.dart';
 
+/// A call that enforces the `@Min`/`@Max` bounds of [field] on [value].
+///
+/// Null when the field declares no bound. The value is read from [value], so
+/// the same check serves the serializer (`instance.likes`) and the patch
+/// builder (`value`).
+Code? numericBoundsCheck(FieldInfo field, Expression value) {
+  if (!field.hasNumericBounds) return null;
+  return refer('validateNumericRange')
+      .call(
+        [value],
+        {
+          'field': literalString(field.jsonName),
+          if (field.min != null) 'min': literalNum(field.min!),
+          if (field.max != null) 'max': literalNum(field.max!),
+        },
+      )
+      .statement;
+}
+
 /// The ODM always generates its own converters. The model's own
 /// `toJson`/`fromJson` (freezed/json_serializable) serialize DateTime as ISO
 /// strings for JSON interchange; Firestore storage must use native Timestamp
@@ -312,6 +331,17 @@ List<Spec> generateConverters(InterfaceType type) {
             : refer('toT'),
       );
     }
+    // `@Min`/`@Max` are checked before the map is built, so a rejected value
+    // never reaches Firestore (create/set, and any model that nests this one).
+    final checks = <Code>[];
+    for (final field in fields.values) {
+      final check = numericBoundsCheck(
+        field,
+        refer('instance').property(field.parameterName),
+      );
+      if (check != null) checks.add(check);
+    }
+
     specs.add(
       Method(
         (m) => m
@@ -326,10 +356,17 @@ List<Spec> generateConverters(InterfaceType type) {
             ),
           )
           ..optionalParameters.addAll(_typeParamToJsonParams(type))
-          ..body = refer('instance')
-              .equalTo(literalNull)
-              .conditional(literalNull, literalMap(entries))
-              .code,
+          ..body = checks.isEmpty
+              ? refer('instance')
+                    .equalTo(literalNull)
+                    .conditional(literalNull, literalMap(entries))
+                    .code
+              : Block(
+                  (b) => b
+                    ..statements.add(Code('if (instance == null) return null;'))
+                    ..statements.addAll(checks)
+                    ..statements.add(literalMap(entries).returned.statement),
+                ),
       ),
     );
   }

@@ -71,8 +71,9 @@ void main() {
       expect(out, contains('@firestoreOdm\nclass Movie {'));
       expect(out, contains('@firestoreOdm\nclass Comment {'));
       expect(out, contains('@DocumentIdField()\n  final String id;'));
-      expect(out, isNot(contains('@Min(')));
+      expect(out, contains('@Min(0)'));
       expect(out, isNot(contains(r'_$assertMovie')));
+      expect(out, isNot(contains('line ')));
     });
 
     test('migrating twice changes nothing more', () {
@@ -156,15 +157,44 @@ void main() {
       expect(migrate(source), source);
     });
 
-    test('transaction helpers and FirestoreBuilder are reported by line', () {
+    test('a transaction helper is reported by line', () {
       final result = migrateDartSource(
         'void f() {\n'
         '  moviesRef.doc(id).transactionUpdate(tx, likes: 1);\n'
-        '  FirestoreBuilder<MovieQuerySnapshot>(ref: moviesRef);\n'
         '}\n',
         declarations,
       );
-      expect(result.followUps.map((f) => f.line), [2, 3]);
+      expect(result.followUps.single.line, 2);
+      expect(result.followUps.single.message, contains('transaction/batch'));
+    });
+
+    test('FirestoreBuilder keeps working, with the model payload type', () {
+      final result = migrateDartSource(
+        'void f() {\n'
+        '  FirestoreBuilder<MovieQuerySnapshot>(ref: moviesRef);\n'
+        '  FirestoreBuilder<CommentDocumentSnapshot>(ref: commentsRef);\n'
+        '}\n',
+        declarations,
+      );
+      expect(
+        result.source,
+        contains('FirestoreBuilder<List<Movie>>(ref: moviesRef);'),
+      );
+      expect(
+        result.source,
+        contains('FirestoreBuilder<Comment?>(ref: commentsRef);'),
+      );
+      expect(result.followUps, isEmpty);
+    });
+
+    test('a snapshot type the project does not declare is reported', () {
+      final result = migrateDartSource(
+        'FirestoreBuilder<FooQuerySnapshot>(ref: query);',
+        declarations,
+      );
+      expect(result.source, contains('FirestoreBuilder<FooQuerySnapshot>'));
+      expect(result.followUps.single.line, 1);
+      expect(result.followUps.single.message, contains('model payload'));
     });
   });
 

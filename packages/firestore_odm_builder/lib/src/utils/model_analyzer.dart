@@ -11,6 +11,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:source_gen/source_gen.dart';
 
 import 'reference_utils.dart';
+import 'type_analyzer.dart';
 
 /// A custom `@JsonConverter` attached to a field.
 class CustomConverter {
@@ -38,6 +39,15 @@ class FieldInfo {
   /// `@Default(...)`), used when a stored document lacks the field.
   final String? defaultValueCode;
 
+  /// Lowest accepted value from `@Min`, or null when the field has none.
+  final num? min;
+
+  /// Highest accepted value from `@Max`, or null when the field has none.
+  final num? max;
+
+  /// Whether the field declares a `@Min`/`@Max` bound.
+  bool get hasNumericBounds => min != null || max != null;
+
   const FieldInfo({
     required this.parameterName,
     required this.jsonName,
@@ -46,6 +56,8 @@ class FieldInfo {
     required this.customConverter,
     required this.isNullable,
     this.defaultValueCode,
+    this.min,
+    this.max,
   });
 }
 
@@ -60,6 +72,56 @@ String? _defaultValueCode(FormalParameterElement parameter) {
     }
   }
   return null;
+}
+
+/// The `@Min`/`@Max` annotations, matched inside `firestore_odm_annotation`
+/// so a user's own `Min` class is not read as one.
+const _minChecker = TypeChecker.typeNamed(
+  Min,
+  inPackage: 'firestore_odm_annotation',
+);
+const _maxChecker = TypeChecker.typeNamed(
+  Max,
+  inPackage: 'firestore_odm_annotation',
+);
+
+/// The `@Min`/`@Max` bounds declared for [parameter].
+///
+/// A plain class annotates the field (`@Min(0) final int likes;`), a freezed
+/// class the constructor parameter, so both are read. Returns `(null, null)`
+/// when neither carries a bound.
+({num? min, num? max}) _numericBounds(
+  FormalParameterElement parameter,
+  InterfaceType type,
+) {
+  final field = type.element.fields
+      .where((f) => f.name == parameter.name)
+      .firstOrNull;
+
+  num? boundOf(TypeChecker checker) {
+    for (final element in [parameter, if (field != null) field]) {
+      for (final annotation in checker.annotationsOf(element)) {
+        final value = ConstantReader(annotation).peek('value')?.literalValue;
+        if (value is num) return value;
+      }
+    }
+    return null;
+  }
+
+  final min = boundOf(_minChecker);
+  final max = boundOf(_maxChecker);
+
+  if (min == null && max == null) return (min: null, max: null);
+  if (!TypeAnalyzer.isNumeric(parameter.type)) {
+    throw InvalidGenerationSourceError(
+      '@Min/@Max bound numeric fields: '
+      '${type.getDisplayString()}.${parameter.name} is '
+      '${parameter.type.getDisplayString()}, with '
+      '${min != null ? '@Min($min)' : '@Max($max)'}.',
+      element: parameter,
+    );
+  }
+  return (min: min, max: max);
 }
 
 /// Types the ODM handles natively (no generated converter needed).
@@ -146,11 +208,15 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
             ).annotationsOf(parameter).firstOrNull?.type
             as InterfaceType?;
 
+    final bounds = _numericBounds(parameter, type);
+
     fields[paramName] = FieldInfo(
       parameterName: paramName,
       jsonName: jsonName,
       type: parameter.type,
       isDocumentId: paramName == documentIdParamName,
+      min: bounds.min,
+      max: bounds.max,
       customConverter: customConverter != null
           ? CustomConverter(
               type: customConverter,

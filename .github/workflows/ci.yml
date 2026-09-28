@@ -43,13 +43,24 @@ jobs:
       - name: pub.dev score (pana)
         # Allows 10 lost points: pana also scores "latest dependency
         # versions", which moves with outside releases. Dependencies resolve
-        # from pub.dev.
+        # from pub.dev, and pana strips overrides, so a package that needs a
+        # sibling version not yet on pub.dev cannot be scored here. The
+        # release publishes firestore_odm_annotation first and pub.dev scores
+        # the dependents right after; this step scores them once the
+        # annotation version they need exists.
         run: |
           # firestore_odm's README is a link to the repository README; publish
           # copies the file, so give pana the copy too.
           cp --remove-destination README.md packages/firestore_odm/README.md
           dart pub global activate pana
-          melos exec --scope="firestore_odm,firestore_odm_annotation,firestore_odm_builder" -- dart pub global run pana --no-warning --exit-code-threshold 10 .
+          annotation="$(sed -n 's/^version:[[:space:]]*//p' packages/firestore_odm_annotation/pubspec.yaml | tr -d "\"'")"
+          scope="firestore_odm_annotation"
+          if curl -fsS -o /dev/null "https://pub.dev/api/packages/firestore_odm_annotation/versions/$annotation"; then
+            scope="$scope,firestore_odm,firestore_odm_builder"
+          else
+            echo "::notice::firestore_odm_annotation $annotation is not on pub.dev yet; firestore_odm and firestore_odm_builder are scored after the release publishes it."
+          fi
+          melos exec --scope="$scope" -- dart pub global run pana --no-warning --exit-code-threshold 10 .
 
   site:
     if: github.event_name != 'merge_group'

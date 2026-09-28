@@ -15,6 +15,7 @@ import 'package:flutter_example/models/simple_generic.dart';
 import 'package:flutter_example/models/simple_story.dart';
 import 'package:flutter_example/models/task.dart';
 import 'package:flutter_example/models/user.dart';
+import 'package:flutter_example/models/validated_movie.dart';
 
 part 'test_schema.g.dart';
 
@@ -65,4 +66,6 @@ class TestSchema extends FirestoreSchema {
 @Collection<NestedData>('nestedData') // Nested data for issue #3 testing
 @Collection<OrderWithDefault>('orderWithDefaults') // Issue #5 nullable-input
 @Collection<Place>('places') // GeoPoint; library imports cloud_firestore
+@Collection<ValidatedMovie>('validatedMovies') // @Min/@Max on fields
+@Collection<ValidatedScore>('validatedScores') // @Min/@Max on parameters
 const TestSchema testSchema = TestSchema();

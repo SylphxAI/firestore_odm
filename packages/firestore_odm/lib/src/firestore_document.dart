@@ -3,17 +3,15 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
+import 'firestore_builder.dart';
 import 'patch.dart';
 import 'schema.dart';
 import 'types.dart';
 import 'utils.dart';
 
 /// A type-safe wrapper around a Firestore document reference.
-class FirestoreDocument<
-  S extends FirestoreSchema,
-  T,
-  P extends PatchBuilder<T>
-> {
+class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
+    implements FirestoreListenable<T?> {
   FirestoreDocument({
     required this.ref,
     required JsonSerializer<T> toJson,
@@ -41,11 +39,15 @@ class FirestoreDocument<
   }
 
   /// Live stream of the document; emits null when it does not exist.
+  @override
   Stream<T?> get stream => ref.snapshots().map(
     (snapshot) => snapshot.exists
         ? processDocumentSnapshot(snapshot, _fromJson, documentIdField)
         : null,
   );
+
+  @override
+  Object get nativeReference => ref;
 
   /// Replaces this document.
   Future<void> set(T value) async {

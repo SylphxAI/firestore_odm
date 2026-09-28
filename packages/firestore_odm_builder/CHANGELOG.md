@@ -1,3 +1,13 @@
+## 5.2.0
+
+- New: `@Min`/`@Max` bounds are enforced by the generated converters on `set`,
+  `create` and patch `set`, including nested models. A bound on a non-numeric
+  field fails the build with a clear error.
+- The `migrate` codemod keeps `@Min`/`@Max` (they work here) and rewrites
+  `FirestoreBuilder<MovieQuerySnapshot>` to `FirestoreBuilder<List<Movie>>`
+  (the document form to `Movie?`). Neither is listed as work to finish by hand
+  any more.
+
 ## 5.1.0
 
 Upgrade `firestore_odm` and `firestore_odm_builder` together: generated code
