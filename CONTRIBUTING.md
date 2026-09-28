@@ -46,9 +46,9 @@ the generated API, and a line in the package `CHANGELOG.md`.
 ## CI
 
 Pull requests run format, analysis, tests, API docs, the publish dry run, the
-pub.dev score check and the docs site build on Linux. The merge queue runs the
-macOS and Windows tests and the emulator tests. `ci-success` is the required
-check.
+pub.dev score check, the identifiers check and the docs site build on Linux.
+The merge queue runs the macOS and Windows tests and the emulator tests.
+`ci-success` is the required check.
 
 ## Releasing
 
