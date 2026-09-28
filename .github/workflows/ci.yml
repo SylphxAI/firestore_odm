@@ -26,6 +26,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Brand files
+        # Fails when a brand file or a surface copy drifts from brand/.
+        run: python3 brand/build.py --check
+
       - uses: ./.github/actions/setup-flutter
 
       - name: Format
