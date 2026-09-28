@@ -126,9 +126,22 @@ jobs:
             --only firestore --project demo-project \
             "flutter test integration_test -d windows --timeout 5m"
 
+  identifiers:
+    if: github.event_name != 'merge_group'
+    name: Identifiers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Non-v7 ids on added lines (owner standards/identifiers.md)
+        uses: SylphxAI/.github/.github/actions/identifiers@e4a5ea41cbcc87cd93914f89f0d7c3981c868bf9
+
   ci-success:
     if: always()
-    needs: [check, site, platforms, e2e-emulator]
+    needs: [check, site, identifiers, platforms, e2e-emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
