@@ -101,22 +101,12 @@ Surfaces still to move:
 
 ## Provenance
 
-- `og/firestore_odm-og.png`: `docs/public/og.png`, moved here unchanged, added
-  in `3ec564a` (2026-09-25, `firestore_odm 5.1.0: the maintained successor to
-  cloud_firestore_odm`, PR #61, merged as `21ef368`). The commit message and the
-  pull request do not say how it was made, and the repository holds no vector
-  source for it: it is a raster master, a 1280x640 RGB PNG with no metadata.
-  1280x640 is the size of the other Sylphx social previews made the same day,
-  and the wave art is Mark's banner style (`mark.sylphx.com`), the service the
-  README hero also comes from.
-- Every file's SHA-256 is in `provenance.json`.
+`og/firestore_odm-og.png` is a 1280x640 raster master (no vector source) in
+Mark's banner style. Every file's SHA-256 is in `provenance.json`.
 
 ## Trademark
 
-Not registered. Owner decision owner#781: no trademark filings before the
-product earns money. Use ™ at most, never ®.
+Not registered; use ™ at most, never ®.
 
 Firestore is a trademark of Google LLC; the name uses it to say what the
 library works with.
-
-Checked 2026-09-28. The official FlutterFire `cloud_firestore_odm` (alpha, now at FirebaseExtended/firestoreodm-flutter) is the product this one succeeds, deliberately. "Firestore" is Google's trademark, used to say what the library works with. No mark to check.

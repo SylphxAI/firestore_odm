@@ -25,7 +25,7 @@ raw `cloud_firestore` typed through `withConverter`. Versions: firestore_odm
 | Snapshot metadata | through the native reference (`ref`, `nativeQuery`) | yes | yes |
 | Models | plain classes, freezed, json_serializable | json_serializable required | any |
 | GeoPoint, DocumentReference, Blob, Timestamp fields | stored natively | with json converters | native |
-| Firestore Pipelines (Enterprise edition) | typed, experimental | no | untyped |
+| Firestore Pipelines (Enterprise edition) | typed | no | untyped |
 | Flutter widget | `FirestoreBuilder` | `FirestoreBuilder` | use `StreamBuilder` |
 | Field validators | `@Min`, `@Max` on numeric fields, checked on set, create and patch | `@Min`, `@Max` (checked when the model is constructed) | no |
 | Rebuild after editing one of 20 models | 1.5 s | 17.3 s | no code generation |
