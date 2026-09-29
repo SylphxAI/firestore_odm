@@ -74,20 +74,12 @@ precedence resolution.
 - `FirestoreODM(schema, {firestore})` entrypoint; multiple instances.
 - Deferred-write transactions with document caching.
 - Object-cursor pagination; **new:** automatic `documentId` tie-breaker.
-- One-shot aggregates; typed Pipelines (experimental, Enterprise-gated, ADR-0001).
+- One-shot aggregates; typed Pipelines (Enterprise edition, ADR 0001).
 - Sealed exception taxonomy aligned to `FirestoreException` codes.
 
-### Verification gates
+### Verification
 
-- **Source:** semantics contract tests (type mapping both directions; each write
-  verb against emulator), builder golden tests, strict analysis.
-- **CI:** unit (fake) + structural goldens for the generated surface +
-  benchmarks (recorded harness) + OSV known-vulnerability scan; all six
-  doctrine contexts gate (quality, test, coverage, security, docs,
-  performance).
-- **Deploy:** dry-run → publish → pub.dev readback → docs readback; stable-only
-  tags; dev versions never published.
-- **Live:** emulator e2e lane — the authoritative gate runs in the release
-  workflow (`e2e-gate`) and blocks publishing; CI runs it for visibility.
-  Opt-in Enterprise pipeline lane required before pipeline bulk/update-delete
-  stages leave experimental (ADR-0001).
+Semantics contract tests cover the type mapping in both directions and each
+write verb against the emulator; builder golden tests pin the generated
+surface. The release workflow's `e2e-gate` runs the emulator tests and blocks
+publishing on failure.
