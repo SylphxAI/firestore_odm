@@ -11,7 +11,7 @@ chmod +x "$work/bin/flutter" "$work/bin/dart"
 export PATH="$work/bin:$PATH"
 
 for project in firestore_odm cloud_firestore_odm; do
-  for scenario in happy failure-after-row empty missing duplicate nan infinity overflow negative malformed unexpected extra-field malformed-marker; do
+  for scenario in happy failure-after-row empty missing duplicate nan infinity overflow negative malformed unexpected extra-field malformed-marker joined-malformed joined-duplicate; do
     rc=0
     # Match the workflow pipeline, including tee. Both producers are inert.
     SCENARIO="$scenario" FAULT_PROJECT="$project" bash "$work/benchmarks/run.sh" \

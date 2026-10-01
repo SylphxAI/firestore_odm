@@ -6,6 +6,7 @@
 # Usage: benchmarks/run.sh [model count, default 20]
 # Needs Flutter on PATH. CI runs it with .github/workflows/benchmarks.yml.
 set -euo pipefail
+export LC_ALL=C
 
 cd "$(dirname "$0")"
 models="${1:-20}"
@@ -44,7 +45,9 @@ for project in firestore_odm cloud_firestore_odm; do
       exit "$rc"
     fi
     # No rows is a validation failure, not an unsupported/zero measurement.
-    sed -n 's/.*\(BENCH.*\)/\1/p' "$work/runtime-$project.log"
+    # Keep the first marker so joined rows cannot hide an earlier invalid
+    # measurement; the extra fields then fail exact-row validation.
+    awk 'match($0, /BENCH/) { print substr($0, RSTART) }' "$work/runtime-$project.log"
   ) > "$work/bench-$project.txt"
   raw='raw-cf6'
   [[ "$project" == cloud_firestore_odm ]] && raw='raw-cf5'

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Inert producer: no SDK, tests, network or child processes.
 set -euo pipefail
+[[ "${LC_ALL:-}" == C ]] || exit 92
 case "$1" in
   pub) exit 0 ;;
   --version) echo '{"frameworkVersion": "fixture"}'; exit 0 ;;
@@ -31,7 +32,14 @@ for variant in "$project" "$raw"; do
         malformed) value=oops ;;
       esac
     fi
-    echo "test output: BENCH $variant $op $value"
+    prefix='test output: '
+    if [[ "$variant/$op" == "$project/set" ]]; then
+      case "$scenario" in
+        joined-malformed) prefix='BENCH unexpected set NaN ' ;;
+        joined-duplicate) prefix="BENCH $project set 999 " ;;
+      esac
+    fi
+    echo "${prefix}BENCH $variant $op $value"
   done
 done
 case "$scenario" in
