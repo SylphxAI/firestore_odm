@@ -87,6 +87,19 @@ median in microseconds per operation. Each ODM is compared with the raw
 baseline on its own cloud_firestore major, because the two in-memory
 Firestore versions differ.
 
+**Report validity.** Like [Google Benchmark](https://google.github.io/benchmark/user_guide.html)
+separating errored runs from timing results, the runner rejects a failed test
+producer even if it already printed measurements. It requires exactly one
+finite, nonnegative value for each of the three build timings and all five
+operations for each ODM and its raw baseline. Missing, duplicate, unexpected
+or malformed rows fail before any report is printed. A successful producer
+with no rows is not evidence of zero cost or an unsupported operation: this
+workload supports every cell, so an empty run fails validation. The workflow
+also propagates failure through its report-copying pipeline.
+
+`bash benchmarks/test.sh` checks this contract with inert Flutter/Dart
+fixtures in disposable projects, without running either SDK.
+
 **What this does not measure.** Network and server time dominate real
 Firestore calls and are the same with or without an ODM, so these numbers
 show the ODM's own overhead, not end-to-end latency.

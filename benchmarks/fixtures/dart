@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Only create disposable model files or simulate a successful build.
+set -euo pipefail
+case "$*" in
+  'run generate_models.dart '*)
+    for project in firestore_odm cloud_firestore_odm; do
+      mkdir -p "$project/lib/models"
+      printf '// fixture model\n' > "$project/lib/models/model01.dart"
+    done
+    ;;
+  'run build_runner build --delete-conflicting-outputs') ;;
+  *) exit 91 ;;
+esac

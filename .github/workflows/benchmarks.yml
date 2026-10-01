@@ -22,8 +22,14 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Test benchmark reporting with inert producers
+        shell: bash
+        run: bash benchmarks/test.sh
       - uses: ./.github/actions/setup-flutter
         with:
           bootstrap: 'false'
       - name: Run benchmarks
-        run: benchmarks/run.sh | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmarks/run.sh | tee -a "$GITHUB_STEP_SUMMARY"

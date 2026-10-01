@@ -9,14 +9,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 models="${1:-20}"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
 dart run generate_models.dart "$models" >&2
 
 now() { date +%s.%N; }
 elapsed() { awk -v a="$1" -v b="$2" 'BEGIN { printf "%.1f", b - a }'; }
 
 build() {
-  dart run build_runner build --delete-conflicting-outputs > /tmp/build.log 2>&1 \
-    || { cat /tmp/build.log >&2; exit 1; }
+  dart run build_runner build --delete-conflicting-outputs > "$work/build.log" 2>&1 \
+    || { cat "$work/build.log" >&2; exit 1; }
 }
 
 declare -A cold full one
@@ -33,16 +35,27 @@ for project in firestore_odm cloud_firestore_odm; do
     echo "// edited" >> lib/models/model01.dart
     start=$(now); build; end=$(now)
     echo "one $(elapsed "$start" "$end")"
-    flutter test test/runtime_test.dart 2>&1 | grep -o 'BENCH .*' || true
-  ) > "/tmp/bench-$project.txt"
-  grep -q '^BENCH' "/tmp/bench-$project.txt" \
-    || { cat "/tmp/bench-$project.txt" >&2; echo "no runtime results for $project" >&2; exit 1; }
-  cold[$project]=$(awk '$1 == "cold" { print $2 }' "/tmp/bench-$project.txt")
-  full[$project]=$(awk '$1 == "full" { print $2 }' "/tmp/bench-$project.txt")
-  one[$project]=$(awk '$1 == "one" { print $2 }' "/tmp/bench-$project.txt")
+    # Capture the producer status before extracting rows: a test can print
+    # valid measurements and then fail. Never publish those as a valid run.
+    rc=0
+    flutter test test/runtime_test.dart > "$work/runtime-$project.log" 2>&1 || rc=$?
+    if (( rc != 0 )); then
+      cat "$work/runtime-$project.log" >&2
+      exit "$rc"
+    fi
+    # No rows is a validation failure, not an unsupported/zero measurement.
+    sed -n 's/.*\(BENCH.*\)/\1/p' "$work/runtime-$project.log"
+  ) > "$work/bench-$project.txt"
+  raw='raw-cf6'
+  [[ "$project" == cloud_firestore_odm ]] && raw='raw-cf5'
+  awk -v project="$project" -v raw="$raw" -f validate.awk "$work/bench-$project.txt" \
+    || { cat "$work/runtime-$project.log" >&2; exit 1; }
+  cold[$project]=$(awk '$1 == "cold" { print $2 }' "$work/bench-$project.txt")
+  full[$project]=$(awk '$1 == "full" { print $2 }' "$work/bench-$project.txt")
+  one[$project]=$(awk '$1 == "one" { print $2 }' "$work/bench-$project.txt")
 done
 
-result() { awk -v v="$1" -v n="$2" '$2 == v && $3 == n { print $4 }' /tmp/bench-*.txt; }
+result() { awk -v v="$1" -v n="$2" '$2 == v && $3 == n { print $4 }' "$work"/bench-*.txt; }
 
 cat <<EOF
 ### Code generation ($models models, seconds, lower is better)
