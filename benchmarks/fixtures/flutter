@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Inert producer: no SDK, tests, network or child processes.
+set -euo pipefail
+[[ "${LC_ALL:-}" == C ]] || exit 92
+case "$1" in
+  pub) exit 0 ;;
+  --version) echo '{"frameworkVersion": "fixture"}'; exit 0 ;;
+  test) ;;
+  *) exit 90 ;;
+esac
+project=${PWD##*/}
+raw='raw-cf6'
+[[ "$project" == cloud_firestore_odm ]] && raw='raw-cf5'
+scenario=${SCENARIO:-happy}
+[[ "$project" == "${FAULT_PROJECT:-firestore_odm}" ]] || scenario=happy
+if [[ "$scenario" == failure-after-row ]]; then
+  echo "BENCH $project set 1.25"
+  echo 'fixture producer failed' >&2
+  exit 23
+fi
+[[ "$scenario" != empty ]] || exit 0
+for variant in "$project" "$raw"; do
+  for op in set get query update mapping; do
+    [[ "$scenario" != missing || "$variant/$op" != "$raw/mapping" ]] || continue
+    value=1.25
+    if [[ "$variant/$op" == "$project/set" ]]; then
+      case "$scenario" in
+        nan) value=NaN ;;
+        infinity) value=Infinity ;;
+        overflow) value=1e999 ;;
+        negative) value=-1 ;;
+        malformed) value=oops ;;
+      esac
+    fi
+    prefix='test output: '
+    if [[ "$variant/$op" == "$project/set" ]]; then
+      case "$scenario" in
+        joined-malformed) prefix='BENCH unexpected set NaN ' ;;
+        joined-duplicate) prefix="BENCH $project set 999 " ;;
+      esac
+    fi
+    echo "${prefix}BENCH $variant $op $value"
+  done
+done
+case "$scenario" in
+  duplicate) echo "BENCH $project set 1.25" ;;
+  unexpected) echo "BENCH unknown set 1.25" ;;
+  extra-field) echo "BENCH $project set 1.25 extra" ;;
+  malformed-marker) echo 'BENCH' ;;
+esac
