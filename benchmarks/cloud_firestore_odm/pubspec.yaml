@@ -13,11 +13,15 @@ dependencies:
   json_annotation: ^4.9.0
 
 dev_dependencies:
-  # The legacy generator requires build 2, analyzer <7 and source_gen 1.
-  build_runner: 2.16.1
+  # PINNED ON PURPOSE: do not bump these four together with a bot.
+  # The legacy generator requires build 2, analyzer <7 and source_gen 1, so
+  # json_serializable must stay on a source_gen 1 release (<= 6.8.0); 6.9.x
+  # needs source_gen 2 and 6.13.1+ needs source_gen 4. Bumping it was the
+  # version-solve failure that kept the Benchmarks workflow red.
+  build_runner: 2.4.13
   # dev.90 calls analyzer APIs without their required withNullability argument.
-  cloud_firestore_odm_generator: 1.0.0-dev.90
+  cloud_firestore_odm_generator: 1.0.0-dev.88
   fake_cloud_firestore: ^3.1.0
   flutter_test:
     sdk: flutter
-  json_serializable: 6.14.1
+  json_serializable: 6.8.0

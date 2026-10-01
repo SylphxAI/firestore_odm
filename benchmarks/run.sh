@@ -5,6 +5,11 @@
 #
 # Usage: benchmarks/run.sh [model count, default 20]
 # Needs Flutter on PATH. CI runs it with .github/workflows/benchmarks.yml.
+#
+# Environment:
+#   BENCH_JSON      write a machine-readable results file to this path
+#   BENCH_PROJECTS  projects to measure (default "firestore_odm cloud_firestore_odm");
+#                   with only firestore_odm the Markdown report is skipped
 set -euo pipefail
 export LC_ALL=C
 
@@ -23,7 +28,7 @@ build() {
 }
 
 declare -A cold full one
-for project in firestore_odm cloud_firestore_odm; do
+for project in ${BENCH_PROJECTS:-firestore_odm cloud_firestore_odm}; do
   (
     cd "$project"
     flutter pub get > /dev/null
@@ -57,6 +62,30 @@ for project in firestore_odm cloud_firestore_odm; do
   full[$project]=$(awk '$1 == "full" { print $2 }' "$work/bench-$project.txt")
   one[$project]=$(awk '$1 == "one" { print $2 }' "$work/bench-$project.txt")
 done
+
+json_projects() {
+  local first=1 project raw
+  for project in ${BENCH_PROJECTS:-firestore_odm cloud_firestore_odm}; do
+    raw='raw-cf6'
+    [[ "$project" == cloud_firestore_odm ]] && raw='raw-cf5'
+    (( first )) || printf ','
+    first=0
+    printf '"%s":{"codegen":{"cold":%s,"full":%s,"one":%s},"runtime":{' \
+      "$project" "${cold[$project]}" "${full[$project]}" "${one[$project]}"
+    for variant in "$project" "$raw"; do
+      [[ "$variant" == "$project" ]] || printf ','
+      printf '"%s":{' "$variant"
+      awk -v v="$variant" '$1 == "BENCH" && $2 == v { printf "%s\"%s\":%s", (n++ ? "," : ""), $3, $4 }' \
+        "$work/bench-$project.txt"
+      printf '}'
+    done
+    printf '}}'
+  done
+}
+if [[ -n "${BENCH_JSON:-}" ]]; then
+  printf '{"models":%s,"projects":{%s}}\n' "$models" "$(json_projects)" > "$BENCH_JSON"
+fi
+[[ "${BENCH_PROJECTS:-}" != "firestore_odm" ]] || exit 0
 
 result() { awk -v v="$1" -v n="$2" '$2 == v && $3 == n { print $4 }' "$work"/bench-*.txt; }
 

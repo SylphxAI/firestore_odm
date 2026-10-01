@@ -5,7 +5,7 @@ here=$(dirname "$(realpath "$0")")
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/benchmarks" "$work/bin"
-cp "$here/run.sh" "$here/validate.awk" "$work/benchmarks/"
+cp "$here/run.sh" "$here/validate.awk" "$here/compare.sh" "$here/budgets.json" "$work/benchmarks/"
 cp "$here/fixtures/flutter" "$here/fixtures/dart" "$work/bin/"
 chmod +x "$work/bin/flutter" "$work/bin/dart"
 export PATH="$work/bin:$PATH"
@@ -43,3 +43,17 @@ for value in NaN Infinity 1e999 -1 nope; do
   grep -q 'malformed build row' "$work/error"
 done
 printf 'PASS invalid build timings\n'
+
+# JSON results and the A/B budget check.
+BENCH_JSON="$work/head.json" bash "$work/benchmarks/run.sh" > /dev/null 2>&1
+jq -e '.projects.firestore_odm.codegen.cold >= 0 and .projects.firestore_odm.runtime["raw-cf6"].mapping == 1.25
+  and .projects.cloud_firestore_odm.runtime["raw-cf5"].set == 1.25' "$work/head.json" > /dev/null
+BENCH_PROJECTS=firestore_odm BENCH_JSON="$work/ours.json" bash "$work/benchmarks/run.sh" > "$work/ours.report" 2>&1
+[[ ! -s "$work/ours.report" ]]
+jq -e '.projects | keys == ["firestore_odm"]' "$work/ours.json" > /dev/null
+bash "$work/benchmarks/compare.sh" "$work/head.json" "$work/ours.json" > /dev/null
+sed 's/"set":1.25/"set":9.25/' "$work/ours.json" > "$work/slow.json"
+rc=0
+bash "$work/benchmarks/compare.sh" "$work/ours.json" "$work/slow.json" > /dev/null || rc=$?
+[[ "$rc" != 0 ]]
+printf 'PASS json and budget comparison\n'

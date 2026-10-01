@@ -1,0 +1,5 @@
+{
+  "_comment": "Maximum allowed head/base ratio for firestore_odm metrics measured in the same CI job. Generous while CI noise is characterised (the same code has swung 2.8x between runs). Lower these only in a PR that shows the evidence.",
+  "codegen_ratio": 2.0,
+  "runtime_ratio": 1.75
+}

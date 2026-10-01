@@ -1,15 +1,25 @@
 name: Benchmarks
 
 # Code generation time and runtime cost of firestore_odm, cloud_firestore_odm
-# and raw cloud_firestore. Runs when the benchmarks or the generator change,
-# and by hand; the report lands in the job summary. docs/guide/benchmarks.md
+# and raw cloud_firestore. Runs on pull requests that touch the benchmarks or
+# the generator, on pushes to main that touch packages/** (the trend), and by
+# hand. The Markdown report lands in the job summary and bench.json is
+# uploaded as the "benchmark-results" artifact. The job fails only when
+# firestore_odm regresses past the generous budgets in benchmarks/budgets.json
+# against the merge-base, measured in the same job. docs/guide/benchmarks.md
 # quotes a run. Not a required check.
 
 on:
   pull_request:
     paths:
       - benchmarks/**
-      - packages/firestore_odm_builder/lib/**
+      - packages/**
+      - .github/workflows/benchmarks.yml
+  push:
+    branches: [main]
+    paths:
+      - packages/**
+      - benchmarks/**
       - .github/workflows/benchmarks.yml
   workflow_dispatch:
 
@@ -19,9 +29,11 @@ permissions:
 jobs:
   benchmarks:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Test benchmark reporting with inert producers
         shell: bash
         run: bash benchmarks/test.sh
@@ -32,4 +44,56 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          benchmarks/run.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          BENCH_JSON="$RUNNER_TEMP/bench.json" benchmarks/run.sh | tee -a "$GITHUB_STEP_SUMMARY"
+          mkdir -p results
+          cp "$RUNNER_TEMP/bench.json" results/bench.json
+      - name: Find the merge-base
+        id: base
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          head=$(git rev-parse HEAD)
+          if [[ "$EVENT" == push && "$BEFORE" != 0000000000000000000000000000000000000000 ]] \
+              && git cat-file -e "$BEFORE^{commit}" 2> /dev/null; then
+            base=$BEFORE
+          else
+            base=$(git merge-base HEAD origin/main || true)
+            if [[ -z "$base" || "$base" == "$head" ]]; then
+              base=$(git rev-parse --verify -q HEAD^ || true)
+            fi
+          fi
+          echo "sha=$base" >> "$GITHUB_OUTPUT"
+      - name: Run firestore_odm benchmarks at the merge-base (A/B)
+        if: steps.base.outputs.sha != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add "$RUNNER_TEMP/base" "${{ steps.base.outputs.sha }}"
+          # Old packages, current harness: only the code under test differs.
+          rm -rf "$RUNNER_TEMP/base/benchmarks"
+          cp -r benchmarks "$RUNNER_TEMP/base/benchmarks"
+          BENCH_PROJECTS=firestore_odm BENCH_JSON="$RUNNER_TEMP/base.json" \
+            "$RUNNER_TEMP/base/benchmarks/run.sh"
+          cp "$RUNNER_TEMP/base.json" results/base.json
+      - name: Compare with the merge-base against the budgets
+        if: steps.base.outputs.sha != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### firestore_odm vs merge-base ${{ steps.base.outputs.sha }} (fails past benchmarks/budgets.json)"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          rc=0
+          benchmarks/compare.sh results/base.json results/bench.json | tee -a "$GITHUB_STEP_SUMMARY" || rc=$?
+          exit "$rc"
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: benchmark-results
+          path: results/
+          if-no-files-found: ignore
