@@ -1,12 +1,35 @@
 # firestore_odm brand
 
+## Shared generator
+
+CI uses the shared brand action pinned to `a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb`.
+The masters, tokens, pixel grids and provenance remain in this repository;
+existing assets are unchanged by moving the generator. To regenerate locally,
+prepare the script from the same pin (run from the repository root):
+
+```sh
+BRAND_SCRIPT="$(mktemp)"
+curl --fail --location --output "$BRAND_SCRIPT" \
+  "https://raw.githubusercontent.com/SylphxAI/.github/a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb/.github/actions/brand/build.py"
+python3 -m pip install pillow numpy resvg-py
+python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD"
+python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD" --check
+rm "$BRAND_SCRIPT"
+```
+
+Add `--resnap` only when intentionally redrawing the small favicon grids.
+Check mode needs only Python 3 and does not regenerate files. The commands below
+assume `BRAND_SCRIPT` points to this pinned script. Generated-file comments that
+name `brand/build.py` describe the historical generator; they are preserved to
+keep the asset bytes and hashes unchanged.
+
 This folder is the source of truth for the firestore_odm name and its artwork;
 every surface copies from it and never keeps a redrawn copy. Rebuild and check
 it with:
 
 ```bash
-python3 brand/build.py          # write tokens.css, the surface copies and provenance.json
-python3 brand/build.py --check  # verify hashes and copies; this is what CI runs
+python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD"          # write tokens.css, the surface copies and provenance.json
+python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD" --check  # verify hashes and copies; this is what CI runs
 ```
 
 The brand is small on purpose. There is no logo mark yet, so the name is set in
@@ -32,7 +55,7 @@ type, and the only artwork is the README hero drawn by Mark.
 | The README hero (the banner at the top of `README.md`) | no file: Mark draws it from the URL in `README.md` (mark.sylphx.com, `type=aurora`, `theme=grape`) |
 | Docs site social card and GitHub social preview | `og/firestore_odm-og.png` (the site serves the copy at `docs/public/og.png`) |
 | Colour and type values | `tokens.json` (and the generated `tokens.css`) |
-| The generator spec and the generator | `brand.json`, `build.py` |
+| The generator spec and the generator | `brand.json`, [shared generator](https://github.com/SylphxAI/.github/tree/a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb/.github/actions/brand) |
 | Where every file came from | `provenance.json` |
 
 ## Colours

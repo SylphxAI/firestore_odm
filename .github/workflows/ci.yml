@@ -29,7 +29,7 @@ jobs:
 
       - name: Brand files
         # Fails when a brand file or a surface copy drifts from brand/.
-        run: python3 brand/build.py --check
+        uses: SylphxAI/.github/.github/actions/brand@a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb # shared brand generator
 
       - uses: ./.github/actions/setup-flutter
 
