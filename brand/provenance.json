@@ -3,7 +3,7 @@
   "files": {
     "README.md": {
       "source": "The usage sheet for this brand home.",
-      "sha256": "cb592f8391d4520d38c5c639bd9f39b4bc26ea45a218a18e871e420c1c3e0530"
+      "sha256": "e583cac8d65b651a06b6661ae0dee5d0faa2dff4edd400958568fee46cf85f74"
     },
     "brand.json": {
       "source": "Written for this brand home: the repo has no logo mark, so there is no icon block; the one surface file the repository already serves is the docs site social card, docs/public/og.png.",
