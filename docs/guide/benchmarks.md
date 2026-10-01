@@ -60,7 +60,9 @@ following describes the current benchmark configuration:
 - `benchmarks/cloud_firestore_odm`: cloud_firestore_odm 1.0.0-dev.88 (its last
   release), cloud_firestore 5, fake_cloud_firestore 3, build_runner 2.4.13 and
   json_serializable 6.8.0, pinned alongside cloud_firestore_odm_generator
-  1.0.0-dev.90. These versions share the generator's `build` 2,
+  1.0.0-dev.88 (matching the runtime). Generator dev.90 omits the required
+  analyzer `withNullability` argument and fails to compile on this toolchain.
+  These versions share the generator's `build` 2,
   `analyzer <7` and `source_gen` 1 constraints; newer build_runner or
   json_serializable releases are not interchangeable with this legacy baseline.
 

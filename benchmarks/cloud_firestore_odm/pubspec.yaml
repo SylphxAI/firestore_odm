@@ -15,7 +15,8 @@ dependencies:
 dev_dependencies:
   # The legacy generator requires build 2, analyzer <7 and source_gen 1.
   build_runner: 2.4.13
-  cloud_firestore_odm_generator: 1.0.0-dev.90
+  # dev.90 calls analyzer APIs without their required withNullability argument.
+  cloud_firestore_odm_generator: 1.0.0-dev.88
   fake_cloud_firestore: ^3.1.0
   flutter_test:
     sdk: flutter
