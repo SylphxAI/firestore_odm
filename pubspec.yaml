@@ -14,8 +14,8 @@ environment:
 # Individual packages have their own dependencies
 
 dev_dependencies:
-  melos: ^6.3.0
-  very_good_analysis: ^9.0.0
+  melos: ^8.0.0
+  very_good_analysis: ^11.0.0
 
   
 # NOTE: We don't use Dart workspaces because library packages need explicit

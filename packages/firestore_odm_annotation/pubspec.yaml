@@ -20,6 +20,6 @@ dependencies:
   meta: ^1.9.1
 
 dev_dependencies:
-  very_good_analysis: ^9.0.0
+  very_good_analysis: ^11.0.0
 
 # Publishing to pub.dev (default when omitted)
