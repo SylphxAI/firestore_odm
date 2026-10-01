@@ -6,8 +6,8 @@
     "zh-Hant": "firestore_odm"
   },
   "tagline": {
-    "en": "Type-safe Firestore for Flutter and Dart, the maintained successor to cloud_firestore_odm.",
-    "zh-Hant": "適用於 Flutter 與 Dart 的型別安全 Firestore：型別化查詢、更新與交易，是 cloud_firestore_odm 的持續維護接班版本。"
+    "en": "Type-safe Firestore for Flutter and Dart: generated models, typed queries, updates and transactions.",
+    "zh-Hant": "適用於 Flutter 與 Dart 的型別安全 Firestore：自動產生模型，型別化查詢、更新與交易。"
   },
   "category": {
     "en": "Developer tools",
