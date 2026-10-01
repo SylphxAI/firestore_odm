@@ -28,6 +28,5 @@ the layout, commands and release steps; [PROJECT.md](PROJECT.md) the scope;
   (`melos run test:e2e`).
 - The fake Firestore does not model every query (for example filtering by a
   `DocumentReference`); cover those in `integration_test/`.
-- `benchmarks/run.sh` for generation and runtime cost; `python3 brand/build.py
-  --check` for brand files.
+- `benchmarks/run.sh` for generation and runtime cost; the pinned shared brand check ([usage](brand/README.md)) for brand files.
 - A behaviour change carries a test and a package `CHANGELOG.md` line.

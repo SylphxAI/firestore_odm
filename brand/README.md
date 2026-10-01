@@ -1,13 +1,52 @@
 # firestore_odm brand
 
+## Shared generator
+
+CI uses the shared brand action pinned to `a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb`.
+The masters, tokens, pixel grids and provenance remain in this repository;
+existing assets are unchanged by moving the generator. From the repository
+root, run this self-contained recipe. Select `OPERATION=write` to regenerate
+and verify, `OPERATION=check` to verify only, or `OPERATION=resnap` to
+intentionally redraw the small favicon grids, regenerate and verify.
+
+```sh
+(
+  set -eu
+  OPERATION=write # Choose write, check or resnap before running.
+  BRAND_SCRIPT="$(mktemp)"
+  trap 'rm -f "$BRAND_SCRIPT"' EXIT
+  curl --fail --location --output "$BRAND_SCRIPT" \
+    "https://raw.githubusercontent.com/SylphxAI/.github/a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb/.github/actions/brand/build.py"
+  case "$OPERATION" in
+    check) set -- --check ;;
+    write) set -- ;;
+    resnap) set -- --resnap ;;
+    *) echo "Unknown brand operation: $OPERATION" >&2; exit 1 ;;
+  esac
+  if [ "$OPERATION" != check ]; then
+    python3 -m pip install pillow numpy resvg-py
+  fi
+  python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD" "$@"
+  if [ "$OPERATION" != check ]; then
+    python3 "$BRAND_SCRIPT" --brand-dir "$PWD/brand" --root "$PWD" --check
+  fi
+)
+```
+
+Check mode needs only Python 3 and does not regenerate files. Each invocation
+prepares and cleans up its own script; later references select an operation in
+this recipe, rather than reusing its temporary path. A download, dependency,
+regeneration or verification failure stops the recipe with a nonzero status.
+Generated-file comments that name `brand/build.py` describe the historical
+generator; they are preserved to keep the asset bytes and hashes unchanged.
+
 This folder is the source of truth for the firestore_odm name and its artwork;
 every surface copies from it and never keeps a redrawn copy. Rebuild and check
 it with:
 
-```bash
-python3 brand/build.py          # write tokens.css, the surface copies and provenance.json
-python3 brand/build.py --check  # verify hashes and copies; this is what CI runs
-```
+Use the [shared recipe](#shared-generator): select `OPERATION=write` to
+regenerate, `OPERATION=resnap` to redraw grids as well, or `OPERATION=check`
+to verify hashes and surface copies.
 
 The brand is small on purpose. There is no logo mark yet, so the name is set in
 type, and the only artwork is the README hero drawn by Mark.
@@ -32,7 +71,7 @@ type, and the only artwork is the README hero drawn by Mark.
 | The README hero (the banner at the top of `README.md`) | no file: Mark draws it from the URL in `README.md` (mark.sylphx.com, `type=aurora`, `theme=grape`) |
 | Docs site social card and GitHub social preview | `og/firestore_odm-og.png` (the site serves the copy at `docs/public/og.png`) |
 | Colour and type values | `tokens.json` (and the generated `tokens.css`) |
-| The generator spec and the generator | `brand.json`, `build.py` |
+| The generator spec and the generator | `brand.json`, [shared generator](https://github.com/SylphxAI/.github/tree/a6c81b4bcda66bf624f0a68e25e63b3c0ed043eb/.github/actions/brand) |
 | Where every file came from | `provenance.json` |
 
 ## Colours
