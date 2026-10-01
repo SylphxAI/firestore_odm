@@ -1,0 +1,28 @@
+{
+  "slug": "firestore-odm",
+  "kind": "open-source",
+  "name": {
+    "en": "firestore_odm",
+    "zh-Hant": "firestore_odm"
+  },
+  "tagline": {
+    "en": "Type-safe Firestore for Flutter and Dart: generated models, typed queries, updates and transactions.",
+    "zh-Hant": "適用於 Flutter 與 Dart 的型別安全 Firestore：自動產生模型，型別化查詢、更新與交易。"
+  },
+  "category": {
+    "en": "Developer tools",
+    "zh-Hant": "開發者工具"
+  },
+  "url": "https://sylphxai.github.io/firestore_odm/",
+  "status": "available",
+  "image": {
+    "src": "card.webp",
+    "alt": {
+      "en": "firestore_odm home page: type-safe Firestore for Flutter",
+      "zh-Hant": "firestore_odm 首頁：適用於 Flutter 的型別安全 Firestore"
+    }
+  },
+  "repo": "SylphxAI/firestore_odm",
+  "licence": "MIT",
+  "docs": "https://sylphxai.github.io/firestore_odm/guide/getting-started"
+}
