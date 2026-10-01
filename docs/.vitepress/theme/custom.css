@@ -1,0 +1,22 @@
+@import '../../../brand/tokens.css';
+
+:root, .dark {
+  --vp-c-bg: var(--brand-color-ground);
+  --vp-c-bg-alt: var(--brand-color-ground-alt);
+  --vp-c-bg-elv: var(--brand-color-ground-elv);
+  --vp-c-bg-soft: var(--brand-color-ground-soft);
+  --vp-c-divider: rgba(255, 255, 255, 0.08);
+  --vp-c-brand-1: var(--brand-color-link);
+  --vp-c-brand-2: var(--brand-color-link-hover);
+  --vp-c-brand-3: var(--brand-color-accent);
+  --vp-c-brand-soft: rgba(139, 92, 246, 0.16);
+  --vp-button-brand-text: #FFFFFF;
+  --vp-button-brand-bg: var(--brand-color-button);
+  --vp-button-brand-hover-text: #FFFFFF;
+  --vp-button-brand-hover-bg: var(--brand-color-button-hover);
+  --vp-button-brand-active-text: #FFFFFF;
+  --vp-button-brand-active-bg: var(--brand-color-button-hover);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--brand-color-accent) 10%, var(--brand-color-accent-2) 55%, var(--brand-color-accent-3) 90%);
+}
+.VPFeature .details code { font-family: var(--vp-font-family-mono); font-size: 13px; font-variant-ligatures: none; background: var(--vp-c-bg-alt); padding: 1px 4px; border-radius: 4px; }

@@ -1,6 +1,8 @@
 {
   "name": "firestore_odm",
   "outputs": {
-    "docs/public/og.png": "og/firestore_odm-og.png"
+    "docs/public/og.png": "og/firestore_odm-og.png",
+    "docs/public/favicon.svg": "svg/firestore_odm-symbol.svg",
+    "docs/public/logo.svg": "svg/firestore_odm-symbol.svg"
   }
 }

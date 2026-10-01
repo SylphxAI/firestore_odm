@@ -14,12 +14,21 @@ export default defineConfig({
   cleanUrls: true,
   // Decision records stay in the repository, not on the site.
   srcExclude: ['adr/**'],
+  appearance: 'force-dark',
+  lastUpdated: true,
+  markdown: { theme: { light: 'github-light', dark: 'github-dark-default' } },
   sitemap: { hostname: site },
   head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/firestore_odm/favicon.svg' }],
+    ['meta', { name: 'theme-color', content: '#0F0A1C' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: title }],
     ['meta', { property: 'og:image', content: `${site}og.png` }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { property: 'og:image:width', content: '1280' }],
+    ['meta', { property: 'og:image:height', content: '640' }],
+    ['meta', { property: 'og:image:alt', content: 'firestore_odm: type-safe Firestore ODM for Flutter and Dart' }],
+    ['meta', { name: 'twitter:image', content: `${site}og.png` }],
   ],
   transformPageData(pageData) {
     const pageTitle = pageData.frontmatter.title ?? pageData.title ?? title
@@ -34,10 +43,12 @@ export default defineConfig({
     )
   },
   themeConfig: {
+    logo: { src: '/logo.svg', alt: '' },
+    lastUpdated: { formatOptions: { dateStyle: 'medium' } },
     search: { provider: 'local' },
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'Migrate from cloud_firestore_odm', link: '/guide/migrate-from-cloud-firestore-odm' },
+      { text: 'Migrate', link: '/guide/migrate-from-cloud-firestore-odm' },
       { text: 'Comparison', link: '/guide/comparison' },
       { text: 'Benchmarks', link: '/guide/benchmarks' },
       {
@@ -112,6 +123,17 @@ export default defineConfig({
             { text: 'Field validators', link: '/guide/validators' },
           ],
         },
+      ],
+    },
+    sylphx: {
+      product: 'firestore_odm',
+      license: 'https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE',
+      links: [
+        { text: 'Getting started', href: '/guide/getting-started' },
+        { text: 'Benchmarks', href: '/guide/benchmarks' },
+        { text: 'Changelog', href: 'https://pub.dev/packages/firestore_odm/changelog' },
+        { text: 'GitHub', href: 'https://github.com/SylphxAI/firestore_odm' },
+        { text: 'pub.dev', href: 'https://pub.dev/packages/firestore_odm' },
       ],
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/SylphxAI/firestore_odm' }],

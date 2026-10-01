@@ -102,7 +102,7 @@ versions, and goes further:
   against 17 seconds with cloud_firestore_odm; runtime cost stays within a few
   microseconds of raw `cloud_firestore`
   ([benchmarks](https://sylphxai.github.io/firestore_odm/guide/benchmarks)).
-- **Firestore Pipelines** (Enterprise edition) with typed stages.
+- **Firestore Pipelines** (Enterprise edition, experimental): typed `where`, `sort`, `limit`, `select` and `aggregate` stages. Pipelines need an Enterprise database, and the emulator cannot run them, so they are not covered by the test suite yet.
 
 ## Install
 
