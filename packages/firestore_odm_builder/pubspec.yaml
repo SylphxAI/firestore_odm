@@ -1,10 +1,10 @@
 name: firestore_odm_builder
 description: "Code generator for firestore_odm, the type-safe Firestore ODM for Flutter and Dart. Generates typed queries, patches, aggregates and converters with build_runner."
 version: 5.2.0
-homepage: https://github.com/SylphxAI/firestore_odm
+homepage: https://sylphxai.github.io/firestore_odm/
 repository: https://github.com/SylphxAI/firestore_odm
 issue_tracker: https://github.com/SylphxAI/firestore_odm/issues
-documentation: https://SylphxAI.github.io/firestore_odm/
+documentation: https://sylphxai.github.io/firestore_odm/
 
 topics:
   - firestore

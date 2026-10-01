@@ -1,0 +1,49 @@
+/* Sylphx shared docs styles: identical in every Sylphx OSS docs site. Colours come from each site's --vp-c-* tokens. */
+
+/* WCAG AA: code-block language labels and tertiary text */
+:root, .dark {
+  --vp-c-text-3: rgba(235, 235, 245, 0.6);
+  --vp-code-lang-color: var(--vp-c-text-2);
+}
+
+/* "Add to Cursor" badge sits inline with the VS Code link */
+.vp-doc a > img[src*="cursor.com/deeplink"] { display: inline-block; height: 32px; vertical-align: middle; margin: 0 4px 0 0; }
+
+/* Hero install command and proof row */
+.sx-hero-extras { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 640px; }
+.sx-install { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); width: fit-content; max-width: 100%; }
+.sx-install code { font-family: var(--vp-font-family-mono); font-size: 14px; color: var(--vp-c-text-1); white-space: nowrap; overflow-x: auto; }
+.sx-install__prompt { color: var(--vp-c-text-2); user-select: none; }
+.sx-install__copy { flex: none; min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg-elv); color: var(--vp-c-text-1); font-size: 13px; font-weight: 600; }
+.sx-install__copy:hover { border-color: var(--vp-c-brand-1); }
+.sx-install__copy:focus-visible, .sx-proof a:focus-visible, .sx-footer a:focus-visible { outline: 2px solid var(--vp-c-brand-1); outline-offset: 2px; }
+.sx-proof { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+.sx-proof a { display: flex; flex-direction: column; gap: 2px; text-decoration: none; }
+.sx-proof strong { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--vp-c-text-1); font-variant-numeric: tabular-nums; }
+.sx-proof span { font-size: 13px; line-height: 18px; color: var(--vp-c-text-2); }
+.sx-proof a:hover span { color: var(--vp-c-brand-1); }
+.sx-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Home product visual */
+.sx-media { margin: 0 auto 48px; max-width: 1152px; padding: 0 24px; }
+.sx-media video, .sx-media img { display: block; width: 100%; height: auto; border-radius: 16px; border: 1px solid var(--vp-c-divider); box-shadow: 0 30px 80px rgba(0, 0, 0, .5); background: var(--vp-c-bg-alt); }
+.sx-media figcaption { margin-top: 12px; text-align: center; color: var(--vp-c-text-2); font-size: 14px; }
+.sx-media figcaption a { color: var(--vp-c-brand-1); font-weight: 500; }
+@media (min-width: 640px) { .sx-media { padding: 0 48px; } }
+@media (min-width: 960px) { .sx-media { padding: 0 64px; } }
+
+/* Footer */
+.sx-footer { border-top: 1px solid var(--vp-c-divider); color: var(--vp-c-text-2); font-size: 13px; line-height: 20px; }
+.sx-footer--page { padding: 32px 24px; background: var(--vp-c-bg); }
+.sx-footer--doc { margin-top: 48px; padding-top: 24px; }
+.sx-footer__inner { max-width: 1152px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.sx-footer__row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+.sx-footer__label { color: var(--vp-c-text-1); font-weight: 600; }
+.sx-footer a { color: var(--vp-c-text-2); text-decoration: none; }
+.sx-footer a:hover { color: var(--vp-c-brand-1); }
+.sx-footer__row a { display: inline-block; padding: 4px 0; }
+.sx-footer__legal { margin: 0; max-width: 72ch; }
+.sx-footer__legal a { text-decoration: underline; text-underline-offset: 2px; }
+@media (min-width: 640px) { .sx-footer--page { padding: 32px 48px; } }
+@media (min-width: 960px) { .sx-footer--page { padding: 32px 64px; } }
+@media (max-width: 959px) { .sx-hero-extras { margin-left: auto; margin-right: auto; align-items: center; text-align: center; } }

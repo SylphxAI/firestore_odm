@@ -74,7 +74,7 @@ precedence resolution.
 - `FirestoreODM(schema, {firestore})` entrypoint; multiple instances.
 - Deferred-write transactions with document caching.
 - Object-cursor pagination; **new:** automatic `documentId` tie-breaker.
-- One-shot aggregates; typed Pipelines (Enterprise edition, ADR 0001).
+- One-shot aggregates; typed Pipelines (Enterprise edition, experimental, ADR 0001).
 - Sealed exception taxonomy aligned to `FirestoreException` codes.
 
 ### Verification
