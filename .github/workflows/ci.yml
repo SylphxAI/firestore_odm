@@ -17,11 +17,39 @@ permissions:
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  check:
+  changes:
     if: github.event_name != 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.c.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        id: c
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!LICENSE'
+              - '!CHANGELOG.md'
+              - '!CONTRIBUTING.md'
+              - '!SECURITY.md'
+
+  # `check` and `site` are skipped (so `ci-success` still passes) when a change
+  # touches only files no check reads: licence, changelog, contributing,
+  # security, issue templates.
+  check:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -68,7 +96,8 @@ jobs:
           melos exec --scope="$scope" -- dart pub global run pana --no-warning --exit-code-threshold 10 .
 
   site:
-    if: github.event_name != 'merge_group'
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -141,7 +170,7 @@ jobs:
 
   ci-success:
     if: always()
-    needs: [check, site, identifiers, platforms, e2e-emulator]
+    needs: [changes, check, site, identifiers, platforms, e2e-emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
