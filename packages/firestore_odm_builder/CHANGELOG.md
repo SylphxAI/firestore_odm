@@ -1,3 +1,13 @@
+## Unreleased
+
+- The `migrate` codemod now handles `@Collection` written on the model class
+  (moved into a schema in the same file, because firestore_odm allows it only
+  on a top-level variable) and `MovieCollectionReference(firestore)`
+  constructed directly in repositories, including the call chains on the
+  variable it is assigned to. Generated reference and snapshot types it cannot
+  rewrite (`MovieDocumentReference`, subcollection constructors, `.reference`)
+  are now listed by line instead of being left silently.
+
 ## 5.2.0
 
 - New: `@Min`/`@Max` bounds are enforced by the generated converters on `set`,

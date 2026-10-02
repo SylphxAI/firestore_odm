@@ -36,6 +36,9 @@ class Comment {
 
 List<RefDeclaration> get declarations => collectDeclarations(movieFile);
 
+String migrate1(String source) =>
+    migrateDartSource(source, collectDeclarations(source)).source;
+
 String migrate(String source) => migrateDartSource(source, declarations).source;
 
 void main() {
@@ -195,6 +198,173 @@ void main() {
       expect(result.source, contains('FirestoreBuilder<FooQuerySnapshot>'));
       expect(result.followUps.single.line, 1);
       expect(result.followUps.single.message, contains('model payload'));
+    });
+  });
+
+  group('class-level @Collection (cloud_firestore_odm 1.0 style)', () {
+    const eventFile = r"""
+import 'package:cloud_firestore_odm/cloud_firestore_odm.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'event_dto.freezed.dart';
+part 'event_dto.g.dart';
+
+@Collection<EventDto>('events')
+@freezed
+class EventDto with _$EventDto {
+  factory EventDto({@Id() required String id}) = _EventDto;
+}
+
+final eventDtoRef = EventDtoCollectionReference();
+""";
+
+    test('the annotation moves into a schema at the end of the file', () {
+      final d = collectDeclarations(eventFile);
+      expect(d.first.classLevel, isTrue);
+      final out = migrateDartSource(eventFile, d).source;
+      expect(out, isNot(contains("@Collection<EventDto>('events')\n@freezed")));
+      expect(out, contains('@freezed\n@firestoreOdm\nclass EventDto'));
+      expect(out, contains('class EventDtoSchema extends FirestoreSchema'));
+      expect(
+        out,
+        contains(
+          "@Schema()\n@Collection<EventDto>('events')\n"
+          'const eventDtoSchema = EventDtoSchema();',
+        ),
+      );
+      expect(
+        out,
+        contains('final eventDtoOdm = FirestoreODM(eventDtoSchema);'),
+      );
+      expect(out, contains('final eventDtoRef = eventDtoOdm.events;'));
+    });
+
+    test('a multi-line annotation chain before the class is recognised', () {
+      const source = """
+@Collection<A>('as')
+@JsonSerializable(
+  explicitToJson: true,
+)
+class A {}
+""";
+      final out = migrate1(source);
+      expect(out, startsWith('@JsonSerializable('));
+      expect(out, contains("@Collection<A>('as')\nconst aSchema"));
+    });
+
+    test('migrating twice changes nothing more', () {
+      final d = collectDeclarations(eventFile);
+      final once = migrateDartSource(eventFile, d).source;
+      expect(
+        migrateDartSource(once, collectDeclarations(once)).changed,
+        isFalse,
+      );
+    });
+  });
+
+  group('directly constructed references', () {
+    final decls = collectDeclarations(r"""
+@Collection<EventDto>('events')
+class EventDto {}
+""");
+
+    String run(String source) => migrateDartSource(source, decls).source;
+
+    test('XCollectionReference(firestore) uses that Firestore instance', () {
+      expect(
+        run('final events = EventDtoCollectionReference(_firestore);'),
+        'final events = FirestoreODM(eventDtoSchema, firestore: _firestore)'
+        '.events;',
+      );
+    });
+
+    test('a multi-line constructor call is rewritten', () {
+      expect(
+        run('final c = EventDtoCollectionReference(\n  _firestore,\n);'),
+        'final c = FirestoreODM(eventDtoSchema, firestore: _firestore)'
+        '.events;',
+      );
+    });
+
+    test('XCollectionReference() uses the schema ODM', () {
+      expect(
+        run('final c = EventDtoCollectionReference();'),
+        'final c = eventDtoOdm.events;',
+      );
+    });
+
+    test('call chains on the local variable follow the rewrite', () {
+      expect(
+        run(
+          'void f() {\n'
+          '  final events = EventDtoCollectionReference(db);\n'
+          '  events.whereTitle(isEqualTo: t).snapshots().listen(print);\n'
+          '  events.add(e);\n'
+          '}\n',
+        ),
+        'void f() {\n'
+        '  final events = FirestoreODM(eventDtoSchema, firestore: db).events;\n'
+        r'  events.where(($) => $.title(isEqualTo: t)).stream.listen(print);'
+        '\n  events.create(e);\n}\n',
+      );
+    });
+
+    test('a native snapshots() call elsewhere is untouched', () {
+      const source = 'void f() {\n  other.snapshots();\n}\n';
+      expect(run(source), source);
+    });
+  });
+
+  group('generated types the codemod cannot rewrite are reported', () {
+    final decls = collectDeclarations(r"""
+@Collection<User>('users')
+@Collection<Post>('users/*/posts')
+final usersRef = UserCollectionReference();
+""");
+
+    List<String> reports(String source) => [
+      for (final f in migrateDartSource(source, decls).followUps)
+        '${f.line}: ${f.message.split(':').first}',
+    ];
+
+    test('document reference types and constructors', () {
+      expect(
+        reports(
+          'UserDocumentReference r(String id) =>\n'
+          '    UserDocumentReference(usersRef.doc(id).reference);',
+        ),
+        [
+          '1: generated document reference type',
+          '2: .reference',
+          '2: generated document reference type',
+        ],
+      );
+    });
+
+    test('subcollection references and collection types', () {
+      expect(
+        reports(
+          'PostCollectionReference p(DocumentReference d) =>\n'
+          '    PostCollectionReference(d);',
+        ),
+        [
+          '1: generated collection reference the codemod could not rewrite',
+          '2: generated collection reference the codemod could not rewrite',
+        ],
+      );
+      expect(reports('UserCollectionReference c;'), [
+        '1: generated collection reference the codemod could not rewrite',
+      ]);
+    });
+
+    test('snapshot types outside FirestoreBuilder', () {
+      expect(reports('void f(UserQueryDocumentSnapshot s) {}'), [
+        '1: generated snapshot type',
+      ]);
+      expect(
+        reports('FirestoreBuilder<UserQuerySnapshot>(ref: usersRef);'),
+        isEmpty,
+      );
     });
   });
 
