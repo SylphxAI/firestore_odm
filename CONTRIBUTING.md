@@ -50,6 +50,13 @@ pub.dev score check, the identifiers check and the docs site build on Linux.
 The merge queue runs the macOS and Windows tests and the emulator tests.
 `ci-success` is the required check.
 
+The Latest dependencies workflow runs weekly (and by hand). It raises every
+package to the latest releases pub.dev allows, in a scratch copy, and runs
+generate, analyze and the tests. When that fails, it opens one issue titled
+"Latest dependencies break the build" listing the resolved versions; when it
+passes again, it closes the issue. Run it locally with
+`scripts/check-latest-deps.sh` after `melos bootstrap`.
+
 ## Releasing
 
 The three packages share one version.
