@@ -7,6 +7,7 @@
 **Type-safe Firestore ODM for Flutter and Dart — the maintained successor to cloud_firestore_odm.**
 
 [![pub package](https://img.shields.io/pub/v/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
+[![pub downloads](https://img.shields.io/pub/dm/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm)
 [![pub points](https://img.shields.io/pub/points/firestore_odm?style=flat-square)](https://pub.dev/packages/firestore_odm/score)
 [![CI](https://github.com/SylphxAI/firestore_odm/actions/workflows/ci.yml/badge.svg)](https://github.com/SylphxAI/firestore_odm/actions/workflows/ci.yml)
 [![GitHub stars](https://mark.sylphx.com/github/stars/SylphxAI/firestore_odm?style=flat-square)](https://github.com/SylphxAI/firestore_odm/stargazers)
@@ -19,6 +20,25 @@
 Describe your documents once. firestore_odm generates typed queries, updates,
 aggregates, transactions and streams for them, so a misspelled field or a
 wrong value type is a compile error instead of a production bug.
+
+```sh
+flutter pub add firestore_odm cloud_firestore firebase_core
+flutter pub add dev:firestore_odm_builder dev:build_runner
+```
+
+After a model edit, 20 models rebuild in **1.5 seconds** (cloud_firestore_odm:
+17.3 seconds), and runtime cost stays within a few microseconds of raw
+`cloud_firestore`. Measured by a public workflow run:
+[method and numbers](https://sylphxai.github.io/firestore_odm/guide/benchmarks).
+
+## Quick start
+
+Three steps in an existing Flutter app.
+
+**1. Install**, with the two commands above. Requires Dart 3.8 or later and `cloud_firestore` 6. Supported on Android, iOS,
+macOS, Windows and web (the platforms `cloud_firestore` supports).
+
+**2. Describe your documents**, then generate:
 
 ```dart
 @firestoreOdm
@@ -42,6 +62,12 @@ class AppSchema extends FirestoreSchema {
 @Collection<Post>('users/*/posts') // Post: another @firestoreOdm model
 const appSchema = AppSchema();
 ```
+
+```sh
+dart run build_runner build --delete-conflicting-outputs
+```
+
+**3. Query, update and stream**, all typed:
 
 ```dart
 final db = FirestoreODM(appSchema);
@@ -103,17 +129,6 @@ versions, and goes further:
   microseconds of raw `cloud_firestore`
   ([benchmarks](https://sylphxai.github.io/firestore_odm/guide/benchmarks)).
 - **Firestore Pipelines** (Enterprise edition, experimental): typed `where`, `sort`, `limit`, `select` and `aggregate` stages. Pipelines need an Enterprise database, and the emulator cannot run them, so they are not covered by the test suite yet.
-
-## Install
-
-```sh
-flutter pub add firestore_odm cloud_firestore firebase_core
-flutter pub add dev:firestore_odm_builder dev:build_runner
-dart run build_runner build --delete-conflicting-outputs
-```
-
-Requires Dart 3.8 or later and `cloud_firestore` 6. Supported on Android, iOS,
-macOS, Windows and web (the platforms `cloud_firestore` supports).
 
 ## Compared with the alternatives
 
@@ -180,6 +195,10 @@ for the setup; `melos run check` runs what CI runs on a pull request.
 
 [![Star history](https://api.star-history.com/svg?repos=SylphxAI/firestore_odm&type=Date)](https://star-history.com/#SylphxAI/firestore_odm&Date)
 
-## License
+## Support
 
-[MIT](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE)
+Questions, a bug, or a team rollout? Email [hi@sylphx.com](mailto:hi@sylphx.com) or [open an issue](https://github.com/SylphxAI/firestore_odm/issues).
+
+---
+
+[MIT licence](https://github.com/SylphxAI/firestore_odm/blob/main/LICENSE). © Sylphx Limited, registered in England and Wales, company no. 16438428. Registered office: 128 City Road, London EC1V 2NX, United Kingdom. Email [hi@sylphx.com](mailto:hi@sylphx.com). [Privacy](https://sylphx.com/legal/privacy) · [Terms](https://sylphx.com/legal/terms) · [sylphx.com](https://sylphx.com)

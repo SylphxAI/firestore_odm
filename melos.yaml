@@ -20,6 +20,10 @@ scripts:
     run: melos exec --ignore="flutter_example" -- dart analyze --fatal-infos .
     description: Static analysis of the published packages.
 
+  check:readme:
+    run: sh scripts/check-readme-links.sh
+    description: Fail when README.md (the pub.dev page) has a relative link or image.
+
   format:check:
     run: dart format --output=none --set-exit-if-changed .
     description: Fail when any file is not formatted.
