@@ -36,6 +36,8 @@ What the codemod rewrites:
 | `cloud_firestore_odm`, `cloud_firestore_odm_generator` in `pubspec.yaml` | `firestore_odm`, `firestore_odm_builder`; `cloud_firestore` raised to `^6.4.0`, `firebase_core` to `^4.0.0` |
 | `import 'package:cloud_firestore_odm/...'` | `import 'package:firestore_odm/firestore_odm.dart'` |
 | `@Collection<Movie>('movies')` + `final moviesRef = MovieCollectionReference();` | a schema class, `@Schema()`, the same `@Collection`s, and `final moviesRef = moviesOdm.movies;` |
+| `@Collection<Movie>('movies')` written on the model class itself | removed from the class and declared in a schema at the end of the same file (`MovieSchema`, `movieSchema`, `movieOdm`); keep that file's `part '...g.dart'` line, because the generated code goes into it |
+| `MovieCollectionReference(firestore)` / `MovieCollectionReference()` for a model with a root collection | `FirestoreODM(movieSchema, firestore: firestore).movies` / `movieOdm.movies`; calls on a variable assigned from it (`.snapshots()`, `.add()`, `whereX`) are rewritten too |
 | model class used in a `@Collection` | the same class with `@firestoreOdm` |
 | `@Id()` | `@DocumentIdField()` |
 | `.whereTitle(isEqualTo: t)` | `.where(($) => $.title(isEqualTo: t))` |
@@ -52,6 +54,31 @@ The codemod keeps your reference variables (`moviesRef`), so most call sites
 compile once the calls above are rewritten.
 
 ## 2. Finish what the codemod lists
+
+### Generated reference types
+
+cloud_firestore_odm generated `MovieDocumentReference`, `CommentCollectionReference`
+and `MovieQuerySnapshot` types that you might use in field types, function
+signatures or helpers such as
+`CommentCollectionReference(moviesRef.doc(id).reference)`. The codemod lists
+each one by line and leaves it alone, because the right replacement depends on
+how you use it:
+
+| cloud_firestore_odm | firestore_odm |
+| --- | --- |
+| `MovieCollectionReference` / `MovieQuery` type | the typed collection or query from the schema, for example `moviesOdm.movies` |
+| `MovieDocumentReference` type | the typed document, `moviesOdm.movies(id)` |
+| `CommentCollectionReference(movieRef.reference)` for a subcollection | `moviesOdm.moviesComments(movieId)` |
+| `typedRef.reference` | `typedRef.ref` (the native reference) |
+| `MovieDocumentSnapshot` / `MovieQuerySnapshot` outside `FirestoreBuilder` | `Movie?` / `List<Movie>` |
+
+A model with only subcollection paths has no root collection, so its
+`XCollectionReference(...)` constructor is also listed instead of rewritten.
+
+Long lines that the codemod writes (for example
+`FirestoreODM(movieSchema, firestore: db).movies`) are not wrapped; run
+`dart format .` afterwards. If the schema lives in a different file from the
+code that uses it, add the import for that file.
 
 ### Reads return models, not snapshots
 
