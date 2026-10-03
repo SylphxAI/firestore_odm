@@ -3,7 +3,8 @@
 /// no precedence resolution, no client-side emulation.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'backend/cloud_firestore_backend.dart' show CloudFirestoreFieldValues;
+import 'backend/odm_backend.dart' show OdmFieldValues;
 
 import 'field_selector.dart';
 import 'types.dart';
@@ -61,20 +62,19 @@ class ServerTimestampOperation extends UpdateOperation {
 /// Converts patch operations to the native `update` map keyed by [FieldPath].
 ///
 /// Returns an empty map when there is nothing to apply.
-Map<Object, Object?> operationsToMap(List<UpdateOperation> operations) {
+Map<Object, Object?> operationsToMap(
+  List<UpdateOperation> operations, [
+  OdmFieldValues fieldValues = const CloudFirestoreFieldValues(),
+]) {
   final result = <Object, Object?>{};
   for (final op in operations) {
     result[op.field.components.join('.')] = switch (op) {
       SetOperation(:final value) => value,
-      DeleteOperation() => firestore.FieldValue.delete(),
-      IncrementOperation(:final delta) => firestore.FieldValue.increment(delta),
-      ArrayUnionOperation(:final values) => firestore.FieldValue.arrayUnion(
-        values,
-      ),
-      ArrayRemoveOperation(:final values) => firestore.FieldValue.arrayRemove(
-        values,
-      ),
-      ServerTimestampOperation() => firestore.FieldValue.serverTimestamp(),
+      DeleteOperation() => fieldValues.delete(),
+      IncrementOperation(:final delta) => fieldValues.increment(delta),
+      ArrayUnionOperation(:final values) => fieldValues.arrayUnion(values),
+      ArrayRemoveOperation(:final values) => fieldValues.arrayRemove(values),
+      ServerTimestampOperation() => fieldValues.serverTimestamp(),
     };
   }
   return result;

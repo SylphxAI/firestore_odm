@@ -1,3 +1,7 @@
+## 5.3.0
+
+- Released with firestore_odm 5.3.0; no API changes.
+
 ## 5.2.0
 
 - New: `@Min` and `@Max` constrain a numeric field to a range. Put them on the

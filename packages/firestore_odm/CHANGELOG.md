@@ -1,3 +1,14 @@
+## 5.3.0
+
+- Internal: every Firestore call now goes through one internal backend
+  interface (`OdmBackend`), the first step toward running the same models on
+  the server. Behaviour, generated code and benchmarks are unchanged.
+- Changed (rarely affects apps): the `Query` types take the backend's
+  `OdmQuery` instead of a `cloud_firestore` `Query`, and
+  `FilterOperation.toFilter` is removed. Code that only uses the generated API
+  needs no change; code that built a `Query` or called `toFilter` by hand
+  must use the generated filters instead.
+
 ## 5.2.0
 
 - New: `FirestoreBuilder`, the widget `cloud_firestore_odm` had. It listens to

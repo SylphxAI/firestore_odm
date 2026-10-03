@@ -4,8 +4,7 @@
 /// would silently download every document (the v4 behavior, removed).
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-
+import 'backend/odm_backend.dart';
 import 'field_selector.dart';
 import 'utils.dart';
 
@@ -115,25 +114,14 @@ class AggregateQuery<R extends Record, AB extends AggregateBuilderRoot> {
     List<AggregateOperation> operations,
   ) : _operations = List.unmodifiable(operations);
 
-  final firestore.AggregateQuery _query;
+  final OdmQuery _query;
   final AB Function(AggregateContext context) _builderFunc;
   final R Function(AB selector) _configuration;
   final List<AggregateOperation> _operations;
 
   /// Executes the aggregate query and returns the typed result record.
   Future<R> get() async {
-    final snapshot = await _query.get();
-    final results = <String, Object?>{
-      for (final op in _operations)
-        op.key: switch (op) {
-          CountOperation() => snapshot.count ?? 0,
-          SumOperation(:final field) =>
-            snapshot.getSum(field.components.join('.')) ?? 0,
-          // Firestore returns no average when no document matches.
-          AverageOperation(:final field) =>
-            snapshot.getAverage(field.components.join('.')) ?? double.nan,
-        },
-    };
+    final results = await _query.aggregate(_operations);
     final context = AggregateResultContext(results);
     final builder = _builderFunc(context);
     return _configuration(builder);
@@ -152,59 +140,13 @@ abstract final class QueryAggregatableHandler {
     return context.operations;
   }
 
-  static firestore.AggregateQuery applyAggregate(
-    firestore.Query<Map<String, dynamic>> query,
-    List<AggregateOperation> operations,
-  ) {
-    final fields = <firestore.AggregateField>[
-      for (final op in operations)
-        switch (op) {
-          CountOperation() => firestore.count(),
-          SumOperation(:final field) => firestore.sum(
-            field.components.join('.'),
-          ),
-          AverageOperation(:final field) => firestore.average(
-            field.components.join('.'),
-          ),
-        },
-    ];
-    if (fields.length > 30) {
+  /// Rejects aggregates beyond Firestore's limit of 30 fields.
+  static void validate(List<AggregateOperation> operations) {
+    if (operations.length > 30) {
       throw ArgumentError(
         'Firestore supports a maximum of 30 aggregate fields, but '
-        '${fields.length} were provided.',
+        '${operations.length} were provided.',
       );
     }
-    return query.aggregate(
-      fields[0],
-      fields.length > 1 ? fields[1] : null,
-      fields.length > 2 ? fields[2] : null,
-      fields.length > 3 ? fields[3] : null,
-      fields.length > 4 ? fields[4] : null,
-      fields.length > 5 ? fields[5] : null,
-      fields.length > 6 ? fields[6] : null,
-      fields.length > 7 ? fields[7] : null,
-      fields.length > 8 ? fields[8] : null,
-      fields.length > 9 ? fields[9] : null,
-      fields.length > 10 ? fields[10] : null,
-      fields.length > 11 ? fields[11] : null,
-      fields.length > 12 ? fields[12] : null,
-      fields.length > 13 ? fields[13] : null,
-      fields.length > 14 ? fields[14] : null,
-      fields.length > 15 ? fields[15] : null,
-      fields.length > 16 ? fields[16] : null,
-      fields.length > 17 ? fields[17] : null,
-      fields.length > 18 ? fields[18] : null,
-      fields.length > 19 ? fields[19] : null,
-      fields.length > 20 ? fields[20] : null,
-      fields.length > 21 ? fields[21] : null,
-      fields.length > 22 ? fields[22] : null,
-      fields.length > 23 ? fields[23] : null,
-      fields.length > 24 ? fields[24] : null,
-      fields.length > 25 ? fields[25] : null,
-      fields.length > 26 ? fields[26] : null,
-      fields.length > 27 ? fields[27] : null,
-      fields.length > 28 ? fields[28] : null,
-      fields.length > 29 ? fields[29] : null,
-    );
   }
 }

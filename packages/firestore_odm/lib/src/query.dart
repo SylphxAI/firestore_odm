@@ -3,9 +3,12 @@
 /// limit (never one unbounded batch).
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:cloud_firestore/cloud_firestore.dart'
+    as firestore
+    show GetOptions, Query;
 
 import 'aggregate.dart';
+import 'backend/odm_backend.dart';
 import 'filter_builder.dart';
 import 'firestore_builder.dart';
 import 'orderby.dart';
@@ -38,7 +41,7 @@ abstract class _QueryOperations<
     this._aggregateBuilderFunc,
   );
 
-  final firestore.Query<Map<String, dynamic>> _query;
+  final OdmQuery _query;
   final JsonSerializer<T> _toJson;
   final JsonDeserializer<T> _fromJson;
   final String? _documentIdField;
@@ -47,7 +50,9 @@ abstract class _QueryOperations<
   final OB Function(OrderByContext context) _orderByBuilderFunc;
   final AB Function(AggregateContext context) _aggregateBuilderFunc;
 
-  firestore.Query<Map<String, dynamic>> get nativeQuery => _query;
+  /// The underlying `cloud_firestore` query (escape hatch).
+  firestore.Query<Map<String, dynamic>> get nativeQuery =>
+      _query.native as firestore.Query<Map<String, dynamic>>;
 
   /// Runs the query once. Pass [options] to read from the cache or the
   /// server only (for example `GetOptions(source: Source.cache)`).
@@ -62,12 +67,11 @@ abstract class _QueryOperations<
   );
 
   @override
-  Object get nativeReference => nativeQuery;
+  Object get nativeReference => _query.native;
 
   /// Server-side document count (native AggregateQuery; one-shot).
   Future<int> count() async {
-    final snapshot = await _query.count().get();
-    return snapshot.count ?? 0;
+    return _query.count();
   }
 
   /// Typed server-side aggregate (one-shot). Result is a Dart record, e.g.
@@ -79,8 +83,9 @@ abstract class _QueryOperations<
       aggregateFunc: aggregateFunc,
       aggregateBuilderFunc: _aggregateBuilderFunc,
     );
+    QueryAggregatableHandler.validate(operations);
     return AggregateQuery<R, AB>(
-      QueryAggregatableHandler.applyAggregate(_query, operations),
+      _query,
       _aggregateBuilderFunc,
       aggregateFunc,
       operations,
@@ -90,7 +95,7 @@ abstract class _QueryOperations<
   /// Applies the same patch operations to every document matching this query.
   /// Chunked into batches of at most 500 writes.
   Future<void> patchAll(List<UpdateOperation> operations) async {
-    final updateMap = operationsToMap(operations);
+    final updateMap = operationsToMap(operations, _query.backend.fieldValues);
     if (updateMap.isEmpty) return;
     final snapshot = await _query.get();
     await _runChunked(
@@ -110,15 +115,11 @@ abstract class _QueryOperations<
   }
 
   Future<void> _runChunked(
-    List<firestore.DocumentReference<Map<String, dynamic>>> refs,
-    void Function(
-      firestore.WriteBatch batch,
-      firestore.DocumentReference<Map<String, dynamic>> ref,
-    )
-    op,
+    List<OdmDocument> refs,
+    void Function(OdmBatch batch, OdmDocument ref) op,
   ) async {
     for (var i = 0; i < refs.length; i += kFirestoreMaxWritesPerBatch) {
-      final batch = _query.firestore.batch();
+      final batch = _query.backend.batch();
       for (final ref in refs.skip(i).take(kFirestoreMaxWritesPerBatch)) {
         op(batch, ref);
       }
@@ -138,7 +139,7 @@ class Query<
 >
     extends _QueryOperations<S, T, P, F, OB, AB> {
   Query({
-    required firestore.Query<Map<String, dynamic>> query,
+    required OdmQuery query,
     required JsonSerializer<T> toJson,
     required JsonDeserializer<T> fromJson,
     required String? documentIdField,
@@ -189,18 +190,17 @@ class Query<
   Query<S, T, P, F, OB, AB> limitToLast(int limit) =>
       _newQuery(_query.limitToLast(limit));
 
-  Query<S, T, P, F, OB, AB> _newQuery(
-    firestore.Query<Map<String, dynamic>> query,
-  ) => Query<S, T, P, F, OB, AB>(
-    query: query,
-    toJson: _toJson,
-    fromJson: _fromJson,
-    documentIdField: _documentIdField,
-    patchBuilderFactory: _patchBuilderFactory,
-    filterBuilder: _filterBuilder,
-    orderByBuilderFunc: _orderByBuilderFunc,
-    aggregateBuilderFunc: _aggregateBuilderFunc,
-  );
+  Query<S, T, P, F, OB, AB> _newQuery(OdmQuery query) =>
+      Query<S, T, P, F, OB, AB>(
+        query: query,
+        toJson: _toJson,
+        fromJson: _fromJson,
+        documentIdField: _documentIdField,
+        patchBuilderFactory: _patchBuilderFactory,
+        filterBuilder: _filterBuilder,
+        orderByBuilderFunc: _orderByBuilderFunc,
+        aggregateBuilderFunc: _aggregateBuilderFunc,
+      );
 }
 
 /// A typed ordered query with pagination.
@@ -215,7 +215,7 @@ class OrderedQuery<
 >
     extends _QueryOperations<S, T, P, F, OB, AB> {
   OrderedQuery({
-    required firestore.Query<Map<String, dynamic>> query,
+    required OdmQuery query,
     required this.orderByFields,
     required JsonSerializer<T> toJson,
     required JsonDeserializer<T> fromJson,
@@ -285,17 +285,16 @@ class OrderedQuery<
   OrderedQuery<S, T, O, P, F, OB, AB> limitToLast(int limit) =>
       _newQuery(_query.limitToLast(limit));
 
-  OrderedQuery<S, T, O, P, F, OB, AB> _newQuery(
-    firestore.Query<Map<String, dynamic>> query,
-  ) => OrderedQuery<S, T, O, P, F, OB, AB>(
-    query: query,
-    orderByFields: orderByFields,
-    toJson: _toJson,
-    fromJson: _fromJson,
-    documentIdField: _documentIdField,
-    patchBuilderFactory: _patchBuilderFactory,
-    filterBuilder: _filterBuilder,
-    orderByBuilderFunc: _orderByBuilderFunc,
-    aggregateBuilderFunc: _aggregateBuilderFunc,
-  );
+  OrderedQuery<S, T, O, P, F, OB, AB> _newQuery(OdmQuery query) =>
+      OrderedQuery<S, T, O, P, F, OB, AB>(
+        query: query,
+        orderByFields: orderByFields,
+        toJson: _toJson,
+        fromJson: _fromJson,
+        documentIdField: _documentIdField,
+        patchBuilderFactory: _patchBuilderFactory,
+        filterBuilder: _filterBuilder,
+        orderByBuilderFunc: _orderByBuilderFunc,
+        aggregateBuilderFunc: _aggregateBuilderFunc,
+      );
 }

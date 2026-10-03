@@ -2,14 +2,13 @@
 /// Firestore comparison operators through a single `call` — no string paths.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-
+import 'backend/odm_backend.dart';
 import 'field_selector.dart';
 import 'types.dart';
 
-/// A composable filter operation backed by a native [firestore.Filter].
+/// A composable filter operation, held as a backend-neutral filter tree.
 sealed class FilterOperation {
-  firestore.Filter toFilter();
+  OdmFilter toOdmFilter();
 }
 
 extension FilterOperationComposition on FilterOperation {
@@ -34,18 +33,18 @@ final class _CombinedOperation implements FilterOperation {
   final bool isAnd;
 
   @override
-  firestore.Filter toFilter() => isAnd
-      ? firestore.Filter.and(left.toFilter(), right.toFilter())
-      : firestore.Filter.or(left.toFilter(), right.toFilter());
+  OdmFilter toOdmFilter() => isAnd
+      ? OdmAndFilter(left.toOdmFilter(), right.toOdmFilter())
+      : OdmOrFilter(left.toOdmFilter(), right.toOdmFilter());
 }
 
 final class _FieldFilterOperation implements FilterOperation {
   const _FieldFilterOperation(this._build);
 
-  final firestore.Filter Function() _build;
+  final OdmFilter Function() _build;
 
   @override
-  firestore.Filter toFilter() => _build();
+  OdmFilter toOdmFilter() => _build();
 }
 
 /// A typed filter selector for a single field.
@@ -81,8 +80,8 @@ class FilterField<T, E> {
     bool? isNull,
   }) {
     final field = _field.isDocumentId
-        ? firestore.FieldPath.documentId
-        : _field.components.join('.');
+        ? const OdmFieldRef.documentId()
+        : OdmFieldRef.path(_field.components.join('.'));
     final conditions = [
       isEqualTo,
       isNotEqualTo,
@@ -101,7 +100,7 @@ class FilterField<T, E> {
       );
     }
     return _FieldFilterOperation(
-      () => firestore.Filter(
+      () => OdmFieldFilter(
         field,
         isEqualTo: isEqualTo == null ? null : _toJson(isEqualTo),
         isNotEqualTo: isNotEqualTo == null ? null : _toJson(isNotEqualTo),
@@ -134,12 +133,9 @@ abstract class FilterBuilderRoot extends SelectorRoot {
   const FilterBuilderRoot({super.field});
 }
 
-/// Applies a built filter to a native query.
+/// Applies a built filter to a query.
 abstract final class QueryFilterHandler {
-  static firestore.Query<Map<String, dynamic>> applyFilter(
-    firestore.Query<Map<String, dynamic>> query,
-    FilterOperation filter,
-  ) {
-    return query.where(filter.toFilter());
+  static OdmQuery applyFilter(OdmQuery query, FilterOperation filter) {
+    return query.where(filter.toOdmFilter());
   }
 }

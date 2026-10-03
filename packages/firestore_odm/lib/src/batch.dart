@@ -3,8 +3,10 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart'
-    show CollectionReference, DocumentReference, FirebaseFirestore, WriteBatch;
+    show CollectionReference, DocumentReference, FirebaseFirestore;
 
+import 'backend/cloud_firestore_backend.dart';
+import 'backend/odm_backend.dart';
 import 'exceptions.dart';
 import 'patch.dart';
 import 'schema.dart';
@@ -16,9 +18,14 @@ class BatchContext<S extends FirestoreSchema> {
   /// The Firestore instance this batch writes to.
   final FirebaseFirestore firestore;
 
-  final WriteBatch _batch;
+  /// The backend this batch writes through.
+  final OdmBackend backend;
 
-  BatchContext(this.firestore) : _batch = firestore.batch();
+  final OdmBatch _batch;
+
+  BatchContext(this.firestore)
+    : backend = CloudFirestoreBackend(firestore),
+      _batch = CloudFirestoreBackend(firestore).batch();
 
   /// Commits all queued operations atomically.
   Future<void> commit() => _batch.commit();
@@ -38,6 +45,9 @@ class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
 
   final BatchContext<S> _context;
   final CollectionReference<Map<String, dynamic>> ref;
+  late final OdmCollection _col = CloudFirestoreBackend(
+    ref.firestore,
+  ).wrapCollection(ref);
   final JsonSerializer<T> _toJson;
   final String? documentIdField;
   final P Function() _patchBuilderFactory;
@@ -52,7 +62,7 @@ class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
 
   /// Queues a create with a generated ID and returns that ID.
   String create(T value) {
-    final docRef = ref.doc();
+    final docRef = _col.doc();
     _context._batch.set(
       docRef,
       toFirestoreData(_toJson, value, documentIdField: documentIdField),
@@ -66,12 +76,12 @@ class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
     if (id != null) {
       validateDocumentId(id);
       _context._batch.set(
-        ref.doc(id),
+        _col.doc(id),
         toFirestoreData(_toJson, value, documentIdField: documentIdField),
       );
     } else {
       final result = _serializeWithId(value);
-      _context._batch.set(ref.doc(result.documentId!), result.data);
+      _context._batch.set(_col.doc(result.documentId!), result.data);
     }
   }
 
@@ -79,15 +89,15 @@ class BatchCollection<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
   void patch(String id, List<UpdateOperation> Function(P builder) patches) {
     validateDocumentId(id);
     final operations = patches(_patchBuilderFactory());
-    final updateMap = operationsToMap(operations);
+    final updateMap = operationsToMap(operations, _context.backend.fieldValues);
     if (updateMap.isEmpty) return;
-    _context._batch.update(ref.doc(id), updateMap);
+    _context._batch.update(_col.doc(id), updateMap);
   }
 
   /// Queues a delete of the document at [id].
   void delete(String id) {
     validateDocumentId(id);
-    _context._batch.delete(ref.doc(id));
+    _context._batch.delete(_col.doc(id));
   }
 
   ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
@@ -123,6 +133,9 @@ class BatchDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
 
   final BatchContext<S> _context;
   final DocumentReference<Map<String, dynamic>> ref;
+  late final OdmDocument _doc = CloudFirestoreBackend(
+    ref.firestore,
+  ).wrapDocument(ref);
   final JsonSerializer<T> _toJson;
   final String? documentIdField;
   final P Function() _patchBuilderFactory;
@@ -130,7 +143,7 @@ class BatchDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
   /// Queues a full replace.
   void set(T value) {
     _context._batch.set(
-      ref,
+      _doc,
       toFirestoreData(_toJson, value, documentIdField: documentIdField),
     );
   }
@@ -138,11 +151,11 @@ class BatchDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>> {
   /// Queues typed patch operations.
   void patch(List<UpdateOperation> Function(P builder) patches) {
     final operations = patches(_patchBuilderFactory());
-    final updateMap = operationsToMap(operations);
+    final updateMap = operationsToMap(operations, _context.backend.fieldValues);
     if (updateMap.isEmpty) return;
-    _context._batch.update(ref, updateMap);
+    _context._batch.update(_doc, updateMap);
   }
 
   /// Queues a delete.
-  void delete() => _context._batch.delete(ref);
+  void delete() => _context._batch.delete(_doc);
 }

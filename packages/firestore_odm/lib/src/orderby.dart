@@ -6,8 +6,7 @@
 /// values of the orderBy fields from the model.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
-
+import 'backend/odm_backend.dart';
 import 'field_selector.dart';
 import 'utils.dart';
 
@@ -77,16 +76,13 @@ abstract final class QueryOrderbyHandler {
     return context.fields;
   }
 
-  static firestore.Query<Map<String, dynamic>> applyOrderBy(
-    firestore.Query<Map<String, dynamic>> query,
-    List<OrderByFieldInfo> fields,
-  ) {
+  static OdmQuery applyOrderBy(OdmQuery query, List<OrderByFieldInfo> fields) {
     var newQuery = query;
     for (final info in fields) {
       newQuery = newQuery.orderBy(
         info.field.isDocumentId
-            ? firestore.FieldPath.documentId
-            : info.field.components.join('.'),
+            ? const OdmFieldRef.documentId()
+            : OdmFieldRef.path(info.field.components.join('.')),
         descending: info.descending,
       );
     }
