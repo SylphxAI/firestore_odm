@@ -1,7 +1,15 @@
 ## 5.3.0
 
-- Released with firestore_odm 5.3.0; generated output is byte-identical to
-  5.2.0. The `migrate` codemod now writes `^5.3.0` into migrated pubspecs.
+- Generated output is byte-identical to 5.2.0 (the runtime backend seam in
+  firestore_odm 5.3.0 changes no generated code).
+- The `migrate` codemod now handles `@Collection` written on the model class
+  (moved into a schema in the same file, because firestore_odm allows it only
+  on a top-level variable) and `MovieCollectionReference(firestore)`
+  constructed directly in repositories, including the call chains on the
+  variable it is assigned to. Generated reference and snapshot types it cannot
+  rewrite (`MovieDocumentReference`, subcollection constructors, `.reference`)
+  are now listed by line instead of being left silently.
+- It writes `^5.3.0` into migrated pubspecs.
 
 ## 5.2.0
 

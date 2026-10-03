@@ -34,7 +34,15 @@ class CollectionAnnotation {
 
 /// A `final xRef = XCollectionReference();` declaration and its annotations.
 class RefDeclaration {
-  const RefDeclaration(this.variable, this.collections);
+  const RefDeclaration(
+    this.variable,
+    this.collections, {
+    this.classLevel = false,
+  });
+
+  /// True when the `@Collection` annotations sit on the model class itself
+  /// (cloud_firestore_odm 1.0 style) and there is no declaring variable.
+  final bool classLevel;
 
   /// The declared variable, e.g. `moviesRef`.
   final String variable;
@@ -82,6 +90,7 @@ final _annotation = RegExp(
 
 /// Finds the collection reference declarations in [source].
 List<RefDeclaration> collectDeclarations(String source) => [
+  ..._classLevelDeclarations(source),
   for (final m in _declaration.allMatches(source))
     RefDeclaration(m.group(2)!, [
       for (final a in _annotation.allMatches(m.group(1)!))
@@ -93,6 +102,69 @@ List<RefDeclaration> collectDeclarations(String source) => [
     ]),
 ];
 
+/// A `@Collection<T>('path')` annotation written on a model class.
+class _ClassCollection {
+  const _ClassCollection(this.start, this.end, this.className, this.annotation);
+
+  final int start;
+  final int end;
+  final String className;
+  final CollectionAnnotation annotation;
+}
+
+final _classHeader = RegExp(
+  r'(?:(?:abstract|sealed|final|base|interface|mixin)\s+)*class\s+(\w+)',
+);
+final _annotationHead = RegExp(r'@[\w.]+(?:\s*<[^>\n]*>)?');
+
+/// The `@Collection` annotations in [source] that annotate a class rather than
+/// a top-level variable.
+List<_ClassCollection> _classLevelCollections(String source) {
+  final result = <_ClassCollection>[];
+  for (final a in _annotation.allMatches(source)) {
+    var i = a.end;
+    while (true) {
+      final ws = RegExp(r'\s*').matchAsPrefix(source, i)!;
+      i = ws.end;
+      final head = _annotationHead.matchAsPrefix(source, i);
+      if (head == null) break;
+      i = head.end;
+      final paren = RegExp(r'\s*\(').matchAsPrefix(source, i);
+      if (paren != null) {
+        final close = closingBracket(source, paren.end - 1);
+        if (close < 0) break;
+        i = close + 1;
+      }
+    }
+    final header = _classHeader.matchAsPrefix(source, i);
+    if (header == null) continue;
+    result.add(
+      _ClassCollection(
+        a.start,
+        a.end,
+        header.group(1)!,
+        CollectionAnnotation(
+          a.group(1)!.trim(),
+          a.group(3)!,
+          a.group(5) ?? _camelCase(a.group(3)!.split('/').last),
+        ),
+      ),
+    );
+  }
+  return result;
+}
+
+List<RefDeclaration> _classLevelDeclarations(String source) {
+  final byClass = <String, List<CollectionAnnotation>>{};
+  for (final c in _classLevelCollections(source)) {
+    (byClass[c.className] ??= []).add(c.annotation);
+  }
+  return [
+    for (final MapEntry(:key, :value) in byClass.entries)
+      RefDeclaration('${_lowerFirst(key)}Ref', value, classLevel: true),
+  ];
+}
+
 /// Rewrites one Dart file. [declarations] holds every reference declaration
 /// in the project, so call sites in other files resolve.
 MigrationResult migrateDartSource(
@@ -102,14 +174,28 @@ MigrationResult migrateDartSource(
   var out = source;
   out = _rewriteImports(out);
   out = _rewriteDeclarations(out);
+  out = _rewriteClassCollections(out);
   out = _annotateModels(out, source);
   out = out.replaceAll('@Id()', '@DocumentIdField()');
   // `@Min`/`@Max` stay: firestore_odm checks them on write. Only the
   // constructor assertion cloud_firestore_odm generated goes away.
   out = out.replaceAll(RegExp(r'[ \t]*_\$assert\w+\(this\);[ \t]*\n'), '');
   out = _rewriteFirestoreBuilders(out, declarations);
+  final (constructed, locals) = _rewriteReferenceConstructors(
+    out,
+    declarations,
+  );
+  out = constructed;
   for (final declaration in declarations) {
-    out = _rewriteRefChains(out, declaration);
+    out = _rewriteRefChains(
+      out,
+      declaration.variable,
+      declaration.odmVariable,
+      declaration.collections,
+    );
+  }
+  for (final local in locals) {
+    out = _rewriteRefChains(out, local, '', const []);
   }
   out = _rewriteCalls(out);
   final followUps = [
@@ -162,18 +248,24 @@ String _rewriteImports(String source) {
 String _rewriteDeclarations(String source) =>
     source.replaceAllMapped(_declaration, (m) {
       final declaration = collectDeclarations(m.group(0)!).single;
-      final root = declaration.collections
-          .where((c) => !c.isSubcollection)
-          .firstOrNull;
-      final annotations = [
-        for (final c in declaration.collections)
-          "@Collection<${c.type}>('${c.path}')",
-      ].join('\n');
-      final ref = root == null
-          ? ''
-          : '\nfinal ${declaration.variable} = '
-                '${declaration.odmVariable}.${collectionAccessor(root.path)};';
-      return '''
+      return _schemaBlock(declaration, withRef: true);
+    });
+
+/// The schema class, `@Schema()` constant and ODM variable for [declaration],
+/// plus the `final xRef = xOdm.accessor;` variable the old code declared.
+String _schemaBlock(RefDeclaration declaration, {required bool withRef}) {
+  final root = declaration.collections
+      .where((c) => !c.isSubcollection)
+      .firstOrNull;
+  final annotations = [
+    for (final c in declaration.collections)
+      "@Collection<${c.type}>('${c.path}')",
+  ].join('\n');
+  final ref = root == null || !withRef
+      ? ''
+      : '\nfinal ${declaration.variable} = '
+            '${declaration.odmVariable}.${collectionAccessor(root.path)};';
+  return '''
 class ${declaration.schemaClass} extends FirestoreSchema {
   const ${declaration.schemaClass}();
 }
@@ -183,7 +275,74 @@ $annotations
 const ${declaration.schemaConstant} = ${declaration.schemaClass}();
 
 final ${declaration.odmVariable} = FirestoreODM(${declaration.schemaConstant});$ref''';
-    });
+}
+
+/// `@Collection` is only allowed on a top-level variable in firestore_odm, so
+/// a class-level annotation moves into a schema declared at the end of the
+/// file (the file already has the `part` the generated code goes into).
+String _rewriteClassCollections(String source) {
+  final found = _classLevelCollections(source);
+  if (found.isEmpty) return source;
+  var out = source;
+  for (final c in found.reversed) {
+    var end = c.end;
+    final tail = RegExp(r'[ \t]*\r?\n').matchAsPrefix(out, end);
+    if (tail != null) end = tail.end;
+    out = out.replaceRange(c.start, end, '');
+  }
+  final blocks = [
+    for (final d in _classLevelDeclarations(source))
+      _schemaBlock(d, withRef: false),
+  ];
+  return '${out.trimRight()}\n\n${blocks.join('\n\n')}\n';
+}
+
+final _referenceConstructor = RegExp(r'\b(\w+?)CollectionReference\s*\(');
+
+/// Rewrites `MovieCollectionReference()` and `MovieCollectionReference(db)`
+/// for a model with a root collection to the typed collection of its schema.
+/// Returns the source and the local variables the result was assigned to, so
+/// their call chains can be rewritten too.
+(String, Set<String>) _rewriteReferenceConstructors(
+  String source,
+  List<RefDeclaration> declarations,
+) {
+  final roots = <String, (RefDeclaration, CollectionAnnotation)>{};
+  for (final d in declarations) {
+    for (final c in d.collections.where((c) => !c.isSubcollection)) {
+      roots.putIfAbsent(c.type.split('<').first, () => (d, c));
+    }
+  }
+  final locals = <String>{};
+  final out = StringBuffer();
+  var i = 0;
+  for (final m in _referenceConstructor.allMatches(source)) {
+    final target = roots[m.group(1)!];
+    final open = m.end - 1;
+    final close = closingBracket(source, open);
+    if (target == null || close < 0 || m.start < i) continue;
+    final (d, c) = target;
+    final args = splitArguments(source.substring(open + 1, close));
+    if (args.length > 1 || (args.isNotEmpty && args.single.name != null)) {
+      continue;
+    }
+    final accessor = collectionAccessor(c.path);
+    final replacement = args.isEmpty
+        ? '${d.odmVariable}.$accessor'
+        : 'FirestoreODM(${d.schemaConstant}, firestore: ${args.single.value})'
+              '.$accessor';
+    final assigned = RegExp(
+      r'(?:final|var)\s+(\w+)\s*=\s*$',
+    ).firstMatch(source.substring(math.max(0, m.start - 80), m.start));
+    if (assigned != null) locals.add(assigned.group(1)!);
+    out
+      ..write(source.substring(i, m.start))
+      ..write(replacement);
+    i = close + 1;
+  }
+  out.write(source.substring(i));
+  return (out.toString(), locals);
+}
 
 /// Adds `@firestoreOdm` to the model classes this file declares and uses in
 /// a `@Collection`, unless they already carry it.
@@ -213,14 +372,19 @@ String _annotateModels(String source, String original) {
 
 /// Rewrites call chains that start at a reference variable: subcollection
 /// access, `add`, and `snapshots()`.
-String _rewriteRefChains(String source, RefDeclaration declaration) {
+String _rewriteRefChains(
+  String source,
+  String variable,
+  String odmVariable,
+  List<CollectionAnnotation> collections,
+) {
   final subs = {
-    for (final c in declaration.collections.where((c) => c.isSubcollection))
+    for (final c in collections.where((c) => c.isSubcollection))
       if (c.path.split('/').where((s) => s == '*').length == 1)
         c.name: subcollectionAccessor(c.path),
   };
   var out = source;
-  final start = RegExp('\\b${declaration.variable}\\b');
+  final start = RegExp('\\b$variable\\b');
   var from = 0;
   while (true) {
     final m = start.firstMatch(out.substring(from));
@@ -231,17 +395,14 @@ String _rewriteRefChains(String source, RefDeclaration declaration) {
     for (final entry in subs.entries) {
       chain = chain.replaceAllMapped(
         RegExp(
-          '^${declaration.variable}\\s*\\.doc\\(((?:[^()]|\\([^()]*\\))+)\\)'
+          '^$variable\\s*\\.doc\\(((?:[^()]|\\([^()]*\\))+)\\)'
           '\\s*\\.${entry.key}\\b',
         ),
-        (s) => '${declaration.odmVariable}.${entry.value}(${s[1]})',
+        (s) => '$odmVariable.${entry.value}(${s[1]})',
       );
     }
     chain = chain
-        .replaceFirst(
-          RegExp('^${declaration.variable}\\.add\\('),
-          '${declaration.variable}.create(',
-        )
+        .replaceFirst(RegExp('^$variable\\.add\\('), '$variable.create(')
         .replaceAll(RegExp(r'\.snapshots\(\s*\)'), '.stream');
     out = out.replaceRange(chainStart, chainEnd, chain);
     from = chainStart + math.max(chain.length, 1);
@@ -472,9 +633,58 @@ List<FollowUp> _followUps(String source, List<RefDeclaration> declarations) {
         'doc() without an id: call create(model) to get a generated id.',
       ));
   }
+  final models = {
+    for (final d in declarations)
+      for (final c in d.collections) c.type.split('<').first,
+  };
+  final rootModels = {
+    for (final d in declarations)
+      for (final c in d.collections.where((c) => !c.isSubcollection))
+        c.type.split('<').first,
+  };
+  if (models.isNotEmpty) {
+    final names = models.map(RegExp.escape).join('|');
+    final rootNames = rootModels.isEmpty
+        ? '(?!)'
+        : rootModels.map(RegExp.escape).join('|');
+    for (final d in declarations) {
+      checks.add((
+        RegExp('\\b${d.variable}\\b[^;\\n]*\\.reference\\b'),
+        '.reference: use .ref for the native reference of a typed '
+            'collection or document.',
+      ));
+    }
+    checks
+      ..add((
+        RegExp('\\b(?:$names)DocumentReference\\b'),
+        'generated document reference type: use the typed document of the '
+            'collection, e.g. odm.<collection>(id), or its type from '
+            'firestore_odm.',
+      ))
+      ..add((
+        RegExp(
+          '\\b(?:$names)CollectionReference\\b(?!\\s*\\()|'
+          '\\b(?!(?:$rootNames)CollectionReference\\b)'
+          '(?:$names)CollectionReference\\s*\\(',
+        ),
+        'generated collection reference the codemod could not rewrite: use '
+            'the typed collection from the schema, e.g. moviesOdm.movies, or '
+            'moviesOdm.moviesComments(movieId) for a subcollection.',
+      ))
+      ..add((
+        RegExp('\\b(?:$names)(?:Query|Document|QueryDocument)Snapshot\\b'),
+        'generated snapshot type: firestore_odm returns the model itself '
+            '(T? for a document, List<T> for a query).',
+      ));
+  }
   for (var i = 0; i < lines.length; i++) {
     for (final (pattern, message) in checks) {
-      if (pattern.hasMatch(lines[i])) result.add(FollowUp(i + 1, message));
+      if (!pattern.hasMatch(lines[i])) continue;
+      if (message.startsWith('generated snapshot type') &&
+          _firestoreBuilderSnapshot.hasMatch(lines[i])) {
+        continue;
+      }
+      result.add(FollowUp(i + 1, message));
     }
   }
   return result;
