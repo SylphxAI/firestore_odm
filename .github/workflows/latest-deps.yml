@@ -1,0 +1,72 @@
+name: Latest dependencies
+
+# Early warning: a major cloud_firestore, analyzer or source_gen release that
+# the constraints do not yet allow breaks every user once we lag it. Weekly
+# (and by hand) this resolves the packages against the latest releases in a
+# scratch copy and runs generate, analyze and the tests. A failure opens or
+# updates one issue; a pass closes it. Not a required check.
+
+on:
+  schedule:
+    - cron: '17 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: latest-deps
+  cancel-in-progress: false
+
+jobs:
+  latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    env:
+      ISSUE_TITLE: Latest dependencies break the build
+      REPORT: ${{ github.workspace }}/latest-deps-report.md
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-flutter
+
+      - name: Check against the latest dependencies
+        id: check
+        continue-on-error: true
+        run: bash scripts/check-latest-deps.sh
+
+      - name: Report
+        if: always()
+        run: cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update or close the issue
+        if: always() && steps.check.outcome != 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OUTCOME: ${{ steps.check.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          number="$(gh issue list --state open --search "\"$ISSUE_TITLE\" in:title" \
+            --json number,title --jq "[.[] | select(.title == env.ISSUE_TITLE)][0].number // empty")"
+          if [ "$OUTCOME" = success ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "Passing again against the latest dependencies: $RUN_URL"
+            fi
+            exit 0
+          fi
+          body="$(printf '%s\n\nRun: %s\n' "$(cat "$REPORT")" "$RUN_URL")"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body "$body"
+          fi
+
+      - name: Fail when the latest dependencies break the build
+        if: steps.check.outcome == 'failure'
+        run: exit 1
