@@ -58,8 +58,11 @@ await db.users('kim').patch(($) => [$.profile.followers.increment(1)]);
 Android, iOS, macOS, Windows and web: the platforms `cloud_firestore`
 supports. It needs Dart 3.8 or later and `cloud_firestore` 6.
 
-The Firebase Admin SDK for server-side Dart is not a target: firestore_odm
-wraps the client SDK and depends on Flutter.
+Server-side Dart is not supported yet: firestore_odm wraps the client SDK and
+depends on Flutter. Google now publishes an official Dart Admin SDK
+(`firebase_admin_sdk`, with `google_cloud_firestore`), so server and pure-Dart
+support is planned in phases; see the
+[design](https://github.com/SylphxAI/firestore_odm/blob/main/docs/design/server-support.md).
 
 ## Next
 
