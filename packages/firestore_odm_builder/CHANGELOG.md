@@ -1,3 +1,8 @@
+## 5.3.0
+
+- Released with firestore_odm 5.3.0; generated output is byte-identical to
+  5.2.0. The `migrate` codemod now writes `^5.3.0` into migrated pubspecs.
+
 ## 5.2.0
 
 - New: `@Min`/`@Max` bounds are enforced by the generated converters on `set`,

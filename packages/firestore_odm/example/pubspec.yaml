@@ -8,13 +8,13 @@ environment:
 dependencies:
   cloud_firestore: ^6.4.0
   firebase_core: ^4.0.0
-  firestore_odm: ^5.2.0
+  firestore_odm: ^5.3.0
   flutter:
     sdk: flutter
 
 dev_dependencies:
   build_runner: ^2.4.13
   fake_cloud_firestore: ^4.1.0
-  firestore_odm_builder: ^5.2.0
+  firestore_odm_builder: ^5.3.0
   flutter_test:
     sdk: flutter
