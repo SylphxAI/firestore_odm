@@ -10,7 +10,10 @@ aggregates, transactions, batches and streams. The maintained successor to
 - Owns the three pub.dev packages, the generated API, the example, the
   documentation site (GitHub Pages) and the release workflow.
 - Targets the client SDK (`cloud_firestore`) on the platforms it supports.
-  The Firebase Admin SDK and pure-Dart servers are not targets (#44).
+  Server and pure-Dart support is planned in phases, now that an official
+  Dart Admin SDK exists (`firebase_admin_sdk`, `google_cloud_firestore`); see
+  [docs/design/server-support.md](docs/design/server-support.md). Until it
+  ships, the packages target Flutter only (#44).
 - Does not own application schemas, Firebase projects or security rules.
 
 ## Delivery
