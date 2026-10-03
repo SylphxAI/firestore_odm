@@ -1,8 +1,12 @@
 /// The typed document surface: get/stream/set/patch/delete.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:cloud_firestore/cloud_firestore.dart'
+    as firestore
+    show DocumentReference, GetOptions;
 
+import 'backend/cloud_firestore_backend.dart';
+import 'backend/odm_backend.dart';
 import 'firestore_builder.dart';
 import 'patch.dart';
 import 'schema.dart';
@@ -25,6 +29,10 @@ class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
   /// The underlying Firestore document reference (escape hatch).
   final firestore.DocumentReference<Map<String, dynamic>> ref;
 
+  late final OdmDocument _doc = CloudFirestoreBackend(
+    ref.firestore,
+  ).wrapDocument(ref);
+
   final JsonSerializer<T> _toJson;
   final JsonDeserializer<T> _fromJson;
   final String? documentIdField;
@@ -33,14 +41,14 @@ class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
   /// The document data, or null when the document does not exist. Pass
   /// [options] to read from the cache or the server only.
   Future<T?> get([firestore.GetOptions? options]) async {
-    final snapshot = await ref.get(options);
+    final snapshot = await _doc.get(options);
     if (!snapshot.exists) return null;
     return processDocumentSnapshot(snapshot, _fromJson, documentIdField);
   }
 
   /// Live stream of the document; emits null when it does not exist.
   @override
-  Stream<T?> get stream => ref.snapshots().map(
+  Stream<T?> get stream => _doc.snapshots().map(
     (snapshot) => snapshot.exists
         ? processDocumentSnapshot(snapshot, _fromJson, documentIdField)
         : null,
@@ -51,7 +59,7 @@ class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
 
   /// Replaces this document.
   Future<void> set(T value) async {
-    await ref.set(
+    await _doc.set(
       toFirestoreData(_toJson, value, documentIdField: documentIdField),
     );
   }
@@ -59,11 +67,11 @@ class FirestoreDocument<S extends FirestoreSchema, T, P extends PatchBuilder<T>>
   /// Applies typed patch operations to this document.
   Future<void> patch(List<UpdateOperation> Function(P builder) patches) async {
     final operations = patches(_patchBuilderFactory());
-    final updateMap = operationsToMap(operations);
+    final updateMap = operationsToMap(operations, _doc.backend.fieldValues);
     if (updateMap.isEmpty) return;
-    await ref.update(updateMap);
+    await _doc.update(updateMap);
   }
 
   /// Deletes this document.
-  Future<void> delete() => ref.delete();
+  Future<void> delete() => _doc.delete();
 }

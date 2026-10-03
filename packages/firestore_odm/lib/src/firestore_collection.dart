@@ -8,9 +8,13 @@
 /// - [delete]: `doc.delete()`.
 library;
 
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:cloud_firestore/cloud_firestore.dart'
+    as firestore
+    show CollectionReference, GetOptions;
 
 import 'aggregate.dart';
+import 'backend/cloud_firestore_backend.dart';
+import 'backend/odm_backend.dart';
 import 'batch.dart';
 import 'exceptions.dart';
 import 'filter_builder.dart';
@@ -53,6 +57,10 @@ class FirestoreCollection<
   /// The underlying Firestore collection reference (escape hatch).
   final firestore.CollectionReference<Map<String, dynamic>> ref;
 
+  late final OdmCollection _col = CloudFirestoreBackend(
+    ref.firestore,
+  ).wrapCollection(ref);
+
   final JsonSerializer<T> _toJson;
   final JsonDeserializer<T> _fromJson;
 
@@ -89,7 +97,7 @@ class FirestoreCollection<
       value,
       documentIdField: documentIdField,
     );
-    final docRef = await ref.add(data);
+    final docRef = await _col.add(data);
     return docRef.id;
   }
 
@@ -98,14 +106,14 @@ class FirestoreCollection<
   Future<void> set(T value, {String? id}) async {
     if (id != null) {
       validateDocumentId(id);
-      await ref
+      await _col
           .doc(id)
           .set(
             toFirestoreData(_toJson, value, documentIdField: documentIdField),
           );
     } else {
       final result = _serializeWithId(value);
-      await ref.doc(result.documentId!).set(result.data);
+      await _col.doc(result.documentId!).set(result.data);
     }
   }
 
@@ -116,15 +124,15 @@ class FirestoreCollection<
   ) async {
     validateDocumentId(id);
     final operations = patches(_patchBuilderFactory());
-    final updateMap = operationsToMap(operations);
+    final updateMap = operationsToMap(operations, _col.backend.fieldValues);
     if (updateMap.isEmpty) return;
-    await ref.doc(id).update(updateMap);
+    await _col.doc(id).update(updateMap);
   }
 
   /// Deletes the document at [id].
   Future<void> delete(String id) async {
     validateDocumentId(id);
-    await ref.doc(id).delete();
+    await _col.doc(id).delete();
   }
 
   ({Map<String, dynamic> data, String? documentId}) _serializeWithId(T value) {
@@ -189,7 +197,7 @@ class FirestoreCollection<
   Future<void> deleteAll() => _query().deleteAll();
 
   Query<S, T, P, F, OB, AB> _query() => Query<S, T, P, F, OB, AB>(
-    query: ref,
+    query: _col,
     toJson: _toJson,
     fromJson: _fromJson,
     documentIdField: documentIdField,

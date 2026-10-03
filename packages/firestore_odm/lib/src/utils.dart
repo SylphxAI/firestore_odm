@@ -8,6 +8,7 @@ import 'dart:convert' show utf8;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
 
+import 'backend/odm_backend.dart';
 import 'exceptions.dart';
 import 'types.dart';
 
@@ -58,14 +59,14 @@ Map<String, dynamic> toFirestoreData<T>(
 
 /// Deserializes a query snapshot into a list of models.
 List<T> processQuerySnapshot<T>(
-  firestore.QuerySnapshot<Map<String, dynamic>> snapshot,
+  OdmQuerySnapshot snapshot,
   JsonDeserializer<T> fromJson,
   String? documentIdField,
 ) {
   return snapshot.docs
       .map(
         (doc) =>
-            fromFirestoreData(fromJson, doc.data(), documentIdField, doc.id),
+            fromFirestoreData(fromJson, doc.data()!, documentIdField, doc.id),
       )
       .toList();
 }
@@ -73,7 +74,7 @@ List<T> processQuerySnapshot<T>(
 /// Deserializes a document snapshot; throws [FirestoreODMDocumentException]
 /// when the document does not exist.
 T processDocumentSnapshot<T>(
-  firestore.DocumentSnapshot<Map<String, dynamic>> snapshot,
+  OdmDocumentSnapshot snapshot,
   JsonDeserializer<T> fromJson,
   String? documentIdField,
 ) {
@@ -82,7 +83,7 @@ T processDocumentSnapshot<T>(
     throw FirestoreODMDocumentException(
       'Document does not exist',
       code: 'not_found',
-      documentPath: snapshot.reference.path,
+      documentPath: snapshot.path,
     );
   }
   return fromFirestoreData(fromJson, data, documentIdField, snapshot.id);

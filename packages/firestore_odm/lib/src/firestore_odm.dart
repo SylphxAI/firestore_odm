@@ -4,6 +4,8 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart' show FirebaseFirestore;
 
+import 'backend/cloud_firestore_backend.dart';
+import 'backend/odm_backend.dart';
 import 'batch.dart';
 import 'schema.dart';
 import 'transaction.dart';
@@ -15,11 +17,15 @@ import 'transaction.dart';
 /// final users = await db.users.where(($) => $.isActive(isEqualTo: true)).get();
 /// ```
 class FirestoreODM<S extends FirestoreSchema> {
-  FirestoreODM(this.schema, {FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreODM(S schema, {FirebaseFirestore? firestore})
+    : this._(schema, firestore ?? FirebaseFirestore.instance);
+
+  FirestoreODM._(this.schema, this._firestore)
+    : _backend = CloudFirestoreBackend(_firestore);
 
   final S schema;
   final FirebaseFirestore _firestore;
+  final OdmBackend _backend;
 
   /// The Firestore instance backing this ODM.
   FirebaseFirestore get firestore => _firestore;
@@ -30,8 +36,8 @@ class FirestoreODM<S extends FirestoreSchema> {
   Future<void> runTransaction(
     Future<void> Function(TransactionContext<S> context) cb,
   ) {
-    return _firestore.runTransaction((transaction) async {
-      final context = TransactionContext<S>(transaction);
+    return _backend.runTransaction((transaction) async {
+      final context = TransactionContext<S>(transaction, _backend);
       await cb(context);
       context.flush();
     });
