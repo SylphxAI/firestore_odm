@@ -1,0 +1,160 @@
+name: Verify
+
+# Everything the merge-queue gate drops: unit and generated-code tests, API
+# docs, publish dry run, pub.dev score, the docs site, macOS/Windows tests and
+# the Firestore emulator end-to-end tests. Runs on each push to main, on a
+# pull request marked ready (ci.yml calls it) and by hand. A running verify on
+# main is never cancelled. The `verified` job is the marker Release reads.
+
+on:
+  push:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+
+jobs:
+  changes:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.c.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        id: c
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!LICENSE'
+              - '!CHANGELOG.md'
+              - '!CONTRIBUTING.md'
+              - '!SECURITY.md'
+
+  full:
+    needs: changes
+    if: (needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch') && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-flutter
+      - name: Generate code
+        run: melos run generate
+      - name: Test (unit, generated code, benchmarks)
+        run: melos run test:all --no-select
+      - name: API docs
+        run: melos exec -c 1 --scope="firestore_odm,firestore_odm_annotation,firestore_odm_builder" -- 'dart doc --validate-links --output "$(mktemp -d)"'
+      - name: Publish dry run
+        run: melos run publish:dry-run --no-select
+      - name: pub.dev score (pana)
+        # Allows 10 lost points: pana also scores "latest dependency
+        # versions", which moves with outside releases. Dependencies resolve
+        # from pub.dev, and pana strips overrides, so a package that needs a
+        # sibling version not yet on pub.dev cannot be scored here. The
+        # release publishes firestore_odm_annotation first and pub.dev scores
+        # the dependents right after; this step scores them once the
+        # annotation version they need exists.
+        run: |
+          # firestore_odm's README is a link to the repository README; publish
+          # copies the file, so give pana the copy too.
+          cp --remove-destination README.md packages/firestore_odm/README.md
+          dart pub global activate pana
+          annotation="$(sed -n 's/^version:[[:space:]]*//p' packages/firestore_odm_annotation/pubspec.yaml | tr -d "\"'")"
+          scope="firestore_odm_annotation"
+          if curl -fsS -o /dev/null "https://pub.dev/api/packages/firestore_odm_annotation/versions/$annotation"; then
+            scope="$scope,firestore_odm,firestore_odm_builder"
+          else
+            echo "::notice::firestore_odm_annotation $annotation is not on pub.dev yet; firestore_odm and firestore_odm_builder are scored after the release publishes it."
+          fi
+          melos exec --scope="$scope" -- dart pub global run pana --no-warning --exit-code-threshold 10 .
+
+  site:
+    needs: changes
+    if: (needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch') && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci
+      - name: Build (fails on dead links)
+        run: npm run build
+
+  platforms:
+    needs: changes
+    if: (needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch') && github.event.repository.private == false
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-flutter
+      - name: Generate code
+        run: melos run generate
+      - name: Test
+        run: melos run test:all --no-select
+
+  e2e-emulator:
+    needs: changes
+    if: (needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch') && github.event.repository.private == false
+    # The Firestore emulator checks storage types, index errors and real
+    # query semantics that the in-memory fake cannot. Windows: cloud_firestore
+    # has no Linux desktop implementation, and hosted Windows runners can run
+    # the desktop test app.
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: ./.github/actions/setup-flutter
+      - name: Generate code
+        run: melos run generate
+      - name: Emulator end-to-end tests
+        working-directory: apps/flutter_example
+        shell: bash
+        run: |
+          npx --yes firebase-tools@latest emulators:exec \
+            --only firestore --project demo-project \
+            "flutter test integration_test -d windows --timeout 5m"
+
+  verified:
+    name: verified
+    if: always() && github.event.repository.private == false
+    needs: [changes, full, site, platforms, e2e-emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: SylphxAI/.github/.github/actions/needs-pass@05ac6474b96425bcb4965addd025a93e061b66c4
+        with:
+          needs: ${{ toJSON(needs) }}
+          required: changes

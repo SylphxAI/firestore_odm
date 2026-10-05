@@ -1,55 +1,42 @@
 name: CI
 
-# Each check runs once per landed change. Pull requests run the Linux checks;
-# the merge queue runs the macOS/Windows tests and the Firestore emulator
-# end-to-end tests. `ci-success` is the one required status check for both.
+# Optimistic merge. Merge groups and draft pull requests run the fast lanes
+# only (brand, links, format, code generation, analyze). A pull request marked
+# ready also runs the full suite (verify.yml); after merge verify.yml runs
+# again on main. `ci-ok` is the one required check. Public repository:
+# GitHub-hosted standard runners, guarded so a private fork never runs them.
 #
 # Flutter is pinned in .github/actions/setup-flutter; bump it on purpose.
 
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+
 jobs:
-  changes:
-    if: github.event_name != 'merge_group'
+  main-state:
+    if: github.event_name == 'merge_group' && github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      code: ${{ steps.c.outputs.code }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
-        id: c
+      - uses: SylphxAI/.github/.github/actions/main-red-gate@05ac6474b96425bcb4965addd025a93e061b66c4
         with:
-          predicate-quantifier: every
-          filters: |
-            code:
-              - '**'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!LICENSE'
-              - '!CHANGELOG.md'
-              - '!CONTRIBUTING.md'
-              - '!SECURITY.md'
+          mode: observe
 
-  # `check` and `site` are skipped (so `ci-success` still passes) when a change
-  # touches only files no check reads: licence, changelog, contributing,
-  # security, issue templates.
-  check:
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')
+  lint:
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -70,96 +57,9 @@ jobs:
         run: melos run generate
       - name: Analyze
         run: melos run analyze --no-select
-      - name: Test (unit, generated code, benchmarks)
-        run: melos run test:all --no-select
-      - name: API docs
-        run: melos exec -c 1 --scope="firestore_odm,firestore_odm_annotation,firestore_odm_builder" -- 'dart doc --validate-links --output "$(mktemp -d)"'
-      - name: Publish dry run
-        run: melos run publish:dry-run --no-select
-      - name: pub.dev score (pana)
-        # Allows 10 lost points: pana also scores "latest dependency
-        # versions", which moves with outside releases. Dependencies resolve
-        # from pub.dev, and pana strips overrides, so a package that needs a
-        # sibling version not yet on pub.dev cannot be scored here. The
-        # release publishes firestore_odm_annotation first and pub.dev scores
-        # the dependents right after; this step scores them once the
-        # annotation version they need exists.
-        run: |
-          # firestore_odm's README is a link to the repository README; publish
-          # copies the file, so give pana the copy too.
-          cp --remove-destination README.md packages/firestore_odm/README.md
-          dart pub global activate pana
-          annotation="$(sed -n 's/^version:[[:space:]]*//p' packages/firestore_odm_annotation/pubspec.yaml | tr -d "\"'")"
-          scope="firestore_odm_annotation"
-          if curl -fsS -o /dev/null "https://pub.dev/api/packages/firestore_odm_annotation/versions/$annotation"; then
-            scope="$scope,firestore_odm,firestore_odm_builder"
-          else
-            echo "::notice::firestore_odm_annotation $annotation is not on pub.dev yet; firestore_odm and firestore_odm_builder are scored after the release publishes it."
-          fi
-          melos exec --scope="$scope" -- dart pub global run pana --no-warning --exit-code-threshold 10 .
-
-  site:
-    needs: changes
-    if: github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: docs
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: docs/package-lock.json
-      - run: npm ci
-      - name: Build (fails on dead links)
-        run: npm run build
-
-  platforms:
-    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [macos-latest, windows-latest]
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup-flutter
-      - name: Generate code
-        run: melos run generate
-      - name: Test
-        run: melos run test:all --no-select
-
-  e2e-emulator:
-    # The Firestore emulator checks storage types, index errors and real
-    # query semantics that the in-memory fake cannot. Windows: cloud_firestore
-    # has no Linux desktop implementation, and hosted Windows runners can run
-    # the desktop test app.
-    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch'
-    runs-on: windows-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '21'
-      - uses: ./.github/actions/setup-flutter
-      - name: Generate code
-        run: melos run generate
-      - name: Emulator end-to-end tests
-        working-directory: apps/flutter_example
-        shell: bash
-        run: |
-          npx --yes firebase-tools@latest emulators:exec \
-            --only firestore --project demo-project \
-            "flutter test integration_test -d windows --timeout 5m"
 
   identifiers:
-    if: github.event_name != 'merge_group'
+    if: github.event_name != 'merge_group' && github.event.repository.private == false
     name: Identifiers
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -171,20 +71,19 @@ jobs:
       - name: Non-v7 ids on added lines (owner standards/identifiers.md)
         uses: SylphxAI/.github/.github/actions/identifiers@e4a5ea41cbcc87cd93914f89f0d7c3981c868bf9
 
-  ci-success:
-    if: always()
-    needs: [changes, check, site, identifiers, platforms, e2e-emulator]
+  suite:
+    if: github.event_name != 'merge_group' && !github.event.pull_request.draft && github.event.repository.private == false
+    uses: ./.github/workflows/verify.yml
+    secrets: inherit
+
+  ci-ok:
+    if: always() && github.event.repository.private == false
+    needs: [main-state, lint, identifiers, suite]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: All jobs that ran passed
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "Job results: $RESULTS"
-          for result in $RESULTS; do
-            case "$result" in
-              success|skipped) ;;
-              *) exit 1 ;;
-            esac
-          done
+      - uses: SylphxAI/.github/.github/actions/needs-pass@05ac6474b96425bcb4965addd025a93e061b66c4
+        with:
+          needs: ${{ toJSON(needs) }}
+          required: lint
+          required-unless-merge-group: ${{ github.event.pull_request.draft && 'identifiers' || 'identifiers,suite' }}
