@@ -58,3 +58,7 @@ jobs:
     # so the handler's own job enters it and reads the key from it.
     with:
       verify-workflow: verify.yml
+      # verify.yml's workflow_dispatch takes no inputs, so a culprit-trace
+      # dispatch must send none: the handler's default `lanes` would be
+      # refused with HTTP 422 and the trace would never revert.
+      lane-input: ""
