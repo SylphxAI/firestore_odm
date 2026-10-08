@@ -22,10 +22,10 @@ the layout, commands and release steps; [PROJECT.md](PROJECT.md) the scope;
 
 ## Judged by
 
-- `ci-success`: pull request runs format, generate, analyze, `melos run
-  test:all`, API docs, publish dry run, pana score and the docs site build; the
-  merge queue adds macOS/Windows tests and the emulator tests
-  (`melos run test:e2e`).
+- `ci-ok`: the merge queue runs format, generate and analyze; `verify.yml`
+  (a ready pull request, and main) adds `melos run test:all`, API docs,
+  publish dry run, pana score, the docs site build, macOS/Windows tests and
+  the emulator tests (`melos run test:e2e`).
 - The fake Firestore does not model every query (for example filtering by a
   `DocumentReference`); cover those in `integration_test/`.
 - `benchmarks/run.sh` for generation and runtime cost; the pinned shared brand check ([usage](brand/README.md)) for brand files.

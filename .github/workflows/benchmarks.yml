@@ -1,3 +1,4 @@
+# optimistic-merge: advisory
 name: Benchmarks
 
 # Code generation time and runtime cost of firestore_odm, cloud_firestore_odm

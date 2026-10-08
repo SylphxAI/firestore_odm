@@ -18,8 +18,8 @@ aggregates, transactions, batches and streams. The maintained successor to
 
 ## Delivery
 
-- Required check: `ci-success` (pull request: Linux checks; merge queue:
-  macOS/Windows tests and Firestore emulator tests).
+- Required check: `ci-ok` (merge queue: fast lanes; full suite on a ready
+  pull request and on main in `verify.yml`).
 - Release: a `v<version>` tag on `main` publishes all three packages, waits
   until pub.dev serves each version, and creates the GitHub release.
 - Docs: a push to `main` that touches `docs/` deploys
