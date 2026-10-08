@@ -29,4 +29,6 @@ cmp "$sample/movie.before" "$sample/lib/movie.dart"
 # Test the unpublished head rather than the last pub.dev release. Customers do
 # not need these overrides; the guide uses the published packages.
 printf '\ndependency_overrides:\n  firestore_odm:\n    path: %s/packages/firestore_odm\n  firestore_odm_annotation:\n    path: %s/packages/firestore_odm_annotation\n  firestore_odm_builder:\n    path: %s/packages/firestore_odm_builder\n' "$root" "$root" "$root" >> "$sample/pubspec.yaml"
-(cd "$sample" && flutter pub add dev:fake_cloud_firestore && dart run build_runner build --delete-conflicting-outputs && dart format lib test && flutter analyze && flutter test)
+# Replacing the template pubspec above removed its flutter_lints dependency;
+# restore it so the template's analysis_options.yaml still resolves its include.
+(cd "$sample" && flutter pub add dev:fake_cloud_firestore dev:flutter_lints && dart run build_runner build --delete-conflicting-outputs && dart format lib test && flutter analyze && flutter test)
