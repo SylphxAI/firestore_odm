@@ -159,9 +159,11 @@ dart pub global run firestore_odm_builder:migrate           # preview
 dart pub global run firestore_odm_builder:migrate --apply   # write
 ```
 
-Your Firestore data stays as it is. The
-[migration guide](https://sylphxai.github.io/firestore_odm/guide/migrate-from-cloud-firestore-odm)
-maps every API.
+Start with the
+[10-minute migration walkthrough](https://sylphxai.github.io/firestore_odm/guide/migrate-from-cloud-firestore-odm):
+a sample app, the manual leftovers checklist, API mappings and rollback steps.
+The command changes source files, not your database. Check custom serialization
+against an existing document before shipping.
 
 ## Documentation
 

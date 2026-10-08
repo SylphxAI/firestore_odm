@@ -7,8 +7,126 @@ That release requires `cloud_firestore ^5`, and its generator requires
 `json_serializable`. firestore_odm covers the same ground on current Firebase
 and adds typed updates, aggregates and OR filters.
 
-Your Firestore data does not change. Both packages read and write the same
-documents, so you only migrate code.
+The codemod changes local source files, not your Firestore database. Keep your
+collection paths, document IDs and stored field names unchanged. Before shipping,
+check any custom `fromJson`/`toJson`, `@JsonConverter` or `@JsonKey` mapping against
+an existing document: firestore_odm stores `DateTime` as native Firestore
+`Timestamp`, not an ISO string. Do not rewrite stored data to make a code migration
+pass. Use a compatible converter when your old app used another representation.
+
+## The 10-minute path
+
+Allow about 10 minutes for the small sample below, excluding SDK installation and
+package downloads. This is a walkthrough budget, not a measured guarantee for an
+arbitrary app; handwritten converters and transaction helpers take longer.
+
+Requires Flutter with Dart 3.8.1 or later, Git, and a working `build_runner` setup.
+You do not need Firebase credentials or a running database for the sample.
+
+1. **Checkpoint (1 minute).** Start from a clean working tree and commit the old
+   app, including `pubspec.lock`. Create a migration branch and record the old
+   commit: `git rev-parse HEAD`. Keep that commit until the new client is verified.
+2. **Preview and apply (2 minutes).** Run the commands in step 1 below. Preview
+   does not write anything. Read the file/line leftovers before applying, and
+   review `git diff` afterwards.
+3. **Finish leftovers (4 minutes).** Work through step 2 below, then regenerate.
+   The printed list is heuristic and can include already-rewritten calls or
+   unrelated `.data` accesses. Zero leftovers is not proof that an app compiles.
+4. **Verify (3 minutes).** Run `dart format lib test`, `flutter analyze`, and
+   `flutter test`. On your own app, also test an existing document and the queries,
+   writes, transactions and listeners you use, with your normal emulator tests.
+   Only then ship through your usual release path.
+
+### Try it without touching your app
+
+Create a disposable Flutter app with `flutter create odm_migration_sample` and
+open it. Delete its default `test/widget_test.dart`. Replace `lib/main.dart` with
+`void main() {}` (the sample checks the data API, not a screen).
+
+Add these entries to its `pubspec.yaml`. Keep the Flutter SDK dependency and
+`flutter_test` entry that `flutter create` supplied. The old dependencies are input
+to the migration; do not resolve them before running the codemod.
+
+```yaml
+# migration-sample: dependencies
+dependencies:
+  cloud_firestore: ^5.0.0
+  cloud_firestore_odm: ^1.0.0-dev.88
+  json_annotation: ^4.9.0
+dev_dependencies:
+  build_runner: ^2.4.0
+  cloud_firestore_odm_generator: ^1.0.0-dev.88
+```
+
+Save this as `lib/movie.dart`:
+
+```dart
+// migration-sample: old-model
+import 'package:cloud_firestore_odm/cloud_firestore_odm.dart';
+import 'package:json_annotation/json_annotation.dart';
+
+part 'movie.g.dart';
+
+@JsonSerializable()
+class Movie {
+  Movie({required this.id, required this.title, required this.likes});
+
+  @Id()
+  final String id;
+  final String title;
+  final int likes;
+}
+
+@Collection<Movie>('movies')
+final moviesRef = MovieCollectionReference();
+```
+
+Make the checkpoint, then run step 1. The codemod creates `MoviesSchema`,
+`moviesSchema`, `moviesOdm` and a typed `moviesRef` in the same file. Keep its
+`part 'movie.g.dart';` line. After applying, add the fake used only for tests:
+
+```sh
+flutter pub add dev:fake_cloud_firestore
+```
+
+Save this as `test/migration_test.dart`, generate and run `flutter test`:
+
+```dart
+// migration-sample: verification
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firestore_odm/firestore_odm.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../lib/movie.dart';
+
+void main() {
+  test('existing documents keep their IDs and typed writes keep their fields', () async {
+    final firestore = FakeFirebaseFirestore();
+    await firestore.collection('movies').doc('old-id').set({
+      'title': 'Existing movie',
+      'likes': 1,
+    });
+    final movies = FirestoreODM(moviesSchema, firestore: firestore).movies;
+    final oldMovie = await movies('old-id').get();
+    expect(oldMovie!.id, 'old-id');
+    expect(oldMovie.title, 'Existing movie');
+
+    await movies('old-id').patch(($) => [$.likes.increment(1)]);
+    final matches = await movies
+        .where(($) => $.likes(isGreaterThan: 1))
+        .get();
+    expect(matches.single.id, 'old-id');
+    expect(matches.single.likes, 2);
+    final raw = await firestore.collection('movies').doc('old-id').get();
+    expect(raw.data(), {'title': 'Existing movie', 'likes': 2});
+  });
+}
+```
+
+This test reads a pre-existing document before writing; it does not call
+`Firebase.initializeApp` or connect to production. The same walkthrough is run
+in CI by `scripts/check-migration-guide.sh`. The fake is not a substitute for
+emulator coverage of your own converters, indexes, rules or SDK-specific queries.
 
 ## 1. Run the codemod
 
@@ -27,7 +145,13 @@ dart run build_runner build --delete-conflicting-outputs
 dart analyze
 ```
 
-Commit or stash your work first, so you can review the diff.
+For a Flutter app, use `flutter pub get` and `flutter analyze` in place of the
+`dart` commands above. Run `dart format lib test` after the rewrite. Do not remove
+`json_serializable` or `json_annotation` while other models still use them.
+
+The CLI skips generated `.g.dart` and `.freezed.dart` files. Regenerate those;
+do not hand-edit them. Source directories outside `lib/`, `test/`, `bin/` and
+`integration_test/` are not scanned, so check any custom source locations yourself.
 
 What the codemod rewrites:
 
@@ -187,6 +311,43 @@ it is a relative change, and the server applies it.
 Load the bundle with `FirebaseFirestore.instance.loadBundle(...)` and query
 through the typed collection; the SDK serves matching queries from the
 bundle's cache.
+
+## Roll back safely
+
+If generation, analysis or the sample test fails, stop before releasing. Keep the
+leftovers output and diff for diagnosis. To recover without discarding that work,
+open the checkpoint in a separate worktree:
+
+```sh
+git worktree add ../your_app_before_odm <checkpoint-sha>
+```
+
+Replace `<checkpoint-sha>` with the old commit recorded earlier. In that worktree,
+use the **old Flutter SDK**, run `flutter pub get` against the old lockfile, and
+regenerate with the old builder. Run its normal tests. Your migration branch stays
+intact, so you can fix it or abandon it without a destructive reset.
+
+If a migrated client has already shipped, redeploy the previous tested client
+using your normal release path. A code rollback cannot undo writes made by that
+client. Verify old and new clients can both read your stored representations
+before release; if they cannot, keep the old representation through a converter
+and handle any necessary data migration separately. Never delete collections or
+rewrite documents as a rollback step for this codemod.
+
+## Sharing the guide with someone still on the old package
+
+When answering a migration or dependency-compatibility question in the
+[old package's issue tracker](https://github.com/FirebaseExtended/firestoreodm-flutter/issues),
+link this walkthrough rather than copying the API table into an answer. A concise
+answer is:
+
+> firestore_odm is a separately maintained alternative with a preview-first
+> migration command. The [10-minute sample and migration guide](https://sylphxai.github.io/firestore_odm/guide/migrate-from-cloud-firestore-odm)
+> covers the rewrites, manual leftovers, tests and rollback. It changes source
+> files, not the database; check existing document serialization before shipping.
+
+Use it only where it answers the question; it is not an official Firebase package
+or an automatic drop-in replacement.
 
 ## What you gain
 
