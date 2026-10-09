@@ -81,7 +81,8 @@ class Movie {
 final moviesRef = MovieCollectionReference();
 ```
 
-Make the checkpoint, then run step 1. The codemod creates `MoviesSchema`,
+Make the checkpoint, then run the preview and `--apply` commands from step 1
+and stop before `build_runner`. The codemod creates `MoviesSchema`,
 `moviesSchema`, `moviesOdm` and a typed `moviesRef` in the same file. Keep its
 `part 'movie.g.dart';` line. After applying, add the fake used only for tests:
 
@@ -167,9 +168,9 @@ For a Flutter app, use `flutter pub get` and `flutter analyze` in place of the
 `dart` commands above. Run `dart format lib test` after the rewrite. Do not remove
 `json_serializable` or `json_annotation` while other models still use them.
 If `flutter analyze` reports `non_constant_identifier_names` on generated
-`XToJson` / `XFromJson` functions, add the sample `build.yaml` above before
-generating. Those names are the public converters; the ignore applies only to
-generated files.
+`XToJson` / `XFromJson` functions, add the sample `build.yaml` above and run
+`build_runner` again. Those names are the public converters; the ignore applies
+only to generated files.
 
 The CLI skips generated `.g.dart` and `.freezed.dart` files. Regenerate those;
 do not hand-edit them. Source directories outside `lib/`, `test/`, `bin/` and
