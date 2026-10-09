@@ -16,6 +16,9 @@ guide = (root / 'docs/guide/migrate-from-cloud-firestore-odm.md').read_text()
 blocks = dict(re.findall(r'```(?:dart|yaml)\n(?://|#) migration-sample: ([^\n]+)\n(.*?)\n```', guide, re.S))
 (sample / 'lib/movie.dart').write_text(blocks['old-model'] + '\n')
 (sample / 'test/migration_test.dart').write_text(blocks['verification'] + '\n')
+# Written before build_runner so combining_builder stamps the ignore into
+# movie.g.dart. flutter_lints flags the public MovieToJson / MovieFromJson names.
+(sample / 'build.yaml').write_text(blocks['build-config'] + '\n')
 deps = blocks['dependencies'].replace('dependencies:\n', 'dependencies:\n  flutter:\n    sdk: flutter\n', 1)
 deps = deps.replace('dev_dependencies:\n', 'dev_dependencies:\n  flutter_test:\n    sdk: flutter\n', 1)
 (sample / 'pubspec.yaml').write_text("name: odm_migration_sample\nenvironment:\n  sdk: '>=3.8.1 <4.0.0'\n" + deps + '\n')

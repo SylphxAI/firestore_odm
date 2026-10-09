@@ -89,15 +89,33 @@ Make the checkpoint, then run step 1. The codemod creates `MoviesSchema`,
 flutter pub add dev:fake_cloud_firestore
 ```
 
-Save this as `test/migration_test.dart`, generate and run `flutter test`:
+Save this as `build.yaml` before you generate. The generated converters are
+public functions named after the model (`MovieToJson`, `MovieFromJson`).
+`flutter create` turns on `flutter_lints`, and `flutter analyze` reports
+`non_constant_identifier_names` for those names. This suppresses that lint in
+generated files only:
+
+```yaml
+# migration-sample: build-config
+targets:
+  $default:
+    builders:
+      source_gen|combining_builder:
+        options:
+          ignore_for_file:
+            - non_constant_identifier_names
+```
+
+Save this as `test/migration_test.dart`. Import the model with the package name
+from `flutter create odm_migration_sample` (a relative `lib/` import fails
+`avoid_relative_lib_imports`). Then generate and run `flutter test`:
 
 ```dart
 // migration-sample: verification
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firestore_odm/firestore_odm.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import '../lib/movie.dart';
+import 'package:odm_migration_sample/movie.dart';
 
 void main() {
   test('existing documents keep their IDs and typed writes keep their fields', () async {
@@ -148,6 +166,10 @@ dart analyze
 For a Flutter app, use `flutter pub get` and `flutter analyze` in place of the
 `dart` commands above. Run `dart format lib test` after the rewrite. Do not remove
 `json_serializable` or `json_annotation` while other models still use them.
+If `flutter analyze` reports `non_constant_identifier_names` on generated
+`XToJson` / `XFromJson` functions, add the sample `build.yaml` above before
+generating. Those names are the public converters; the ignore applies only to
+generated files.
 
 The CLI skips generated `.g.dart` and `.freezed.dart` files. Regenerate those;
 do not hand-edit them. Source directories outside `lib/`, `test/`, `bin/` and
