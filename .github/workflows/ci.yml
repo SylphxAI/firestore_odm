@@ -173,9 +173,28 @@ jobs:
       - name: Non-v7 ids on added lines (owner standards/identifiers.md)
         uses: SylphxAI/.github/.github/actions/identifiers@e4a5ea41cbcc87cd93914f89f0d7c3981c868bf9
 
+  # A change that adds a direct chat-API host fails here; chat goes through
+  # Notify. Full history so the check diffs only the lines the change adds.
+  # Every event, including the merge queue: a merge group's diff is the queued
+  # batch, and a required lane that the queue skips has let policy bypasses
+  # through (optimistic-merge R3b, SylphxAI/.github).
+  chat-senders:
+    name: Chat senders
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Direct chat-API hosts on added lines
+        uses: SylphxAI/.github/.github/actions/chat-senders@5cfd55a41435cca8e4b7caf6506faf04ca08d200
+        with:
+          mode: fail
+
   ci-success:
     if: always()
-    needs: [changes, check, site, identifiers, platforms, e2e-emulator]
+    needs: [changes, check, site, identifiers, chat-senders, platforms, e2e-emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -197,7 +216,7 @@ jobs:
   # pass; a failed or cancelled lane fails.
   ci-ok:
     if: always()
-    needs: [changes, check, site, identifiers, platforms, e2e-emulator]
+    needs: [changes, check, site, identifiers, chat-senders, platforms, e2e-emulator]
     # The reserved gate pool (Kueue queue scale-set-gate, never lends): an
     # `if: always()` verdict still runs after its run is cancelled, and that run
     # keeps its concurrency group until it does, so on a busy build pool a
