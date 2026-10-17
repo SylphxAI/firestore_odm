@@ -30,14 +30,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
   firebase_core: ^4.0.0
   cloud_firestore: ^6.4.0
   freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
   firestore_odm:
     path: ../../packages/firestore_odm
-  equatable: ^2.0.7
+  equatable: ^3.0.0
 
 dev_dependencies:
   integration_test:
@@ -46,7 +46,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.9
-  freezed: ^3.0.6
+  freezed: ^4.0.0
   json_serializable: ^6.9.5
   fake_cloud_firestore: ^4.1.0
   test: ^1.25.15
