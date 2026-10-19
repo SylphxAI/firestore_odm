@@ -224,6 +224,6 @@ jobs:
     runs-on: sylphx-linux-control
     timeout-minutes: 5
     steps:
-      - uses: SylphxAI/.github/.github/actions/needs-pass@46ec433892bca8693193049b5ee7441bb916a7ad # main
+      - uses: SylphxAI/.github/.github/actions/needs-pass@000d98547b68d07c4da1c62f534da85f1bd4001b # main
         with:
           needs: ${{ toJSON(needs) }}
