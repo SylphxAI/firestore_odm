@@ -24,4 +24,4 @@ dev_dependencies:
   fake_cloud_firestore: ^3.1.0
   flutter_test:
     sdk: flutter
-  json_serializable: 6.15.0
+  json_serializable: 6.15.1
