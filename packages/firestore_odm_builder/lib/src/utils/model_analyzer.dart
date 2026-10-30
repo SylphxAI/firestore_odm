@@ -93,11 +93,8 @@ const _maxChecker = TypeChecker.typeNamed(
 ({num? min, num? max}) _numericBounds(
   FormalParameterElement parameter,
   InterfaceType type,
+  FieldElement? field,
 ) {
-  final field = type.element.fields
-      .where((f) => f.name == parameter.name)
-      .firstOrNull;
-
   num? boundOf(TypeChecker checker) {
     for (final element in [parameter, if (field != null) field]) {
       for (final annotation in checker.annotationsOf(element)) {
@@ -179,6 +176,10 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
   }
 
   final documentIdParamName = getDocumentIdFieldName(type);
+  final declaredFields = <String?, FieldElement>{};
+  for (final field in type.element.fields) {
+    declaredFields.putIfAbsent(field.name, () => field);
+  }
   final fields = <String, FieldInfo>{};
 
   for (final parameter in constructor.formalParameters) {
@@ -208,7 +209,7 @@ Map<String, FieldInfo> getFields(InterfaceType type) {
             ).annotationsOf(parameter).firstOrNull?.type
             as InterfaceType?;
 
-    final bounds = _numericBounds(parameter, type);
+    final bounds = _numericBounds(parameter, type, declaredFields[paramName]);
 
     fields[paramName] = FieldInfo(
       parameterName: paramName,

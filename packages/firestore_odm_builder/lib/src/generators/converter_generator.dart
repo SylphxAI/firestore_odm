@@ -311,9 +311,11 @@ bool _needsConversion(DartType type) {
 
 /// Generates `XToJson`/`XFromJson` for models without their own converters,
 /// plus per-model private enum helpers.
-List<Spec> generateConverters(InterfaceType type) {
+List<Spec> generateConverters(
+  InterfaceType type,
+  Map<String, FieldInfo> fields,
+) {
   final specs = <Spec>[];
-  final fields = getFields(type);
 
   {
     final entries = <Expression, Expression>{};
@@ -411,7 +413,7 @@ List<Spec> generateConverters(InterfaceType type) {
     );
   }
 
-  specs.addAll(generateEnumHelpers(type));
+  specs.addAll(generateEnumHelpers(type, fields));
   return specs;
 }
 
@@ -420,10 +422,13 @@ String _requireModelName(DartType type) => throw StateError(
 );
 
 /// Generates per-model private enum mapping helpers for every enum field.
-List<Spec> generateEnumHelpers(InterfaceType type) {
+List<Spec> generateEnumHelpers(
+  InterfaceType type,
+  Map<String, FieldInfo> fields,
+) {
   final specs = <Spec>[];
   final seen = <String>{};
-  for (final field in getFields(type).values) {
+  for (final field in fields.values) {
     final enumType = field.type;
     if (!TypeAnalyzer.isEnum(enumType)) continue;
     final enumName = enumType.element!.name;

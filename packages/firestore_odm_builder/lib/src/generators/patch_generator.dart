@@ -19,12 +19,15 @@ Expression _body(Expression expr) {
 }
 
 /// Generates `<Model>PatchBuilder` for [type].
-Class generatePatchBuilder(InterfaceType type) {
+Class generatePatchBuilder(
+  InterfaceType type,
+  Map<String, FieldInfo> modelFields,
+) {
   final modelName = type.element.name;
   final typeParams = type.element.typeParameters;
 
   final fields = <Field>[];
-  for (final field in getFields(type).values) {
+  for (final field in modelFields.values) {
     if (field.isDocumentId) continue;
     fields.add(_generateField(type, field));
   }

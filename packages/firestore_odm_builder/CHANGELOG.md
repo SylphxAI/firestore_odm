@@ -1,3 +1,9 @@
+## Unreleased
+
+- Large models generate faster by sharing field analysis across converters,
+  patches and selectors, and looking up field annotations by name. Generated
+  code and validation behavior are unchanged.
+
 ## 5.3.0
 
 - Generated output is byte-identical to 5.2.0 (the runtime backend seam in
