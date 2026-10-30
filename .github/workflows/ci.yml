@@ -224,6 +224,7 @@ jobs:
     runs-on: sylphx-linux-control
     timeout-minutes: 5
     steps:
-      - uses: SylphxAI/.github/.github/actions/needs-pass@000d98547b68d07c4da1c62f534da85f1bd4001b # main
+      - uses: SylphxAI/.github/.github/actions/needs-pass@96195d86b550ab1205159acb1ae0d75b1fbed47f # main
         with:
           needs: ${{ toJSON(needs) }}
+          required: ${{ format('chat-senders{0}{1}{2}{3}{4}{5}', (github.event_name != 'merge_group') && ',changes' || '', (github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')) && ',check' || '', (github.event_name == 'workflow_dispatch' || (github.event_name != 'merge_group' && needs.changes.outputs.code == 'true')) && ',site' || '', (github.event_name != 'merge_group') && ',identifiers' || '', (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && ',platforms' || '', (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && ',e2e-emulator' || '') }}
