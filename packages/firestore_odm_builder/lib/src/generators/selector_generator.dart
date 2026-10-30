@@ -19,7 +19,11 @@ Expression _body(Expression expr) {
 enum SelectorKind { filter, orderBy, aggregate, pipeline }
 
 /// Generates `<Model><Kind>Builder` (or `PipelineSelector`) for [type].
-Class generateSelector(InterfaceType type, SelectorKind kind) {
+Class generateSelector(
+  InterfaceType type,
+  SelectorKind kind,
+  Map<String, FieldInfo> modelFields,
+) {
   final modelName = type.element.name!;
   final typeParams = type.element.typeParameters;
   final isPipeline = kind == SelectorKind.pipeline;
@@ -29,7 +33,7 @@ Class generateSelector(InterfaceType type, SelectorKind kind) {
       : '${modelName}${_kindSuffix(kind)}';
 
   final fields = <Field>[];
-  for (final field in getFields(type).values) {
+  for (final field in modelFields.values) {
     // Aggregate selectors are only meaningful for numeric fields (or nested
     // models that may contain them).
     if (kind == SelectorKind.aggregate &&

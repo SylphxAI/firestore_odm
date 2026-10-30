@@ -34,13 +34,14 @@ class ModelBuilderGenerator extends Generator {
     for (final cls in classes) {
       final type = cls.thisType;
       final isGeneric = cls.typeParameters.isNotEmpty;
+      final fields = getFields(type);
       specs.addAll([
-        ...generateConverters(type),
-        generatePatchBuilder(type),
-        generateSelector(type, SelectorKind.filter),
-        generateSelector(type, SelectorKind.orderBy),
-        generateSelector(type, SelectorKind.aggregate),
-        if (!isGeneric) ...generatePipelineSurface(type),
+        ...generateConverters(type, fields),
+        generatePatchBuilder(type, fields),
+        generateSelector(type, SelectorKind.filter, fields),
+        generateSelector(type, SelectorKind.orderBy, fields),
+        generateSelector(type, SelectorKind.aggregate, fields),
+        if (!isGeneric) ...generatePipelineSurface(type, fields: fields),
       ]);
     }
 
@@ -50,9 +51,16 @@ class ModelBuilderGenerator extends Generator {
   }
 
   /// Pipeline selector + `pipeline()` extension (experimental, Enterprise).
-  List<Spec> generatePipelineSurface(InterfaceType type) {
+  List<Spec> generatePipelineSurface(
+    InterfaceType type, {
+    Map<String, FieldInfo>? fields,
+  }) {
     final modelName = type.element.name;
-    final selector = generateSelector(type, SelectorKind.pipeline);
+    final selector = generateSelector(
+      type,
+      SelectorKind.pipeline,
+      fields ?? getFields(type),
+    );
 
     final extension = Extension(
       (b) => b
