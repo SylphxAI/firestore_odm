@@ -8,7 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cloud_firestore: ^6.4.0
+  cloud_firestore: ^7.0.0
   firestore_odm:
     path: ../../packages/firestore_odm
   json_annotation: ^4.9.0
