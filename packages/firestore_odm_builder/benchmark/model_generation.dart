@@ -16,7 +16,7 @@ Future<void> main(List<String> args) async {
   final output = args.isEmpty ? null : Directory(args.first);
   output?.createSync(recursive: true);
   final temporary = Directory('benchmark').createTempSync('model_generation_');
-  final fixture = File('${temporary.path}/model.dart');
+  final fixture = File.fromUri(temporary.absolute.uri.resolve('model.dart'));
   try {
     for (final count in [10, 100, 1000]) {
       fixture.writeAsStringSync('''

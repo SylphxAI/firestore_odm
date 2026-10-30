@@ -12,7 +12,7 @@ void main() {
 
   Future<String?> generate(String model) async {
     final temporary = Directory('test').createTempSync('model_generation_');
-    final fixture = File('${temporary.path}/model.dart')
+    final fixture = File.fromUri(temporary.absolute.uri.resolve('model.dart'))
       ..writeAsStringSync('''
 import 'package:firestore_odm_annotation/firestore_odm_annotation.dart';
 $model
