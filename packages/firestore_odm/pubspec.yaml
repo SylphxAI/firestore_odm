@@ -20,11 +20,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cloud_firestore: ^6.4.0
+  cloud_firestore: ^7.0.0
   meta: ^1.9.1
   firestore_odm_annotation: ^5.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  very_good_analysis: ^9.0.0
+  very_good_analysis: ^11.0.0
