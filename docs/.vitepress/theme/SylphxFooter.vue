@@ -44,7 +44,7 @@ const href = (link: string) => (link.startsWith('/') ? withBase(link) : link)
       <p class="sx-footer__legal">
         © {{ year }} Sylphx Limited. Registered in England and Wales, company no. 16438428.
         Registered office: 128 City Road, London EC1V 2NX, United Kingdom.
-        Phone <a href="tel:+443333357935">+44 333 335 7935</a>.
+        Phone <a href="tel:+447537188188">+44 7537 188 188</a>.
         Email <a href="mailto:hi@sylphx.com">hi@sylphx.com</a>.
       </p>
       <nav class="sx-footer__row sx-footer__row--legal" aria-label="Legal">
