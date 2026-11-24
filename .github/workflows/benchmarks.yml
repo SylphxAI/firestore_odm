@@ -3,11 +3,11 @@ name: Benchmarks
 # Code generation time and runtime cost of firestore_odm, cloud_firestore_odm
 # and raw cloud_firestore. Runs on pull requests that touch the benchmarks or
 # the generator, on pushes to main that touch packages/** (the trend), and by
-# hand. The Markdown report lands in the job summary and bench.json is
-# uploaded as the "benchmark-results" artifact. The job fails only when
-# firestore_odm regresses past the generous budgets in benchmarks/budgets.json
-# against the merge-base, measured in the same job. docs/guide/benchmarks.md
-# quotes a run. Not a required check.
+# hand. The Markdown report lands in the job summary. On failure, any JSON
+# results are kept for three days as the "benchmark-results" artifact. The
+# regression check compares against the merge-base in the same job using
+# benchmarks/budgets.json. docs/guide/benchmarks.md quotes a run. Not a
+# required check.
 
 on:
   pull_request:
@@ -95,9 +95,11 @@ jobs:
           benchmarks/compare.sh results/base.json results/bench.json | tee -a "$GITHUB_STEP_SUMMARY" || rc=$?
           exit "$rc"
       - name: Upload results
-        if: always()
+        if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: benchmark-results
           path: results/
           if-no-files-found: ignore
+          retention-days: 3
